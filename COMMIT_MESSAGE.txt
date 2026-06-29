@@ -1,72 +1,22 @@
-Initial commit: app compradora Neni's (Flutter) — 13 features completas
+Flutter: reescribir splash y welcome (sin mockup de style-gallery)
 
-Neni's App es la app nativa de la compradora (iOS+Android) que consume
-los endpoints Fase 2 de sellgeneral-api. Este es el commit inicial del
-proyecto.
+El usuario reportó que al abrir la app en el móvil aparecia una
+pantalla con "Neni's Compradora" y un boton "Ver style gallery" que
+apuntaba a una ruta inexistente (la ruta se elimino en el turno 10
+junto con features/dev/style_gallery_screen.dart).
 
-Stack:
-- Flutter 3.24+ / Dart 3.12+
-- flutter_riverpod 3.3.2 (AsyncNotifier + Family + ConsumerStatefulWidget)
-- go_router 17.3
-- dio 5.9 + flutter_secure_storage
-- signalr_netcore 1.4 (live tracking con auto-reconnect)
-- google_maps_flutter 2.17 (preparado, mapa actual es placeholder)
-- material_symbols_icons 4.2951
-- intl 0.20.3
+Cambios:
+- splash_screen.dart: ahora es ConsumerWidget que muestra el logo
+  con gradient rosa + un CircularProgressIndicator. NO navega
+  explicitamente: el redirect del router se encarga (initial: /splash
+  + redirect segun authControllerProvider). Si la sesion persistida
+  es valida, redirige a /home; si no, a /login.
+- auth_welcome_screen.dart: placeholder honesto con logo "Neni's
+  Compradora", copy "Bienvenida. Tus compras de los lives, tus pedidos
+  y tus tiendas favoritas, en un solo lugar." y boton "Empezar" que va
+  a /login. La ruta /welcome existe en el router pero no aparece en
+  el flujo normal (el redirect manda directo a /login); queda como
+  punto de entrada manual para un futuro onboarding paso a paso.
 
-Arquitectura: feature-first (lib/features/<nombre>/{data,screens}/).
-Cada feature sigue el patrón:
-  data/<nombre>_models.dart    (clases inmutables con fromJson)
-  data/<nombre>_repository.dart (Dio + Riverpod providers)
-  screens/<nombre>_screen.dart (ConsumerWidget/StatefulWidget)
-Router central en lib/core/router/app_router.dart con redirect por auth.
-
-Features implementadas (todas navegables de punta a punta):
-- auth/         Login (telefono) → OTP (codigo 000000 dev) → Claim
-- home/         Hero del pedido activo + bento Puntos/Lives + tienda
-                 y pedidos recientes + icono de notifications con badge
-- orders/       Lista paginada con tabs Todos/En curso/Cerrados
-                 + tap → tracking
-- tracking/     Mapa placeholder (CustomPaint) + driver + timeline 4 pasos
-                 + items del pedido; SignalR via /hubs/delivery para
-                 LocationUpdate (auto-reconnect [0,2,5,10,30]s)
-- points/       Total de la cuenta + por tienda + catalogo de rewards
-- tandas/       Tabs Mis tandas / Disponibles con progress de pagos
-- raffles/      Tabs Activos / Mis boletos / Historial con boletos
-- store/        Tienda con 4 tabs (Productos/Lives/Tandas/Sorteos) +
-                 ptsbar + live-strip + product card con +
-- reserve/      Confirmacion de apartado con stepper de cantidad +
-                 modal de exito que auto-navega al rastreo del nuevo order
-- account/      Perfil + tiendas vinculadas + cards de
-                 Pagos/Direcciones/Notificaciones + logout
-- payments/     Historial de pagos cross-tenant por tienda con
-                 method chip (Efectivo/Tarjeta/Transferencia)
-- addresses/    Lista y edicion de direcciones (1 por tienda) con
-                 formulario de 4 campos (calle, refs, lat, lng)
-- notifications/ Historial real persistido por el backend, con
-                 SegmentedControl Todas/No leidas, marcar leida
-                 on tap, "Marcar todas" + deep link
-- live/         Pantalla de live con "En construccion" (bloque ⑧
-                 pendiente, ruta /live/:sessionId lista)
-
-Bottom nav: 4 tabs fijos (Inicio/Pedidos/Puntos/Cuenta) en todas las
-pantallas principales via GlassBottomNav.
-
-Tematica:
-- Brand theme por tienda (color primario de cada negocio en la
-  BrandPrimaryColor del feed, con lighten/lighten para gradientes)
-- Tokens semanticos en core/theme/app_colors.dart
-- AppTextField extendido con label opcional y maxLines para forms
-- Componentes en lib/shared/widgets/: PillButton, PillIconButton,
-  BackIconButton, GlassBottomNav, NeniBackground, GlassCard, StoreAvatar,
-  SegmentedControl, AppTextField, SearchField, StatusChip
-
-Config:
-- API_BASE_URL mapeado por plataforma: Android 10.0.2.2:5080, iOS/
-  desktop localhost:5080. Override con --dart-define.
-- Interceptor de Dio inyecta Bearer + X-Business-Id (este ultimo
-  opcional).
-
-Mockups en mockups/ son solo referencia visual (no se compilan).
-
-Ver PROGRESO-APP-FLUTTER.md para el estado detallado de cada bloque.
+Tambien elimina el "Ver style gallery" (mockup que quedaba del
+turno 10). El PROGRESO-APP-FLUTTER.md se actualiza con la nota.
