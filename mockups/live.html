@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neni's App — Live</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+    .live-screen { color:#fff;
+        background:
+          radial-gradient(50% 38% at 50% 34%, rgba(255,255,255,.35) 0%, rgba(255,255,255,0) 60%),
+          radial-gradient(40% 30% at 78% 72%, rgba(255,120,170,.35) 0%, rgba(255,120,170,0) 60%),
+          linear-gradient(165deg, #ffcdb8 0%, #ff9ebd 38%, #c66f96 78%, #7d4665 100%); }
+    .live-screen .statusbar { color:#fff; }
+    .live-screen .statusbar .material-symbols-rounded { color:#fff; }
+    .subject { position:absolute; left:50%; bottom:150px; transform:translateX(-50%); width:180px; height:260px; border-radius:90px 90px 40px 40px; background:linear-gradient(180deg, rgba(255,255,255,.18), rgba(125,70,101,.25)); filter:blur(2px); }
+    .subject .head { position:absolute; top:-6px; left:50%; transform:translateX(-50%); width:84px; height:84px; border-radius:50%; background:rgba(255,255,255,.22); }
+
+    .top-ov { position:absolute; top:54px; left:14px; right:14px; display:flex; align-items:center; gap:10px; z-index:6; }
+    .host { display:flex; align-items:center; gap:9px; background:rgba(0,0,0,.28); backdrop-filter:blur(12px); padding:6px 12px 6px 6px; border-radius:99px; }
+    .host .av { width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,#ff3d8b,#ff0072); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:15px; border:1.5px solid #fff; }
+    .host .nm { font-size:13px; font-weight:600; line-height:1.1; }
+    .host .fl { font-size:10px; opacity:.85; }
+    .livetag { background:#ff2d55; font-size:10.5px; font-weight:700; padding:4px 9px; border-radius:99px; display:flex; align-items:center; gap:4px; }
+    .viewers { background:rgba(0,0,0,.28); backdrop-filter:blur(12px); padding:6px 11px; border-radius:99px; font-size:12px; font-weight:600; display:flex; align-items:center; gap:5px; }
+    .viewers .material-symbols-rounded { font-size:15px; }
+    .closeb { margin-left:auto; width:36px; height:36px; border-radius:50%; background:rgba(0,0,0,.28); backdrop-filter:blur(12px); display:flex; align-items:center; justify-content:center; }
+    .closeb .material-symbols-rounded { font-size:22px; }
+
+    .hearts { position:absolute; right:18px; bottom:230px; display:flex; flex-direction:column; gap:14px; align-items:center; z-index:5; }
+    .hearts .material-symbols-rounded { font-size:30px; filter:drop-shadow(0 4px 8px rgba(0,0,0,.2)); }
+    .fly { position:absolute; right:30px; color:#fff; opacity:.85; }
+    .fly.h1 { bottom:300px; font-size:20px; } .fly.h2 { bottom:350px; right:54px; font-size:15px; color:#ffd9e6;} .fly.h3 { bottom:330px; right:20px; font-size:13px; }
+
+    .comments { position:absolute; left:14px; right:90px; bottom:206px; display:flex; flex-direction:column; gap:8px; z-index:5; }
+    .cmt { display:flex; gap:7px; align-items:flex-start; }
+    .cmt .ca { width:24px; height:24px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff; }
+    .cmt .cb { background:rgba(0,0,0,.26); backdrop-filter:blur(8px); border-radius:14px; padding:6px 11px; font-size:12.5px; }
+    .cmt .cb b { font-weight:600; opacity:.9; font-size:11px; display:block; }
+
+    .prod { position:absolute; left:14px; right:14px; bottom:74px; border-radius:22px; padding:11px; display:flex; align-items:center; gap:12px; z-index:6;
+            background:rgba(255,255,255,.82); backdrop-filter:blur(20px); box-shadow:0 18px 40px -14px rgba(124,31,74,.45); color:var(--ink); }
+    .prod .pim { width:62px; height:62px; border-radius:16px; background:linear-gradient(135deg,#ffd1e3,#ff9ec4); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .prod .pim .material-symbols-rounded { color:#fff; font-size:30px; }
+    .prod .now { font-size:10px; font-weight:700; color:#ff0072; letter-spacing:.06em; }
+    .prod .pn { font-size:14px; font-weight:600; line-height:1.2; margin-top:1px; }
+    .prod .pp { font-size:16px; font-weight:700; margin-top:2px; }
+    .prod .apartar { margin-left:auto; height:48px; padding:0 18px; border-radius:16px; background:#ff0072; color:#fff; font-weight:700; font-size:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; box-shadow:0 12px 22px -8px rgba(255,0,114,.6); border:none; }
+    .prod .apartar small { font-size:9.5px; font-weight:500; opacity:.9; }
+
+    .inputbar { position:absolute; left:14px; right:14px; bottom:18px; display:flex; align-items:center; gap:10px; z-index:6; }
+    .inputbar .cinput { flex:1; height:46px; border-radius:99px; background:rgba(0,0,0,.28); backdrop-filter:blur(12px); display:flex; align-items:center; padding:0 16px; font-size:13px; color:rgba(255,255,255,.7); }
+    .inputbar .ib { width:46px; height:46px; border-radius:50%; background:rgba(0,0,0,.28); backdrop-filter:blur(12px); display:flex; align-items:center; justify-content:center; }
+    .inputbar .ib .material-symbols-rounded { color:#fff; font-size:23px; }
+</style>
+</head>
+<body>
+<div class="stage">
+    <div>
+        <div class="phone">
+            <div class="screen live-screen" style="--brand:#ff0072;">
+                <div class="statusbar">
+                    <span>9:41</span>
+                    <span class="icons"><span class="material-symbols-rounded">signal_cellular_alt</span><span class="material-symbols-rounded">wifi</span><span class="material-symbols-rounded">battery_full</span></span>
+                </div>
+
+                <div class="subject"><div class="head"></div></div>
+
+                <div class="top-ov">
+                    <div class="host">
+                        <div class="av">R</div>
+                        <div>
+                            <div class="nm">Regi Bazar</div>
+                            <div class="fl">Siguiendo</div>
+                        </div>
+                    </div>
+                    <div class="livetag"><span style="width:6px;height:6px;border-radius:50%;background:#fff;"></span> EN VIVO</div>
+                    <div class="viewers"><span class="material-symbols-rounded">visibility</span> 238</div>
+                    <div class="closeb"><span class="material-symbols-rounded">close</span></div>
+                </div>
+
+                <span class="fly h1 material-symbols-rounded">favorite</span>
+                <span class="fly h2 material-symbols-rounded">favorite</span>
+                <span class="fly h3 material-symbols-rounded">favorite</span>
+
+                <div class="hearts">
+                    <span class="material-symbols-rounded">favorite</span>
+                    <span class="material-symbols-rounded">redeem</span>
+                    <span class="material-symbols-rounded">share</span>
+                </div>
+
+                <div class="comments">
+                    <div class="cmt"><div class="ca" style="background:#8e6be6;">M</div><div class="cb"><b>Mariana</b>¡Yo aparto el sartén grande! 🙋‍♀️</div></div>
+                    <div class="cmt"><div class="ca" style="background:#16b5a0;">P</div><div class="cb"><b>Paola</b>¿Tienes en color rosa?</div></div>
+                    <div class="cmt"><div class="ca" style="background:#ff7a59;">S</div><div class="cb"><b>Sofía</b>Me encanta 😍</div></div>
+                </div>
+
+                <div class="prod">
+                    <div class="pim"><span class="material-symbols-rounded">cooking</span></div>
+                    <div style="min-width:0;">
+                        <div class="now">● APARTANDO AHORA</div>
+                        <div class="pn">Sartén grande antiadherente</div>
+                        <div class="pp">$590 <span style="font-size:11px;font-weight:500;color:var(--ink-2);">· 12 apartados</span></div>
+                    </div>
+                    <button class="apartar">Apartar<small>1 toque</small></button>
+                </div>
+
+                <div class="inputbar">
+                    <div class="cinput">Escribe un comentario…</div>
+                    <div class="ib"><span class="material-symbols-rounded">favorite</span></div>
+                    <div class="ib"><span class="material-symbols-rounded">send</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="label">⑧ Live shopping</div>
+    </div>
+</div>
+</body>
+</html>

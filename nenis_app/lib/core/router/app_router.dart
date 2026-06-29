@@ -1,0 +1,148 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../auth/auth_controller.dart';
+import '../../features/auth/screens/auth_welcome_screen.dart';
+import '../../features/auth/screens/login_screen.dart';
+import '../../features/auth/screens/otp_screen.dart';
+import '../../features/auth/screens/claim_profile_screen.dart';
+import '../../features/home/screens/home_screen.dart';
+import '../../features/store/screens/store_screen.dart';
+import '../../features/live/screens/live_screen.dart';
+import '../../features/orders/screens/orders_screen.dart';
+import '../../features/tracking/screens/tracking_screen.dart';
+import '../../features/points/screens/points_screen.dart';
+import '../../features/tandas/screens/tandas_screen.dart';
+import '../../features/raffles/screens/raffles_screen.dart';
+import '../../features/account/screens/account_screen.dart';
+import '../../features/addresses/screens/address_edit_screen.dart';
+import '../../features/addresses/screens/addresses_screen.dart';
+import '../../features/notifications/screens/notifications_screen.dart';
+import '../../features/payments/screens/payments_screen.dart';
+import '../../features/reserve/screens/reserve_screen.dart';
+import '../../shared/screens/splash_screen.dart';
+
+/// Rutas de acceso (sin sesión). El resto exige estar autenticado.
+const _authRoutes = {'/splash', '/welcome', '/login', '/otp'};
+
+final routerProvider = Provider<GoRouter>((ref) {
+  final refresh = ValueNotifier<int>(0);
+  ref.onDispose(refresh.dispose);
+  ref.listen(authControllerProvider, (_, _) => refresh.value++);
+
+  return GoRouter(
+    initialLocation: '/splash',
+    refreshListenable: refresh,
+    redirect: (context, state) {
+      final auth = ref.read(authControllerProvider);
+      final loc = state.matchedLocation;
+
+      // Cargando la sesión persistida → splash.
+      if (auth.isLoading || !auth.hasValue) {
+        return loc == '/splash' ? null : '/splash';
+      }
+
+      final session = auth.value;
+      if (session == null) {
+        return _authRoutes.contains(loc) ? null : '/login';
+      }
+
+      // Recién verificada por OTP y sin negocio propio → a reclamar perfil.
+      if (loc == '/otp' && !session.hasMembership) return '/claim';
+      // Autenticada: no se queda en pantallas de acceso.
+      if (_authRoutes.contains(loc)) return '/home';
+      return null;
+    },
+    routes: [
+      GoRoute(
+        path: '/splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: '/welcome',
+        builder: (context, state) => const AuthWelcomeScreen(),
+      ),
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/otp',
+        builder: (context, state) => const OtpScreen(),
+      ),
+      GoRoute(
+        path: '/claim',
+        builder: (context, state) => const ClaimProfileScreen(),
+      ),
+      GoRoute(
+        path: '/home',
+        builder: (context, state) => const HomeScreen(),
+      ),
+      GoRoute(
+        path: '/store/:businessId',
+        builder: (context, state) => StoreScreen(
+          businessId: state.pathParameters['businessId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/live/:sessionId',
+        builder: (context, state) => LiveScreen(
+          sessionId: state.pathParameters['sessionId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/orders',
+        builder: (context, state) => const OrdersScreen(),
+      ),
+      GoRoute(
+        path: '/tracking/:orderId',
+        builder: (context, state) => TrackingScreen(
+          orderId: state.pathParameters['orderId']!,
+          accessToken: state.uri.queryParameters['token'],
+        ),
+      ),
+      GoRoute(
+        path: '/points',
+        builder: (context, state) => const PointsScreen(),
+      ),
+      GoRoute(
+        path: '/tandas',
+        builder: (context, state) => const TandasScreen(),
+      ),
+      GoRoute(
+        path: '/raffles',
+        builder: (context, state) => const RafflesScreen(),
+      ),
+      GoRoute(
+        path: '/account',
+        builder: (context, state) => const AccountScreen(),
+      ),
+      GoRoute(
+        path: '/reserve/:businessId/:productId',
+        builder: (context, state) => ReserveScreen(
+          businessId: state.pathParameters['businessId']!,
+          productId: state.pathParameters['productId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/notifications',
+        builder: (context, state) => const NotificationsScreen(),
+      ),
+      GoRoute(
+        path: '/payments',
+        builder: (context, state) => const PaymentsScreen(),
+      ),
+      GoRoute(
+        path: '/addresses',
+        builder: (context, state) => const AddressesScreen(),
+      ),
+      GoRoute(
+        path: '/addresses/:clientId',
+        builder: (context, state) => AddressEditScreen(
+          clientId: state.pathParameters['clientId']!,
+        ),
+      ),
+    ],
+  );
+});

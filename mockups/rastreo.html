@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neni's App — Rastreo</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+    .map { position:relative; height:360px; overflow:hidden; background:#e7ede6; }
+    .map svg { position:absolute; inset:0; width:100%; height:100%; }
+    .m { position:absolute; transform:translate(-50%,-50%); z-index:3; }
+    .m-store { left:88px; top:58px; }
+    .m-home { left:250px; top:300px; }
+    .pin { width:40px; height:40px; border-radius:50% 50% 50% 2px; transform:rotate(45deg); display:flex; align-items:center; justify-content:center; box-shadow:0 8px 16px -6px rgba(0,0,0,.3); }
+    .pin .material-symbols-rounded { transform:rotate(-45deg); color:#fff; font-size:21px; }
+    .m-driver { left:198px; top:150px; }
+    .ring { width:54px; height:54px; border-radius:50%; background:rgba(255,0,114,.18); display:flex; align-items:center; justify-content:center; }
+    .driverdot { width:40px; height:40px; border-radius:50%; background:#fff; border:3px solid #ff0072; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 16px -5px rgba(255,0,114,.5); }
+    .driverdot .material-symbols-rounded { color:#ff0072; font-size:22px; }
+
+    .map-top { position:absolute; top:54px; left:14px; right:14px; display:flex; align-items:center; gap:12px; z-index:5; }
+    .mb { width:42px; height:42px; border-radius:14px; background:#fff; display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow-sm); }
+    .mb .material-symbols-rounded { font-size:23px; color:var(--ink); }
+    .map-title { background:#fff; border-radius:14px; padding:9px 16px; box-shadow:var(--shadow-sm); font-weight:600; font-size:14px; }
+    .map-title small { display:block; font-size:11px; color:var(--ink-2); font-weight:500; }
+
+    .sheet { position:relative; z-index:6; margin-top:-26px; background:#fff; border-radius:28px 28px 0 0; padding:8px 22px 22px; box-shadow:0 -14px 40px -16px rgba(124,31,74,.25); flex:1; }
+    .handle { width:42px; height:5px; border-radius:99px; background:#ecdfe6; margin:6px auto 14px; }
+    .st-row { display:flex; align-items:center; justify-content:space-between; }
+    .eta { font-size:19px; font-weight:700; letter-spacing:-.01em; }
+    .eta small { display:block; font-size:12px; color:var(--ink-2); font-weight:500; }
+
+    .driver-row { display:flex; align-items:center; gap:12px; margin:16px 0; padding:13px; background:#fbf3f6; border-radius:18px; }
+    .driver-row .dav { width:48px; height:48px; border-radius:15px; background:linear-gradient(135deg,#a98cf0,#8e6be6); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:18px; }
+    .driver-row .dn { font-size:15px; font-weight:600; }
+    .driver-row .dd { font-size:12.5px; color:var(--ink-2); }
+    .dact { width:44px; height:44px; border-radius:14px; background:#fff; display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow-sm); }
+    .dact .material-symbols-rounded { color:#ff0072; font-size:22px; }
+
+    .tl { margin-top:6px; }
+    .tstep { display:flex; gap:14px; }
+    .dotcol { display:flex; flex-direction:column; align-items:center; }
+    .dot { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .dot .material-symbols-rounded { font-size:17px; }
+    .vline { width:2px; flex:1; min-height:22px; }
+    .done .dot { background:var(--deliv); } .done .dot .material-symbols-rounded { color:#fff; }
+    .done .vline { background:var(--deliv); }
+    .active .dot { background:#ff0072; box-shadow:0 0 0 4px rgba(255,0,114,.18); } .active .dot .material-symbols-rounded { color:#fff; }
+    .active .vline { background:linear-gradient(#ff0072,#ecd9e2); }
+    .todo .dot { background:#fff; border:2px solid #ecd9e2; } .todo .vline { background:#ecd9e2; }
+    .ttxt { padding-bottom:16px; }
+    .ttxt .tt { font-size:14.5px; font-weight:600; }
+    .ttxt .ts { font-size:12px; color:var(--ink-2); }
+    .active .tt { color:#ff0072; }
+</style>
+</head>
+<body>
+<div class="stage">
+    <div>
+        <div class="phone">
+            <div class="screen" style="--brand:#ff0072; background:#fff;">
+                <div class="statusbar">
+                    <span>9:41</span>
+                    <span class="icons"><span class="material-symbols-rounded">signal_cellular_alt</span><span class="material-symbols-rounded">wifi</span><span class="material-symbols-rounded">battery_full</span></span>
+                </div>
+
+                <div class="body">
+                    <div class="map">
+                        <svg viewBox="0 0 390 360" preserveAspectRatio="xMidYMid slice">
+                            <rect x="250" y="-10" width="160" height="150" rx="20" fill="#d4e7f3"/>
+                            <rect x="40" y="190" width="150" height="110" rx="22" fill="#d8ecd6"/>
+                            <g stroke="#ffffff" stroke-width="17" stroke-linecap="round" opacity="0.95">
+                                <line x1="-20" y1="120" x2="410" y2="120"/>
+                                <line x1="-20" y1="255" x2="410" y2="255"/>
+                                <line x1="110" y1="-20" x2="110" y2="380"/>
+                                <line x1="270" y1="-20" x2="270" y2="380"/>
+                            </g>
+                            <g stroke="#f2f5f1" stroke-width="6" stroke-linecap="round">
+                                <line x1="-20" y1="190" x2="410" y2="190"/>
+                                <line x1="190" y1="-20" x2="190" y2="380"/>
+                            </g>
+                            <path d="M88 58 C 88 110, 198 100, 198 150 C 198 210, 250 240, 250 300" fill="none" stroke="#ffb9d4" stroke-width="8" stroke-linecap="round" stroke-dasharray="2 14"/>
+                            <path d="M88 58 C 88 110, 198 100, 198 150" fill="none" stroke="#ff0072" stroke-width="6" stroke-linecap="round"/>
+                        </svg>
+
+                        <div class="m m-store"><div class="pin" style="background:linear-gradient(135deg,#ff3d8b,#ff0072);"><span class="material-symbols-rounded">storefront</span></div></div>
+                        <div class="m m-driver"><div class="ring"><div class="driverdot"><span class="material-symbols-rounded">local_shipping</span></div></div></div>
+                        <div class="m m-home"><div class="pin" style="background:#3a2233;"><span class="material-symbols-rounded">home</span></div></div>
+
+                        <div class="map-top">
+                            <div class="mb"><span class="material-symbols-rounded">arrow_back</span></div>
+                            <div class="map-title">Pedido #970<small>Regi Bazar</small></div>
+                        </div>
+                    </div>
+
+                    <div class="sheet">
+                        <div class="handle"></div>
+                        <div class="st-row">
+                            <div class="eta">Llega 3:40–4:10 pm<small>Tu pedido va en camino</small></div>
+                            <div class="chip chip--route"><span class="material-symbols-rounded">local_shipping</span> En ruta</div>
+                        </div>
+
+                        <div class="driver-row">
+                            <div class="dav">V</div>
+                            <div style="flex:1;">
+                                <div class="dn">Vicente</div>
+                                <div class="dd">Tu repartidor · a 6 paradas de ti</div>
+                            </div>
+                            <div class="dact"><span class="material-symbols-rounded">call</span></div>
+                            <div class="dact"><span class="material-symbols-rounded">chat_bubble</span></div>
+                        </div>
+
+                        <div class="tl">
+                            <div class="tstep done">
+                                <div class="dotcol"><div class="dot"><span class="material-symbols-rounded">check</span></div><div class="vline"></div></div>
+                                <div class="ttxt"><div class="tt">Pedido confirmado</div><div class="ts">Hoy, 11:20 am</div></div>
+                            </div>
+                            <div class="tstep done">
+                                <div class="dotcol"><div class="dot"><span class="material-symbols-rounded">check</span></div><div class="vline"></div></div>
+                                <div class="ttxt"><div class="tt">Preparado y empacado</div><div class="ts">Hoy, 1:05 pm</div></div>
+                            </div>
+                            <div class="tstep active">
+                                <div class="dotcol"><div class="dot"><span class="material-symbols-rounded">local_shipping</span></div><div class="vline"></div></div>
+                                <div class="ttxt"><div class="tt">En ruta contigo</div><div class="ts">Vicente salió a las 3:10 pm</div></div>
+                            </div>
+                            <div class="tstep todo">
+                                <div class="dotcol"><div class="dot"></div></div>
+                                <div class="ttxt"><div class="tt">Entregado</div><div class="ts">Estimado 3:40–4:10 pm</div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="label">⑩ Rastreo de pedido</div>
+    </div>
+</div>
+</body>
+</html>

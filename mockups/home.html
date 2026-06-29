@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neni's App — Home</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+    .topbar { display: flex; align-items: center; gap: 12px; padding: 4px 22px 14px; }
+    .hi-av { width: 46px; height: 46px; border-radius: 16px; background: linear-gradient(135deg, #ffd2e3, #d9c6ff); display:flex; align-items:center; justify-content:center; font-weight:700; color: var(--neni-deep); font-size:18px; box-shadow: var(--shadow-sm); }
+    .iconbtn { width: 44px; height: 44px; border-radius: 14px; background:#fff; display:flex; align-items:center; justify-content:center; box-shadow: var(--shadow-sm); position: relative; }
+    .iconbtn .material-symbols-rounded { font-size: 23px; color: var(--ink); }
+    .dot { position:absolute; top:10px; right:11px; width:9px; height:9px; border-radius:50%; background:var(--neni-deep); border:2px solid #fff; }
+    .search { margin: 0 22px 18px; height: 50px; border-radius: 18px; background:#fff; display:flex; align-items:center; gap:10px; padding:0 16px; box-shadow: var(--shadow-sm); }
+    .search .material-symbols-rounded { color: var(--ink-3); font-size: 22px; }
+    .search span.ph { color: var(--ink-3); font-size: 14.5px; font-weight: 500; }
+
+    .hero { margin: 0 22px 14px; border-radius: var(--r-card); padding: 20px; color:#fff; position: relative; overflow: hidden;
+            background: linear-gradient(135deg, #ff3d8b 0%, #ff0072 100%); box-shadow: 0 22px 40px -16px rgba(255,0,114,.55); }
+    .hero .glow { position:absolute; width:180px; height:180px; border-radius:50%; background: rgba(255,255,255,.18); top:-70px; right:-50px; }
+    .hero .row { display:flex; justify-content:space-between; align-items:flex-start; position:relative; }
+    .hero .store { display:flex; align-items:center; gap:9px; }
+    .hero .store .lg { width:34px; height:34px; border-radius:11px; background:rgba(255,255,255,.22); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:15px; }
+    .hero .chip-w { background: rgba(255,255,255,.22); color:#fff; }
+    .hero h3 { font-size: 21px; font-weight: 700; margin-top: 16px; position: relative; letter-spacing:-.01em;}
+    .hero .meta { display:flex; align-items:center; gap:7px; margin-top:5px; font-size:13.5px; opacity:.95; position:relative; }
+    .track { margin-top:16px; display:flex; align-items:center; gap:6px; position:relative; }
+    .track .seg-l { flex:1; height:5px; border-radius:99px; background: rgba(255,255,255,.3); overflow:hidden; }
+    .track .seg-l.fill { background: rgba(255,255,255,.95); }
+    .track .material-symbols-rounded { font-size:18px; }
+
+    .bento { display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin: 0 22px 18px; }
+    .tile { border-radius: var(--r-soft); padding:16px; box-shadow: var(--shadow); position:relative; overflow:hidden; }
+    .tile .ico-c { width:40px; height:40px; border-radius:13px; display:flex; align-items:center; justify-content:center; }
+    .tile .ico-c .material-symbols-rounded { font-size:23px; }
+    .tile .big { font-size:26px; font-weight:700; letter-spacing:-.02em; margin-top:12px; }
+    .tile .cap { color: var(--ink-2); font-size:12.5px; font-weight:500; }
+    .tile-pts { background: linear-gradient(150deg, #fff7e6, #ffffff); }
+    .tile-live { background: linear-gradient(150deg, #f1e9ff, #ffffff); }
+
+    .sec-h { display:flex; align-items:center; justify-content:space-between; margin: 4px 22px 12px; }
+    .sec-h b { font-size:17px; font-weight:600; }
+    .sec-h a { color: var(--neni-deep); font-size:13px; font-weight:600; text-decoration:none; }
+
+    .stores { display:flex; gap:13px; padding: 0 22px 20px; overflow-x:auto; }
+    .stores::-webkit-scrollbar{display:none;}
+    .store-c { flex:0 0 auto; width:96px; text-align:center; }
+    .store-c .badge { width:72px; height:72px; border-radius:24px; margin:0 auto 8px; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:24px; box-shadow: var(--shadow); position:relative; }
+    .store-c .badge .live { position:absolute; bottom:-4px; left:50%; transform:translateX(-50%); background:#ff2d55; color:#fff; font-size:9px; font-weight:700; padding:2px 8px; border-radius:99px; border:2px solid #fff; letter-spacing:.04em; }
+    .store-c .nm { font-size:13px; font-weight:600; color:var(--ink); }
+    .store-c .sb { font-size:11px; color:var(--ink-3); }
+
+    .orders { padding: 0 22px 130px; display:flex; flex-direction:column; gap:11px; }
+    .orow { background:#fff; border-radius: var(--r-soft); padding:13px; display:flex; align-items:center; gap:13px; box-shadow: var(--shadow-sm); }
+    .orow .th { width:50px; height:50px; border-radius:15px; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; flex-shrink:0; }
+    .orow .gr { flex:1; min-width:0; }
+    .orow .t1 { font-size:14.5px; font-weight:600; }
+    .orow .t2 { font-size:12.5px; color:var(--ink-2); margin-top:1px; }
+</style>
+</head>
+<body>
+<div class="stage">
+    <div>
+        <div class="phone">
+            <div class="screen" style="background:
+                radial-gradient(80% 30% at 50% 0%, #fff0f5 0%, rgba(255,240,245,0) 55%), #fbf3f6;">
+                <div class="statusbar">
+                    <span>9:41</span>
+                    <span class="icons"><span class="material-symbols-rounded">signal_cellular_alt</span><span class="material-symbols-rounded">wifi</span><span class="material-symbols-rounded">battery_full</span></span>
+                </div>
+
+                <div class="body">
+                    <div class="scroll">
+                        <div class="topbar">
+                            <div class="hi-av">S</div>
+                            <div style="flex:1;">
+                                <div class="sub" style="font-size:12.5px;">Hola de nuevo</div>
+                                <div class="h2" style="font-size:18px;">Sofía 🌸</div>
+                            </div>
+                            <div class="iconbtn"><span class="material-symbols-rounded">notifications</span><span class="dot"></span></div>
+                        </div>
+
+                        <div class="search">
+                            <span class="material-symbols-rounded">search</span>
+                            <span class="ph">Busca tu pedido o una tienda</span>
+                        </div>
+
+                        <div class="eyebrow" style="margin: 0 22px 8px;">Tu pedido en camino</div>
+                        <div class="hero">
+                            <div class="glow"></div>
+                            <div class="row">
+                                <div class="store">
+                                    <div class="lg">R</div>
+                                    <div>
+                                        <div style="font-weight:600;font-size:14px;">Regi Bazar</div>
+                                        <div style="font-size:11.5px;opacity:.85;">Pedido #970</div>
+                                    </div>
+                                </div>
+                                <div class="chip chip-w"><span class="material-symbols-rounded">local_shipping</span> En ruta</div>
+                            </div>
+                            <h3>Llega hoy, 3:40–4:10 pm</h3>
+                            <div class="meta"><span class="material-symbols-rounded">person_pin_circle</span> Vicente va en camino · a 6 paradas de ti</div>
+                            <div class="track">
+                                <span class="material-symbols-rounded">inventory_2</span>
+                                <div class="seg-l fill"></div>
+                                <span class="material-symbols-rounded">local_shipping</span>
+                                <div class="seg-l"></div>
+                                <span class="material-symbols-rounded" style="opacity:.6;">home</span>
+                            </div>
+                        </div>
+
+                        <div class="bento">
+                            <div class="tile tile-pts">
+                                <div class="ico-c" style="background:#fff2d4;"><span class="material-symbols-rounded" style="color:var(--gold);">stars</span></div>
+                                <div class="big">1,240</div>
+                                <div class="cap">Puntos acumulados</div>
+                            </div>
+                            <div class="tile tile-live">
+                                <div class="ico-c" style="background:#ece0ff;"><span class="material-symbols-rounded" style="color:var(--lav);">sensors</span></div>
+                                <div class="big">2 <span style="font-size:14px;font-weight:600;color:var(--ink-2);">ahora</span></div>
+                                <div class="cap">Lives en vivo</div>
+                            </div>
+                        </div>
+
+                        <div class="sec-h"><b>Mis tiendas</b><a href="#">Ver todas</a></div>
+                        <div class="stores">
+                            <div class="store-c">
+                                <div class="badge" style="background:linear-gradient(135deg,#ff3d8b,#ff0072);">R<span class="live">LIVE</span></div>
+                                <div class="nm">Regi Bazar</div><div class="sb">320 pts</div>
+                            </div>
+                            <div class="store-c">
+                                <div class="badge" style="background:linear-gradient(135deg,#ff9a6b,#ff7a59);">L</div>
+                                <div class="nm">Luna Bella</div><div class="sb">540 pts</div>
+                            </div>
+                            <div class="store-c">
+                                <div class="badge" style="background:linear-gradient(135deg,#a98cf0,#8e6be6);">A</div>
+                                <div class="nm">Aurora</div><div class="sb">180 pts</div>
+                            </div>
+                            <div class="store-c">
+                                <div class="badge" style="background:linear-gradient(135deg,#3ad1b8,#16b5a0);">M</div>
+                                <div class="nm">Mía Joya</div><div class="sb">200 pts</div>
+                            </div>
+                        </div>
+
+                        <div class="sec-h"><b>Pedidos recientes</b><a href="#">Ver todos</a></div>
+                        <div class="orders">
+                            <div class="orow">
+                                <div class="th" style="background:linear-gradient(135deg,#ff9a6b,#ff7a59);">L</div>
+                                <div class="gr">
+                                    <div class="t1">Blusa coqueta + collar</div>
+                                    <div class="t2">Luna Bella · Pedido #214</div>
+                                </div>
+                                <div class="chip chip--deliv"><span class="material-symbols-rounded">check_circle</span> Entregado</div>
+                            </div>
+                            <div class="orow">
+                                <div class="th" style="background:linear-gradient(135deg,#a98cf0,#8e6be6);">A</div>
+                                <div class="gr">
+                                    <div class="t1">Set de skincare</div>
+                                    <div class="t2">Aurora · Pedido #88</div>
+                                </div>
+                                <div class="chip chip--pend"><span class="material-symbols-rounded">schedule</span> Pendiente</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="nav glass">
+                    <a class="on"><span class="ico material-symbols-rounded">home</span>Inicio</a>
+                    <a><span class="ico material-symbols-rounded">receipt_long</span>Pedidos</a>
+                    <a><span class="ico material-symbols-rounded">stars</span>Puntos</a>
+                    <a><span class="ico material-symbols-rounded">person</span>Cuenta</a>
+                </div>
+            </div>
+        </div>
+        <div class="label">⑥ Home</div>
+    </div>
+</div>
+</body>
+</html>

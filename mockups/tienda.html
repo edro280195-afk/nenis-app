@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neni's App — Tienda</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+    .banner { height: 132px; position: relative; background: linear-gradient(135deg,#ff5c9d 0%, #ff0072 100%); }
+    .banner .glow { position:absolute; width:180px; height:180px; border-radius:50%; background:rgba(255,255,255,.16); top:-80px; right:-40px; }
+    .b-top { position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between; padding: 14px 18px; z-index:3; }
+    .b-btn { width:40px; height:40px; border-radius:13px; background:rgba(255,255,255,.22); backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; }
+    .b-btn .material-symbols-rounded { color:#fff; font-size:22px; }
+    .live-badge { position:absolute; left:18px; bottom:14px; background:#fff; color:#ff0072; font-weight:700; font-size:11px; padding:5px 11px; border-radius:99px; display:flex; align-items:center; gap:5px; letter-spacing:.04em; }
+    .live-badge .pulse { width:7px; height:7px; border-radius:50%; background:#ff2d55; }
+
+    .profile { padding: 0 22px; margin-top:-34px; position:relative; z-index:4; display:flex; align-items:flex-end; gap:14px; }
+    .p-logo { width:74px; height:74px; border-radius:24px; background:linear-gradient(135deg,#ff3d8b,#ff0072); border:4px solid #fff; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:30px; box-shadow:var(--shadow); }
+    .p-meta { flex:1; padding-bottom:4px; }
+    .p-meta .nm { font-size:20px; font-weight:700; letter-spacing:-.01em; }
+    .p-meta .st { font-size:12.5px; color:var(--ink-2); display:flex; align-items:center; gap:5px; margin-top:2px; }
+    .p-meta .st .material-symbols-rounded { font-size:15px; color:var(--gold); }
+    .follow { height:40px; padding:0 18px; border-radius:99px; background:#ff0072; color:#fff; font-weight:600; font-size:14px; display:flex; align-items:center; gap:6px; box-shadow:0 10px 20px -8px rgba(255,0,114,.6); border:none; margin-bottom:4px; }
+
+    .ptsbar { margin: 16px 22px 0; background:linear-gradient(135deg,#fff6e6,#fff); border-radius:18px; padding:13px 16px; display:flex; align-items:center; gap:12px; box-shadow:var(--shadow-sm); }
+    .ptsbar .ic { width:38px; height:38px; border-radius:12px; background:#fff2d4; display:flex; align-items:center; justify-content:center; }
+    .ptsbar .ic .material-symbols-rounded { color:var(--gold); font-size:22px; }
+    .ptsbar .big { font-weight:700; font-size:16px; }
+    .ptsbar .cap { font-size:12px; color:var(--ink-2); }
+
+    .live-strip { margin: 14px 22px 0; border-radius:18px; padding:13px 16px; background:linear-gradient(135deg,#ff3d8b,#ff0072); color:#fff; display:flex; align-items:center; gap:12px; box-shadow:0 14px 26px -12px rgba(255,0,114,.5); }
+    .live-strip .ic { width:40px; height:40px; border-radius:13px; background:rgba(255,255,255,.22); display:flex; align-items:center; justify-content:center; }
+    .live-strip .material-symbols-rounded { font-size:23px; }
+    .live-strip .t1 { font-weight:700; font-size:14.5px; }
+    .live-strip .t2 { font-size:12px; opacity:.9; }
+    .live-strip .go { margin-left:auto; background:#fff; color:#ff0072; font-weight:700; font-size:13px; padding:8px 14px; border-radius:99px; }
+
+    .tabs { display:flex; gap:8px; padding: 18px 22px 4px; overflow-x:auto; }
+    .tabs::-webkit-scrollbar{display:none;}
+    .tab { flex:0 0 auto; padding:9px 16px; border-radius:99px; font-size:13.5px; font-weight:600; color:var(--ink-2); background:rgba(58,34,51,.05); }
+    .tab.on { background:#ff0072; color:#fff; box-shadow:0 8px 16px -8px rgba(255,0,114,.6); }
+
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; padding: 14px 22px 130px; }
+    .pcard { background:#fff; border-radius:20px; overflow:hidden; box-shadow:var(--shadow-sm); }
+    .pcard .img { height:128px; display:flex; align-items:center; justify-content:center; position:relative; }
+    .pcard .img .material-symbols-rounded { font-size:46px; color:rgba(255,255,255,.92); }
+    .pcard .fav { position:absolute; top:9px; right:9px; width:28px; height:28px; border-radius:50%; background:rgba(255,255,255,.85); display:flex; align-items:center; justify-content:center; }
+    .pcard .fav .material-symbols-rounded { font-size:16px; color:#ff5c8a; }
+    .pcard .tagn { position:absolute; left:9px; top:9px; background:rgba(255,255,255,.9); color:#ff0072; font-size:10px; font-weight:700; padding:3px 8px; border-radius:99px; }
+    .pcard .info { padding:10px 12px 12px; }
+    .pcard .pn { font-size:13px; font-weight:600; line-height:1.3; }
+    .pcard .row2 { display:flex; align-items:center; justify-content:space-between; margin-top:8px; }
+    .pcard .price { font-weight:700; font-size:15.5px; }
+    .pcard .add { width:32px; height:32px; border-radius:11px; background:#ff0072; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 14px -6px rgba(255,0,114,.6); }
+    .pcard .add .material-symbols-rounded { color:#fff; font-size:20px; }
+</style>
+</head>
+<body>
+<div class="stage">
+    <div>
+        <div class="phone">
+            <div class="screen" style="--brand:#ff0072; background:#fbf3f6;">
+                <div class="statusbar">
+                    <span>9:41</span>
+                    <span class="icons"><span class="material-symbols-rounded">signal_cellular_alt</span><span class="material-symbols-rounded">wifi</span><span class="material-symbols-rounded">battery_full</span></span>
+                </div>
+
+                <div class="body">
+                    <div class="scroll">
+                        <div class="banner">
+                            <div class="glow"></div>
+                            <div class="b-top">
+                                <div class="b-btn"><span class="material-symbols-rounded">arrow_back</span></div>
+                                <div style="display:flex; gap:10px;">
+                                    <div class="b-btn"><span class="material-symbols-rounded">favorite</span></div>
+                                    <div class="b-btn"><span class="material-symbols-rounded">ios_share</span></div>
+                                </div>
+                            </div>
+                            <div class="live-badge"><span class="pulse"></span> EN VIVO</div>
+                        </div>
+
+                        <div class="profile">
+                            <div class="p-logo">R</div>
+                            <div class="p-meta">
+                                <div class="nm">Regi Bazar</div>
+                                <div class="st"><span class="material-symbols-rounded">star</span> 4.9 · 1.2k clientas · Nuevo Laredo</div>
+                            </div>
+                            <button class="follow"><span class="material-symbols-rounded" style="font-size:18px;">add</span>Seguir</button>
+                        </div>
+
+                        <div class="ptsbar">
+                            <div class="ic"><span class="material-symbols-rounded">stars</span></div>
+                            <div style="flex:1;">
+                                <div class="big">320 puntos</div>
+                                <div class="cap">acumulados aquí · canjea desde 500</div>
+                            </div>
+                            <span class="material-symbols-rounded" style="color:var(--ink-3);">chevron_right</span>
+                        </div>
+
+                        <div class="live-strip">
+                            <div class="ic"><span class="material-symbols-rounded">sensors</span></div>
+                            <div>
+                                <div class="t1">Regi está en vivo</div>
+                                <div class="t2">238 viendo · sartenes y blusas</div>
+                            </div>
+                            <div class="go">Entrar</div>
+                        </div>
+
+                        <div class="tabs">
+                            <div class="tab on">Productos</div>
+                            <div class="tab">Lives</div>
+                            <div class="tab">Tandas</div>
+                            <div class="tab">Sorteos</div>
+                        </div>
+
+                        <div class="grid">
+                            <div class="pcard">
+                                <div class="img" style="background:linear-gradient(135deg,#ffd1e3,#ff9ec4);">
+                                    <span class="tagn">Nuevo</span>
+                                    <div class="fav"><span class="material-symbols-rounded">favorite</span></div>
+                                    <span class="material-symbols-rounded">apparel</span>
+                                </div>
+                                <div class="info">
+                                    <div class="pn">Blusa coqueta de holanes</div>
+                                    <div class="row2"><span class="price">$249</span><div class="add"><span class="material-symbols-rounded">add</span></div></div>
+                                </div>
+                            </div>
+                            <div class="pcard">
+                                <div class="img" style="background:linear-gradient(135deg,#e3d3ff,#c4a8f5);">
+                                    <div class="fav"><span class="material-symbols-rounded">favorite</span></div>
+                                    <span class="material-symbols-rounded">diamond</span>
+                                </div>
+                                <div class="info">
+                                    <div class="pn">Collar de perlas rosa</div>
+                                    <div class="row2"><span class="price">$180</span><div class="add"><span class="material-symbols-rounded">add</span></div></div>
+                                </div>
+                            </div>
+                            <div class="pcard">
+                                <div class="img" style="background:linear-gradient(135deg,#ffe0c2,#ffba8a);">
+                                    <div class="fav"><span class="material-symbols-rounded">favorite</span></div>
+                                    <span class="material-symbols-rounded">cooking</span>
+                                </div>
+                                <div class="info">
+                                    <div class="pn">Set de sartenes 3 pzas</div>
+                                    <div class="row2"><span class="price">$590</span><div class="add"><span class="material-symbols-rounded">add</span></div></div>
+                                </div>
+                            </div>
+                            <div class="pcard">
+                                <div class="img" style="background:linear-gradient(135deg,#cdeede,#9fe1c6);">
+                                    <span class="tagn">Live</span>
+                                    <div class="fav"><span class="material-symbols-rounded">favorite</span></div>
+                                    <span class="material-symbols-rounded">redeem</span>
+                                </div>
+                                <div class="info">
+                                    <div class="pn">Bolsa tejida verano</div>
+                                    <div class="row2"><span class="price">$320</span><div class="add"><span class="material-symbols-rounded">add</span></div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="nav glass">
+                    <a><span class="ico material-symbols-rounded">home</span>Inicio</a>
+                    <a><span class="ico material-symbols-rounded">receipt_long</span>Pedidos</a>
+                    <a><span class="ico material-symbols-rounded">stars</span>Puntos</a>
+                    <a><span class="ico material-symbols-rounded">person</span>Cuenta</a>
+                </div>
+            </div>
+        </div>
+        <div class="label">⑦ Tienda de la vendedora</div>
+    </div>
+</div>
+</body>
+</html>

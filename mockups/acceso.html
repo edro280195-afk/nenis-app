@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neni's App — Acceso</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+    .acceso-hero { position: relative; padding: 18px 22px 0; }
+    .blob { position: absolute; border-radius: 50%; filter: blur(2px); }
+    .wordmark { display: flex; align-items: center; gap: 10px; }
+    .wordmark .mark { width: 44px; height: 44px; border-radius: 15px; background: linear-gradient(135deg, var(--neni), var(--neni-deep)); display: flex; align-items: center; justify-content: center; box-shadow: 0 12px 22px -10px rgba(232,78,131,.8); }
+    .wordmark .mark .material-symbols-rounded { color: #fff; font-size: 26px; }
+    .wordmark b { font-size: 20px; font-weight: 700; letter-spacing: -.02em; }
+    .wordmark b span { color: var(--neni-deep); }
+    .illo { height: 164px; display: flex; align-items: center; justify-content: center; position: relative; margin: 2px 0 0; }
+    .illo .ring { position: absolute; width: 150px; height: 150px; border-radius: 50%; background: linear-gradient(135deg, #ffd9e7, #ece0ff); box-shadow: inset 0 8px 24px rgba(255,255,255,.7), 0 24px 40px -16px rgba(232,78,131,.45); }
+    .illo .bag { position: relative; width: 92px; height: 92px; border-radius: 26px; background: linear-gradient(135deg, var(--neni), var(--neni-deep)); display: flex; align-items: center; justify-content: center; box-shadow: 0 20px 30px -10px rgba(232,78,131,.6); }
+    .illo .bag .material-symbols-rounded { color: #fff; font-size: 50px; }
+    .spark { position: absolute; color: var(--gold); }
+    .spark.s1 { top: 28px; right: 96px; font-size: 26px; }
+    .spark.s2 { bottom: 36px; left: 92px; font-size: 20px; color: var(--lav); }
+    .spark.s3 { top: 54px; left: 104px; font-size: 16px; color: var(--neni); }
+    .heart { position: absolute; right: 100px; bottom: 50px; font-size: 22px; color: #ff9ec0; }
+</style>
+</head>
+<body>
+<div class="stage">
+    <div>
+        <div class="phone">
+            <div class="screen" style="background:
+                radial-gradient(70% 40% at 20% 0%, #ffe6f0 0%, rgba(255,230,240,0) 60%),
+                radial-gradient(60% 35% at 100% 8%, #ece0ff 0%, rgba(236,224,255,0) 55%),
+                #fdf4f7;">
+                <div class="statusbar">
+                    <span>9:41</span>
+                    <span class="icons"><span class="material-symbols-rounded">signal_cellular_alt</span><span class="material-symbols-rounded">wifi</span><span class="material-symbols-rounded">battery_full</span></span>
+                </div>
+
+                <div class="body">
+                    <div class="acceso-hero">
+                        <div class="wordmark">
+                            <div class="mark"><span class="material-symbols-rounded">favorite</span></div>
+                            <b>Neni's<span>.</span></b>
+                        </div>
+                        <div class="illo">
+                            <div class="ring"></div>
+                            <div class="bag"><span class="material-symbols-rounded">shopping_bag</span></div>
+                            <span class="spark s1 material-symbols-rounded">star</span>
+                            <span class="spark s2 material-symbols-rounded">star</span>
+                            <span class="spark s3 material-symbols-rounded">star</span>
+                            <span class="heart material-symbols-rounded">favorite</span>
+                        </div>
+                        <div style="text-align:center; padding: 0 6px;">
+                            <div class="display">Tus compras de los<br>lives, en un solo lugar</div>
+                            <div class="sub" style="margin-top:10px;">Rastrea pedidos, junta puntos y entra a los lives de todas tus tiendas favoritas.</div>
+                        </div>
+                    </div>
+
+                    <div class="pad" style="margin-top: 16px;">
+                        <div class="field">
+                            <span class="prefix">🇲🇽 +52</span>
+                            <div style="width:1px; height:24px; background:var(--line);"></div>
+                            <input type="tel" value="868 145 22 90" />
+                        </div>
+                        <div class="sub" style="font-size:12.5px; margin: 9px 4px 0; display:flex; gap:6px; align-items:center;">
+                            <span class="material-symbols-rounded" style="font-size:16px; color:var(--ink-3);">lock</span>
+                            Te mandamos un código por SMS. Sin contraseñas.
+                        </div>
+
+                        <button class="btn btn-primary" style="margin-top: 18px;">
+                            Continuar <span class="material-symbols-rounded">arrow_forward</span>
+                        </button>
+
+                        <div style="display:flex; align-items:center; gap:12px; margin: 18px 2px;">
+                            <div style="flex:1; height:1px; background:var(--line);"></div>
+                            <span class="sub" style="font-size:12px;">o</span>
+                            <div style="flex:1; height:1px; background:var(--line);"></div>
+                        </div>
+
+                        <button class="btn btn-fb">
+                            <span class="material-symbols-rounded">thumb_up</span> Entrar con Facebook
+                        </button>
+                    </div>
+                </div>
+
+                <div style="text-align:center; padding: 14px 30px 22px;">
+                    <div class="sub" style="font-size:12px;">Al continuar aceptas los <b style="color:var(--ink);font-weight:600;">Términos</b> y el <b style="color:var(--ink);font-weight:600;">Aviso de privacidad</b>.</div>
+                    <div class="sub" style="font-size:12.5px; margin-top:10px; color:var(--neni-deep); font-weight:600;">Acceso de equipo</div>
+                </div>
+            </div>
+        </div>
+        <div class="label">③ Acceso</div>
+    </div>
+</div>
+</body>
+</html>

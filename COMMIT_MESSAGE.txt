@@ -1,0 +1,72 @@
+Initial commit: app compradora Neni's (Flutter) — 13 features completas
+
+Neni's App es la app nativa de la compradora (iOS+Android) que consume
+los endpoints Fase 2 de sellgeneral-api. Este es el commit inicial del
+proyecto.
+
+Stack:
+- Flutter 3.24+ / Dart 3.12+
+- flutter_riverpod 3.3.2 (AsyncNotifier + Family + ConsumerStatefulWidget)
+- go_router 17.3
+- dio 5.9 + flutter_secure_storage
+- signalr_netcore 1.4 (live tracking con auto-reconnect)
+- google_maps_flutter 2.17 (preparado, mapa actual es placeholder)
+- material_symbols_icons 4.2951
+- intl 0.20.3
+
+Arquitectura: feature-first (lib/features/<nombre>/{data,screens}/).
+Cada feature sigue el patrón:
+  data/<nombre>_models.dart    (clases inmutables con fromJson)
+  data/<nombre>_repository.dart (Dio + Riverpod providers)
+  screens/<nombre>_screen.dart (ConsumerWidget/StatefulWidget)
+Router central en lib/core/router/app_router.dart con redirect por auth.
+
+Features implementadas (todas navegables de punta a punta):
+- auth/         Login (telefono) → OTP (codigo 000000 dev) → Claim
+- home/         Hero del pedido activo + bento Puntos/Lives + tienda
+                 y pedidos recientes + icono de notifications con badge
+- orders/       Lista paginada con tabs Todos/En curso/Cerrados
+                 + tap → tracking
+- tracking/     Mapa placeholder (CustomPaint) + driver + timeline 4 pasos
+                 + items del pedido; SignalR via /hubs/delivery para
+                 LocationUpdate (auto-reconnect [0,2,5,10,30]s)
+- points/       Total de la cuenta + por tienda + catalogo de rewards
+- tandas/       Tabs Mis tandas / Disponibles con progress de pagos
+- raffles/      Tabs Activos / Mis boletos / Historial con boletos
+- store/        Tienda con 4 tabs (Productos/Lives/Tandas/Sorteos) +
+                 ptsbar + live-strip + product card con +
+- reserve/      Confirmacion de apartado con stepper de cantidad +
+                 modal de exito que auto-navega al rastreo del nuevo order
+- account/      Perfil + tiendas vinculadas + cards de
+                 Pagos/Direcciones/Notificaciones + logout
+- payments/     Historial de pagos cross-tenant por tienda con
+                 method chip (Efectivo/Tarjeta/Transferencia)
+- addresses/    Lista y edicion de direcciones (1 por tienda) con
+                 formulario de 4 campos (calle, refs, lat, lng)
+- notifications/ Historial real persistido por el backend, con
+                 SegmentedControl Todas/No leidas, marcar leida
+                 on tap, "Marcar todas" + deep link
+- live/         Pantalla de live con "En construccion" (bloque ⑧
+                 pendiente, ruta /live/:sessionId lista)
+
+Bottom nav: 4 tabs fijos (Inicio/Pedidos/Puntos/Cuenta) en todas las
+pantallas principales via GlassBottomNav.
+
+Tematica:
+- Brand theme por tienda (color primario de cada negocio en la
+  BrandPrimaryColor del feed, con lighten/lighten para gradientes)
+- Tokens semanticos en core/theme/app_colors.dart
+- AppTextField extendido con label opcional y maxLines para forms
+- Componentes en lib/shared/widgets/: PillButton, PillIconButton,
+  BackIconButton, GlassBottomNav, NeniBackground, GlassCard, StoreAvatar,
+  SegmentedControl, AppTextField, SearchField, StatusChip
+
+Config:
+- API_BASE_URL mapeado por plataforma: Android 10.0.2.2:5080, iOS/
+  desktop localhost:5080. Override con --dart-define.
+- Interceptor de Dio inyecta Bearer + X-Business-Id (este ultimo
+  opcional).
+
+Mockups en mockups/ son solo referencia visual (no se compilan).
+
+Ver PROGRESO-APP-FLUTTER.md para el estado detallado de cada bloque.
