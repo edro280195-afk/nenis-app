@@ -12,18 +12,40 @@ class AuthException implements Exception {
   String toString() => message;
 }
 
+class OtpRequestResult {
+  const OtpRequestResult({
+    required this.devMode,
+    required this.providerConfigured,
+  });
+
+  final bool devMode;
+  final bool providerConfigured;
+
+  factory OtpRequestResult.fromJson(Map<String, dynamic> json) {
+    return OtpRequestResult(
+      devMode: json['devMode'] as bool? ?? false,
+      providerConfigured: json['providerConfigured'] as bool? ?? false,
+    );
+  }
+}
+
 class AuthRepository {
   AuthRepository(this._dio);
 
   final Dio _dio;
 
   /// Pide el OTP. En el backend dev devuelve el modo DEV (código fijo).
-  Future<void> requestOtp(String phone) async {
+  Future<OtpRequestResult> requestOtp(String phone) async {
     try {
-      await _dio.post('/api/auth/phone/request-otp', data: {'phone': phone});
+      final response = await _dio.post(
+        '/api/auth/phone/request-otp',
+        data: {'phone': phone},
+      );
+      return OtpRequestResult.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw AuthException(
-          _message(e, 'No pudimos enviar el código. Intenta de nuevo.'));
+        _message(e, 'No pudimos enviar el código. Intenta de nuevo.'),
+      );
     }
   }
 
@@ -37,7 +59,8 @@ class AuthRepository {
       return Session.fromLoginJson(res.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw AuthException(
-          _message(e, 'Código incorrecto. Revísalo e intenta de nuevo.'));
+        _message(e, 'Código incorrecto. Revísalo e intenta de nuevo.'),
+      );
     }
   }
 

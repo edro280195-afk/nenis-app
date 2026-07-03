@@ -8,9 +8,9 @@ import '../../../core/auth/auth_repository.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../../core/theme/app_shadows.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/background.dart';
+import '../../../shared/widgets/nenis_logo.dart';
 import '../../../shared/widgets/pill_button.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -73,7 +73,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _wordmark(),
+                      const NenisLogo(markSize: 52, wordmarkSize: 28),
                       const SizedBox(height: 4),
                       const _LoginHero(),
                       const SizedBox(height: 6),
@@ -99,14 +99,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       const SizedBox(height: 9),
                       Row(
                         children: [
-                          const Icon(Symbols.lock,
-                              size: 16, color: AppColors.ink3),
+                          const Icon(
+                            Symbols.lock,
+                            size: 16,
+                            color: AppColors.ink3,
+                          ),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
                               'Te mandamos un código por SMS. Sin contraseñas.',
                               style: AppTextStyles.subtitle.copyWith(
-                                  fontSize: 12.5),
+                                fontSize: 12.5,
+                              ),
                             ),
                           ),
                         ],
@@ -127,7 +131,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         icon: Symbols.thumb_up,
                         variant: PillButtonVariant.facebook,
                         onPressed: () => _toast(
-                            'Facebook llega pronto. Por ahora entra con tu teléfono 💕'),
+                          'Facebook llega pronto. Por ahora entra con tu teléfono 💕',
+                        ),
                       ),
                       const SizedBox(height: 16),
                       Text(
@@ -160,45 +165,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _wordmark() {
-    return Row(
-      children: [
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(15),
-            gradient: const LinearGradient(
-              colors: [AppColors.neni, AppColors.neniDeep],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            boxShadow: AppShadows.brandSmall(AppColors.neniDeep),
-          ),
-          child: const Icon(Symbols.favorite,
-              color: AppColors.surface, size: 26, fill: 1),
-        ),
-        const SizedBox(width: 10),
-        Text.rich(
-          TextSpan(
-            text: "Neni's",
-            style: AppTextStyles.h1,
-            children: const [
-              TextSpan(text: '.', style: TextStyle(color: AppColors.neniDeep)),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _divider() {
     return Row(
       children: [
         const Expanded(child: Divider(color: AppColors.line, thickness: 1)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text('o', style: AppTextStyles.subtitle.copyWith(fontSize: 12)),
+          child: Text(
+            'o',
+            style: AppTextStyles.subtitle.copyWith(fontSize: 12),
+          ),
         ),
         const Expanded(child: Divider(color: AppColors.line, thickness: 1)),
       ],
@@ -229,8 +205,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             children: [
               Text('Acceso de equipo', style: AppTextStyles.h2),
               const SizedBox(height: 4),
-              Text('Para administradoras y conductores con correo.',
-                  style: AppTextStyles.subtitle.copyWith(fontSize: 12.5)),
+              Text(
+                'Para administradoras y conductores con correo.',
+                style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+              ),
               const SizedBox(height: 16),
               AppTextField(
                 controller: email,
@@ -288,7 +266,9 @@ class _LoadingButton extends StatelessWidget {
           width: 24,
           height: 24,
           child: CircularProgressIndicator(
-              strokeWidth: 2.5, color: AppColors.surface),
+            strokeWidth: 2.5,
+            color: AppColors.surface,
+          ),
         ),
       ),
     );
@@ -317,21 +297,7 @@ class _LoginHero extends StatelessWidget {
               ),
             ),
           ),
-          Container(
-            width: 92,
-            height: 92,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(26),
-              gradient: const LinearGradient(
-                colors: [AppColors.neni, AppColors.neniDeep],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              boxShadow: AppShadows.brandPrimary(AppColors.neniDeep),
-            ),
-            child: const Icon(Symbols.shopping_bag,
-                color: AppColors.surface, size: 50, fill: 1),
-          ),
+          const NenisMark(size: 132),
           const Positioned(
             top: 18,
             right: 92,
@@ -340,14 +306,22 @@ class _LoginHero extends StatelessWidget {
           const Positioned(
             bottom: 30,
             left: 88,
-            child:
-                Icon(Symbols.star, color: AppColors.lavender, size: 20, fill: 1),
+            child: Icon(
+              Symbols.star,
+              color: AppColors.lavender,
+              size: 20,
+              fill: 1,
+            ),
           ),
           const Positioned(
             right: 96,
             bottom: 44,
-            child: Icon(Symbols.favorite,
-                color: Color(0xFFFF9EC0), size: 22, fill: 1),
+            child: Icon(
+              Symbols.favorite,
+              color: Color(0xFFFF9EC0),
+              size: 22,
+              fill: 1,
+            ),
           ),
         ],
       ),

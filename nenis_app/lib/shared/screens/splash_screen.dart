@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:material_symbols_icons/symbols.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_shadows.dart';
-import '../../../core/theme/app_text_styles.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_text_styles.dart';
+import '../widgets/nenis_logo.dart';
 
 /// Splash inicial. Muestra el logo + un spinner mientras el
 /// `authControllerProvider` carga la sesión persistida. La navegación
@@ -22,36 +21,24 @@ class SplashScreen extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 96,
-              height: 96,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.neni, AppColors.neniDeep],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(28),
-                boxShadow: AppShadows.brandPrimary(AppColors.neniDeep),
+            const NenisMark(size: 144),
+            const SizedBox(height: 8),
+            Text(
+              "Neni's",
+              style: AppTextStyles.h1.copyWith(
+                fontSize: 32,
+                color: AppColors.ink,
               ),
-              child: const Icon(Symbols.shopping_bag,
-                  color: Colors.white, size: 48),
             ),
-            const SizedBox(height: 18),
-            Text("Neni's",
-                style: AppTextStyles.h1.copyWith(
-                  fontSize: 32,
-                  color: AppColors.ink,
-                  letterSpacing: -0.5,
-                )),
             const SizedBox(height: 2),
-            const Text('Compradora',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.ink2,
-                )),
+            const Text(
+              'Compradora',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: AppColors.ink2,
+              ),
+            ),
             const SizedBox(height: 28),
             const SizedBox(
               width: 22,

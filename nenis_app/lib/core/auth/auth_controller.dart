@@ -8,9 +8,11 @@ import 'session.dart';
 /// arrancar; los métodos manejan login/logout y el negocio activo.
 class AuthController extends AsyncNotifier<Session?> {
   String? _pendingPhone;
+  bool _pendingOtpDevMode = false;
 
   /// Teléfono al que se le pidió el OTP (lo usa la pantalla de verificación).
   String? get pendingPhone => _pendingPhone;
+  bool get pendingOtpDevMode => _pendingOtpDevMode;
 
   @override
   Future<Session?> build() async {
@@ -25,8 +27,9 @@ class AuthController extends AsyncNotifier<Session?> {
   }
 
   Future<void> requestOtp(String phone) async {
+    final result = await ref.read(authRepositoryProvider).requestOtp(phone);
     _pendingPhone = phone;
-    await ref.read(authRepositoryProvider).requestOtp(phone);
+    _pendingOtpDevMode = result.devMode;
   }
 
   Future<void> verifyOtp(String code) async {
@@ -34,15 +37,19 @@ class AuthController extends AsyncNotifier<Session?> {
     if (phone == null) {
       throw AuthException('Primero pide el código.');
     }
-    final session = await ref.read(authRepositoryProvider).verifyOtp(phone, code);
+    final session = await ref
+        .read(authRepositoryProvider)
+        .verifyOtp(phone, code);
     await ref.read(sessionStorageProvider).write(session);
     _pendingPhone = null;
+    _pendingOtpDevMode = false;
     state = AsyncData<Session?>(session);
   }
 
   Future<void> loginEmail(String email, String password) async {
-    final session =
-        await ref.read(authRepositoryProvider).loginEmail(email, password);
+    final session = await ref
+        .read(authRepositoryProvider)
+        .loginEmail(email, password);
     await ref.read(sessionStorageProvider).write(session);
     state = AsyncData<Session?>(session);
   }
@@ -50,6 +57,7 @@ class AuthController extends AsyncNotifier<Session?> {
   Future<void> logout() async {
     await ref.read(sessionStorageProvider).clear();
     _pendingPhone = null;
+    _pendingOtpDevMode = false;
     state = const AsyncData<Session?>(null);
   }
 
@@ -62,5 +70,6 @@ class AuthController extends AsyncNotifier<Session?> {
   }
 }
 
-final authControllerProvider =
-    AsyncNotifierProvider<AuthController, Session?>(AuthController.new);
+final authControllerProvider = AsyncNotifierProvider<AuthController, Session?>(
+  AuthController.new,
+);

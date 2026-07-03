@@ -113,7 +113,9 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                   padding: const EdgeInsets.fromLTRB(22, 4, 22, 0),
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: BackIconButton(onPressed: () => context.go('/login')),
+                    child: BackIconButton(
+                      onPressed: () => context.go('/login'),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 18),
@@ -129,8 +131,12 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                         end: Alignment.bottomRight,
                       ),
                     ),
-                    child: const Icon(Symbols.sms,
-                        color: AppColors.neniDeep, size: 40, fill: 1),
+                    child: const Icon(
+                      Symbols.sms,
+                      color: AppColors.neniDeep,
+                      size: 40,
+                      fill: 1,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 18),
@@ -138,8 +144,11 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 30),
                   child: Column(
                     children: [
-                      Text('Verifica tu número',
-                          textAlign: TextAlign.center, style: AppTextStyles.h1),
+                      Text(
+                        'Verifica tu número',
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.h1,
+                      ),
                       const SizedBox(height: 8),
                       Text(
                         'Escribe el código de 6 dígitos que mandamos por SMS a $_maskedPhone',
@@ -177,7 +186,9 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                   child: _seconds > 0
                       ? Text(
                           'Reenvía el código en 0:${_seconds.toString().padLeft(2, '0')}',
-                          style: AppTextStyles.subtitle.copyWith(fontSize: 13.5),
+                          style: AppTextStyles.subtitle.copyWith(
+                            fontSize: 13.5,
+                          ),
                         )
                       : GestureDetector(
                           onTap: _resend,
@@ -192,32 +203,36 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                         ),
                 ),
                 const SizedBox(height: 18),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 22),
-                  child: Container(
-                    padding: const EdgeInsets.all(11),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF3ECFF),
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Symbols.construction,
-                            size: 18, color: Color(0xFF6A4DBB)),
-                        const SizedBox(width: 7),
-                        Text(
-                          'Modo prueba — usa el código 000000',
-                          style: AppTextStyles.subtitle.copyWith(
-                            fontSize: 12.5,
-                            color: const Color(0xFF6A4DBB),
-                            fontWeight: FontWeight.w600,
+                if (ref.read(authControllerProvider.notifier).pendingOtpDevMode)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 22),
+                    child: Container(
+                      padding: const EdgeInsets.all(11),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3ECFF),
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Symbols.construction,
+                            size: 18,
+                            color: Color(0xFF6A4DBB),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 7),
+                          Text(
+                            'Modo prueba — usa el código 000000',
+                            style: AppTextStyles.subtitle.copyWith(
+                              fontSize: 12.5,
+                              color: const Color(0xFF6A4DBB),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
                 const SizedBox(height: 26),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 22),
@@ -226,8 +241,9 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                       : PillButton(
                           label: 'Verificar',
                           icon: Symbols.check,
-                          onPressed:
-                              _code.length == 6 ? () => _verify(_code) : null,
+                          onPressed: _code.length == 6
+                              ? () => _verify(_code)
+                              : null,
                         ),
                 ),
                 const SizedBox(height: 24),
@@ -258,7 +274,9 @@ class _OtpLoadingButton extends StatelessWidget {
           width: 24,
           height: 24,
           child: CircularProgressIndicator(
-              strokeWidth: 2.5, color: AppColors.surface),
+            strokeWidth: 2.5,
+            color: AppColors.surface,
+          ),
         ),
       ),
     );
