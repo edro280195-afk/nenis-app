@@ -1,15 +1,49 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:nenis_app/core/auth/session.dart';
+import 'package:nenis_app/core/storage/session_storage.dart';
 import 'package:nenis_app/main.dart';
 
 void main() {
-  testWidgets('NenisApp boots into splash', (WidgetTester tester) async {
-    await tester.pumpWidget(const ProviderScope(child: NenisApp()));
-    await tester.pumpAndSettle();
+  testWidgets('NenisApp manda al login cuando no hay sesión guardada', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sessionStorageProvider.overrideWithValue(_FakeSessionStorage(null)),
+        ],
+        child: const NenisApp(),
+      ),
+    );
 
-    expect(find.text("Neni's"), findsOneWidget);
-    expect(find.text('Compradora'), findsOneWidget);
-    expect(find.text('Ver style gallery'), findsOneWidget);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('Continuar'), findsOneWidget);
+    expect(find.text('Acceso de equipo'), findsOneWidget);
   });
+}
+
+class _FakeSessionStorage extends SessionStorage {
+  _FakeSessionStorage(this._session) : super(const FlutterSecureStorage());
+
+  final Session? _session;
+  Session? written;
+  var cleared = false;
+
+  @override
+  Future<Session?> read() async => _session;
+
+  @override
+  Future<void> write(Session session) async {
+    written = session;
+  }
+
+  @override
+  Future<void> clear() async {
+    cleared = true;
+  }
 }

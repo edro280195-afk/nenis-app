@@ -23,7 +23,8 @@ import '../../features/payments/screens/payments_screen.dart';
 import '../../features/reserve/screens/reserve_screen.dart';
 import '../../shared/screens/splash_screen.dart';
 
-/// Rutas de acceso (sin sesión). El resto exige estar autenticado.
+/// Rutas de acceso (sin sesión). El resto exige estar autenticado, salvo
+/// rastreo público por token.
 const _authRoutes = {'/splash', '/welcome', '/login', '/otp'};
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -37,18 +38,30 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final auth = ref.read(authControllerProvider);
       final loc = state.matchedLocation;
+      final path = state.uri.path;
+      final hasTrackingToken =
+          state.uri.queryParameters['token']?.trim().isNotEmpty ?? false;
+      final isPublicTracking =
+          path.startsWith('/tracking/') && hasTrackingToken;
 
-      // Cargando la sesión persistida → splash.
+      if (isPublicTracking) return null;
+
+      // Cargando la sesión persistida -> splash.
       if (auth.isLoading || !auth.hasValue) {
         return loc == '/splash' ? null : '/splash';
       }
 
       final session = auth.value;
       if (session == null) {
+        if (loc == '/splash') return '/login';
+        if (loc == '/otp' &&
+            ref.read(authControllerProvider.notifier).pendingPhone == null) {
+          return '/login';
+        }
         return _authRoutes.contains(loc) ? null : '/login';
       }
 
-      // Recién verificada por OTP y sin negocio propio → a reclamar perfil.
+      // Recién verificada por OTP y sin negocio propio -> a reclamar perfil.
       if (loc == '/otp' && !session.hasMembership) return '/claim';
       // Autenticada: no se queda en pantallas de acceso.
       if (_authRoutes.contains(loc)) return '/home';
@@ -63,33 +76,22 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/welcome',
         builder: (context, state) => const AuthWelcomeScreen(),
       ),
-      GoRoute(
-        path: '/login',
-        builder: (context, state) => const LoginScreen(),
-      ),
-      GoRoute(
-        path: '/otp',
-        builder: (context, state) => const OtpScreen(),
-      ),
+      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(path: '/otp', builder: (context, state) => const OtpScreen()),
       GoRoute(
         path: '/claim',
         builder: (context, state) => const ClaimProfileScreen(),
       ),
-      GoRoute(
-        path: '/home',
-        builder: (context, state) => const HomeScreen(),
-      ),
+      GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
       GoRoute(
         path: '/store/:businessId',
-        builder: (context, state) => StoreScreen(
-          businessId: state.pathParameters['businessId']!,
-        ),
+        builder: (context, state) =>
+            StoreScreen(businessId: state.pathParameters['businessId']!),
       ),
       GoRoute(
         path: '/live/:sessionId',
-        builder: (context, state) => LiveScreen(
-          sessionId: state.pathParameters['sessionId']!,
-        ),
+        builder: (context, state) =>
+            LiveScreen(sessionId: state.pathParameters['sessionId']!),
       ),
       GoRoute(
         path: '/orders',
@@ -139,9 +141,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/addresses/:clientId',
-        builder: (context, state) => AddressEditScreen(
-          clientId: state.pathParameters['clientId']!,
-        ),
+        builder: (context, state) =>
+            AddressEditScreen(clientId: state.pathParameters['clientId']!),
       ),
     ],
   );
