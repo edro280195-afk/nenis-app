@@ -15,8 +15,7 @@ void main() {
       ProviderScope(
         overrides: [
           sessionStorageProvider.overrideWithValue(_FakeSessionStorage(null)),
-          credentialStorageProvider
-              .overrideWithValue(_FakeCredentialStorage()),
+          credentialStorageProvider.overrideWithValue(_FakeCredentialStorage()),
         ],
         child: const NenisApp(),
       ),
@@ -25,8 +24,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('Entrar'), findsOneWidget);
-    expect(find.text('Acceso de equipo'), findsOneWidget);
+    expect(find.text('Entrar a mis compras'), findsOneWidget);
+    expect(find.text('Vendedora'), findsOneWidget);
   });
 }
 

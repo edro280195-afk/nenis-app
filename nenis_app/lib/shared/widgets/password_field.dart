@@ -11,12 +11,14 @@ class PasswordField extends StatefulWidget {
     required this.controller,
     this.hint = 'Contraseña',
     this.label,
+    this.textInputAction,
     this.onSubmitted,
   });
 
   final TextEditingController controller;
   final String? hint;
   final String? label;
+  final TextInputAction? textInputAction;
   final ValueChanged<String>? onSubmitted;
 
   @override
@@ -34,10 +36,17 @@ class _PasswordFieldState extends State<PasswordField> {
       hint: widget.hint,
       prefixIcon: Symbols.lock,
       obscureText: _obscure,
+      autocorrect: false,
+      enableSuggestions: false,
+      textInputAction: widget.textInputAction,
+      autofillHints: const [AutofillHints.password],
       onSubmitted: widget.onSubmitted,
-      suffix: GestureDetector(
-        onTap: () => setState(() => _obscure = !_obscure),
-        child: Icon(
+      suffix: IconButton(
+        onPressed: () => setState(() => _obscure = !_obscure),
+        tooltip: _obscure ? 'Mostrar contraseña' : 'Ocultar contraseña',
+        constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+        padding: EdgeInsets.zero,
+        icon: Icon(
           _obscure ? Symbols.visibility : Symbols.visibility_off,
           color: AppColors.ink3,
           size: 22,

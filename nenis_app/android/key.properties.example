@@ -1,0 +1,6 @@
+# Copia este archivo como key.properties y reemplaza los valores.
+# El keystore puede guardarse en android/app/upload-keystore.jks.
+storeFile=upload-keystore.jks
+storePassword=CAMBIA_ESTA_CONTRASENA
+keyAlias=upload
+keyPassword=CAMBIA_ESTA_CONTRASENA

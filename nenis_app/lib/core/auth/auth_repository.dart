@@ -27,11 +27,139 @@ class PhoneNotVerifiedException implements Exception {
 /// debe mostrar un mensaje de fallo.
 class FacebookCancelledException implements Exception {}
 
-/// El backend necesita el teléfono para completar el alta con Facebook (cuenta
-/// nueva). La UI debe pedirlo y reintentar con [AuthController.completeFacebookWithPhone].
-class FacebookNeedsPhoneException implements Exception {
-  FacebookNeedsPhoneException(this.message);
+enum FacebookAccountType {
+  client('client'),
+  seller('seller');
+
+  const FacebookAccountType(this.apiValue);
+
+  final String apiValue;
+}
+
+enum FacebookTokenType {
+  classic('classic'),
+  limited('limited');
+
+  const FacebookTokenType(this.apiValue);
+
+  final String apiValue;
+}
+
+class FacebookAccessCredential {
+  const FacebookAccessCredential({required this.token, required this.type});
+
+  final String token;
+  final FacebookTokenType type;
+}
+
+/// Datos adicionales para completar una cuenta nueva o vincular una existente
+/// con Facebook.
+class FacebookProfileCompletion {
+  const FacebookProfileCompletion({
+    required this.accountType,
+    required this.firstName,
+    required this.lastName,
+    required this.email,
+    required this.phone,
+    this.businessName,
+    this.city,
+    this.existingPassword,
+  });
+
+  final FacebookAccountType accountType;
+  final String firstName;
+  final String lastName;
+  final String email;
+  final String phone;
+  final String? businessName;
+  final String? city;
+  final String? existingPassword;
+
+  Map<String, dynamic> toJson(FacebookAccessCredential credential) {
+    return {
+      'accessToken': credential.token,
+      'tokenType': credential.type.apiValue,
+      'accountType': accountType.apiValue,
+      'firstName': firstName,
+      'lastName': lastName,
+      'email': email,
+      'phone': phone,
+      if (businessName?.trim().isNotEmpty == true)
+        'businessName': businessName!.trim(),
+      if (city?.trim().isNotEmpty == true) 'city': city!.trim(),
+      if (existingPassword?.isNotEmpty == true)
+        'existingPassword': existingPassword,
+    };
+  }
+}
+
+/// El backend necesita completar datos antes de crear o vincular la cuenta.
+class FacebookProfileRequiredException implements Exception {
+  FacebookProfileRequiredException({
+    required this.message,
+    required this.accountType,
+    required this.requiresExistingPassword,
+    required this.firstName,
+    required this.lastName,
+    required this.email,
+    required this.phone,
+    required this.missingFields,
+  });
+
   final String message;
+  final FacebookAccountType accountType;
+  final bool requiresExistingPassword;
+  final String firstName;
+  final String lastName;
+  final String email;
+  final String phone;
+  final List<String> missingFields;
+
+  factory FacebookProfileRequiredException.fromJson(
+    Map<String, dynamic> json, {
+    required FacebookAccountType fallbackAccountType,
+  }) {
+    final rawMissingFields = json['missingFields'];
+    return FacebookProfileRequiredException(
+      message: (json['message'] as String?)?.trim().isNotEmpty == true
+          ? json['message'] as String
+          : 'Completa tus datos para continuar con Facebook.',
+      accountType: switch (json['accountType']) {
+        'seller' => FacebookAccountType.seller,
+        'client' => FacebookAccountType.client,
+        _ => fallbackAccountType,
+      },
+      requiresExistingPassword:
+          json['requiresExistingPassword'] as bool? ?? false,
+      firstName: json['firstName'] as String? ?? '',
+      lastName: json['lastName'] as String? ?? '',
+      email: json['email'] as String? ?? '',
+      phone: json['phone'] as String? ?? '',
+      missingFields: rawMissingFields is List
+          ? rawMissingFields.whereType<String>().toList(growable: false)
+          : const [],
+    );
+  }
+
+  @override
+  String toString() => message;
+}
+
+/// El perfil ya se guardó, pero todavía falta confirmar el teléfono por
+/// WhatsApp antes de entregar una sesión.
+class FacebookPhoneVerificationRequiredException implements Exception {
+  FacebookPhoneVerificationRequiredException({
+    required this.message,
+    required this.phone,
+    required this.devMode,
+    required this.providerConfigured,
+  });
+
+  final String message;
+  final String phone;
+  final bool devMode;
+  final bool providerConfigured;
+
   @override
   String toString() => message;
 }
@@ -88,11 +216,24 @@ class AuthRepository {
   }
 
   /// Confirma el teléfono con el código de WhatsApp y devuelve la sesión.
-  Future<Session> confirmPhone(String phone, String code) async {
+  Future<Session> confirmPhone(
+    String phone,
+    String code, {
+    FacebookAccountType? accountType,
+    String? businessName,
+    String? city,
+  }) async {
     try {
       final res = await _dio.post(
         '/api/auth/phone/confirm',
-        data: {'phone': phone, 'code': code},
+        data: {
+          'phone': phone,
+          'code': code,
+          if (accountType != null) 'accountType': accountType.apiValue,
+          if (businessName?.trim().isNotEmpty == true)
+            'businessName': businessName!.trim(),
+          if (city?.trim().isNotEmpty == true) 'city': city!.trim(),
+        },
       );
       return Session.fromLoginJson(res.data as Map<String, dynamic>);
     } on DioException catch (e) {
@@ -141,7 +282,7 @@ class AuthRepository {
     }
   }
 
-  /// Acceso de equipo (correo + contraseña, cuentas legacy).
+  /// Acceso de vendedora con correo y contraseña.
   Future<Session> loginEmail(String email, String password) async {
     try {
       final res = await _dio.post(
@@ -159,7 +300,7 @@ class AuthRepository {
   /// Abre el diálogo nativo de Facebook y devuelve el access token.
   /// Lanza [FacebookCancelledException] si la usuaria cancela y [AuthException]
   /// si el proveedor falla.
-  Future<String> facebookAccessToken() async {
+  Future<FacebookAccessCredential> facebookAccessToken() async {
     late final LoginResult result;
     try {
       result = await FacebookAuth.instance.login(
@@ -171,11 +312,19 @@ class AuthRepository {
 
     switch (result.status) {
       case LoginStatus.success:
-        final token = result.accessToken?.tokenString;
+        final accessToken = result.accessToken;
+        final token = accessToken?.tokenString;
         if (token == null || token.isEmpty) {
-          throw AuthException('No pudimos obtener tu Facebook. Intenta de nuevo.');
+          throw AuthException(
+            'No pudimos obtener tu Facebook. Intenta de nuevo.',
+          );
         }
-        return token;
+        return FacebookAccessCredential(
+          token: token,
+          type: accessToken!.type == AccessTokenType.limited
+              ? FacebookTokenType.limited
+              : FacebookTokenType.classic,
+        );
       case LoginStatus.cancelled:
         throw FacebookCancelledException();
       case LoginStatus.failed:
@@ -188,28 +337,71 @@ class AuthRepository {
     }
   }
 
-  /// Intercambia el token de Facebook por una sesión en el backend. Lanza
-  /// [FacebookNeedsPhoneException] si es una cuenta nueva que requiere teléfono.
-  Future<Session> facebookLogin(String accessToken, {String? phone}) async {
+  /// Intercambia el token de Facebook por una sesión en el backend. Si faltan
+  /// datos, conserva el token en el controlador y solicita completar el perfil.
+  Future<Session> facebookLogin(
+    FacebookAccessCredential credential, {
+    required FacebookAccountType accountType,
+  }) async {
     try {
       final res = await _dio.post(
         '/api/auth/facebook',
         data: {
-          'accessToken': accessToken,
-          if (phone != null && phone.isNotEmpty) 'phone': phone,
+          'accessToken': credential.token,
+          'tokenType': credential.type.apiValue,
+          'accountType': accountType.apiValue,
         },
       );
       return Session.fromLoginJson(res.data as Map<String, dynamic>);
     } on DioException catch (e) {
-      final data = e.response?.data;
-      if (e.response?.statusCode == 409 &&
-          data is Map &&
-          data['needsPhone'] == true) {
-        throw FacebookNeedsPhoneException(
-          _message(e, 'Necesitamos tu teléfono para crear tu cuenta.'),
+      final data = _responseMap(e.response?.data);
+      if (e.response?.statusCode == 409 && data != null) {
+        throw FacebookProfileRequiredException.fromJson(
+          data,
+          fallbackAccountType: accountType,
         );
       }
       throw AuthException(_message(e, 'No pudimos entrar con Facebook.'));
+    }
+  }
+
+  /// Completa los datos requeridos por el backend. Puede devolver una sesión
+  /// inmediata para una cuenta ya verificada, o dejar pendiente el OTP.
+  Future<Session> completeFacebookProfile(
+    FacebookAccessCredential credential,
+    FacebookProfileCompletion profile,
+  ) async {
+    try {
+      final response = await _dio.post(
+        '/api/auth/facebook/complete',
+        data: profile.toJson(credential),
+      );
+      final data = response.data as Map<String, dynamic>;
+      if (response.statusCode == 202 ||
+          data['needsPhoneVerification'] == true) {
+        throw FacebookPhoneVerificationRequiredException(
+          message:
+              (data['message'] as String?) ??
+              'Confirma tu teléfono con el código de WhatsApp.',
+          phone: data['phone'] as String? ?? profile.phone,
+          devMode: data['devMode'] as bool? ?? false,
+          providerConfigured: data['providerConfigured'] as bool? ?? false,
+        );
+      }
+      return Session.fromLoginJson(data);
+    } on FacebookPhoneVerificationRequiredException {
+      rethrow;
+    } on DioException catch (e) {
+      final data = _responseMap(e.response?.data);
+      if (e.response?.statusCode == 409 && data != null) {
+        throw FacebookProfileRequiredException.fromJson(
+          data,
+          fallbackAccountType: profile.accountType,
+        );
+      }
+      throw AuthException(
+        _message(e, 'No pudimos completar tu cuenta de Facebook.'),
+      );
     }
   }
 
@@ -223,11 +415,19 @@ class AuthRepository {
   }
 
   String _message(DioException e, String fallback) {
-    final data = e.response?.data;
-    if (data is Map && data['message'] is String) {
+    final data = _responseMap(e.response?.data);
+    if (data != null && data['message'] is String) {
       return data['message'] as String;
     }
     return fallback;
+  }
+
+  Map<String, dynamic>? _responseMap(Object? data) {
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) {
+      return data.map((key, value) => MapEntry(key.toString(), value));
+    }
+    return null;
   }
 }
 

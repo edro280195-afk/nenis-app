@@ -6,7 +6,7 @@ class AppColors {
   static const Color ink = Color(0xFF3A2233);
   static const Color ink2 = Color(0xFF8A6F82);
   static const Color ink3 = Color(0xFFB6A4B1);
-  static const Color surface = Color(0xFFFFFFFF);
+  static const Color surface = Color(0xFFFFFCFD);
   static const Color line = Color(0x143A2233);
   static const Color lineSoft = Color(0x0D3A2233);
 

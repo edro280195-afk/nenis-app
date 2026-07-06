@@ -7,12 +7,14 @@ import '../../../core/auth/auth_controller.dart';
 import '../../../core/auth/auth_repository.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/nenis_logo.dart';
 import '../../../shared/widgets/password_field.dart';
-import '../../../shared/widgets/pill_button.dart';
+
+enum LoginRole { client, seller }
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -22,41 +24,83 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _phone = TextEditingController();
-  final _password = TextEditingController();
+  final _clientPhone = TextEditingController();
+  final _clientPassword = TextEditingController();
+  final _sellerEmail = TextEditingController();
+  final _sellerPassword = TextEditingController();
+
+  LoginRole _role = LoginRole.client;
   bool _loading = false;
-  bool _fbLoading = false;
+  bool _facebookLoading = false;
 
   @override
   void dispose() {
-    _phone.dispose();
-    _password.dispose();
+    _clientPhone.dispose();
+    _clientPassword.dispose();
+    _sellerEmail.dispose();
+    _sellerPassword.dispose();
     super.dispose();
   }
 
   Future<void> _continue() async {
-    final phone = _phone.text.replaceAll(RegExp(r'\D'), '');
-    if (phone.length < 10) {
-      _toast('Escribe tu teléfono a 10 dígitos 🌸');
+    if (_loading) return;
+
+    if (_role == LoginRole.client) {
+      await _loginClient();
       return;
     }
-    if (_password.text.isEmpty) {
-      _toast('Escribe tu contraseña');
+    await _loginSeller();
+  }
+
+  Future<void> _loginClient() async {
+    final phone = _clientPhone.text.replaceAll(RegExp(r'\D'), '');
+    if (phone.length != 10) {
+      _toast('Escribe tu teléfono a 10 dígitos.');
       return;
     }
+    if (_clientPassword.text.isEmpty) {
+      _toast('Escribe tu contraseña.');
+      return;
+    }
+
     setState(() => _loading = true);
     try {
       await ref
           .read(authControllerProvider.notifier)
-          .loginPhone(phone, _password.text);
-      // Éxito: el redirect del router lleva a /home automáticamente.
-    } on PhoneNotVerifiedException catch (e) {
+          .loginPhone(phone, _clientPassword.text);
+    } on PhoneNotVerifiedException catch (error) {
       if (mounted) {
-        _toast(e.message);
+        _toast(error.message);
         context.go('/confirm');
       }
-    } on AuthException catch (e) {
-      _toast(e.message);
+    } on AuthException catch (error) {
+      _toast(error.message);
+    } catch (_) {
+      _toast('No pudimos conectar. Revisa tu internet.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _loginSeller() async {
+    final email = _sellerEmail.text.trim();
+    final isValidEmail = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
+    if (!isValidEmail) {
+      _toast('Escribe un correo válido.');
+      return;
+    }
+    if (_sellerPassword.text.isEmpty) {
+      _toast('Escribe tu contraseña.');
+      return;
+    }
+
+    setState(() => _loading = true);
+    try {
+      await ref
+          .read(authControllerProvider.notifier)
+          .loginEmail(email, _sellerPassword.text);
+    } on AuthException catch (error) {
+      _toast(error.message);
     } catch (_) {
       _toast('No pudimos conectar. Revisa tu internet.');
     } finally {
@@ -65,208 +109,526 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _facebookLogin() async {
-    if (_fbLoading) return;
-    setState(() => _fbLoading = true);
+    if (_facebookLoading) return;
+
+    final accountType = _role == LoginRole.client
+        ? FacebookAccountType.client
+        : FacebookAccountType.seller;
+    setState(() => _facebookLoading = true);
     try {
-      await ref.read(authControllerProvider.notifier).loginFacebook();
-      // Éxito: el redirect del router lleva a /home automáticamente.
+      await ref
+          .read(authControllerProvider.notifier)
+          .loginFacebook(accountType);
     } on FacebookCancelledException {
-      // La usuaria canceló: no mostramos error.
-    } on FacebookNeedsPhoneException {
-      if (mounted) await _askPhoneForFacebook();
-    } on AuthException catch (e) {
-      _toast(e.message);
+      // La usuaria canceló el flujo y permanece en el login.
+    } on FacebookProfileRequiredException catch (error) {
+      if (mounted) await _completeFacebookProfile(error);
+    } on AuthException catch (error) {
+      _toast(error.message);
     } catch (_) {
       _toast('No pudimos conectar. Revisa tu internet.');
     } finally {
-      if (mounted) setState(() => _fbLoading = false);
+      if (mounted) setState(() => _facebookLoading = false);
     }
   }
 
-  /// Pide el teléfono cuando Facebook crea una cuenta nueva (lo exige el backend).
-  Future<void> _askPhoneForFacebook() async {
-    final phoneCtrl = TextEditingController();
-    await showModalBottomSheet<void>(
+  Future<void> _completeFacebookProfile(
+    FacebookProfileRequiredException draft,
+  ) async {
+    final needsPhoneVerification = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (sheetContext) {
-        var saving = false;
-        return StatefulBuilder(
-          builder: (sheetContext, setSheet) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 22,
-                right: 22,
-                top: 22,
-                bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 22,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text('Un paso más 💕', style: AppTextStyles.h2),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Déjanos tu teléfono para terminar tu cuenta y avisarte de tus pedidos.',
-                    style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
-                  ),
-                  const SizedBox(height: 16),
-                  AppTextField(
-                    controller: phoneCtrl,
-                    prefix: '🇲🇽 +52',
-                    hint: '868 145 22 90',
-                    keyboardType: TextInputType.phone,
-                  ),
-                  const SizedBox(height: 18),
-                  PillButton(
-                    label: saving ? 'Guardando…' : 'Continuar',
-                    onPressed: saving
-                        ? null
-                        : () async {
-                            final phone =
-                                phoneCtrl.text.replaceAll(RegExp(r'\D'), '');
-                            if (phone.length < 10) {
-                              _toast('Escribe tu teléfono a 10 dígitos');
-                              return;
-                            }
-                            setSheet(() => saving = true);
-                            try {
-                              await ref
-                                  .read(authControllerProvider.notifier)
-                                  .completeFacebookWithPhone(phone);
-                              if (sheetContext.mounted) {
-                                Navigator.of(sheetContext).pop();
-                              }
-                            } on AuthException catch (e) {
-                              setSheet(() => saving = false);
-                              _toast(e.message);
-                            } catch (_) {
-                              setSheet(() => saving = false);
-                              _toast('No pudimos conectar. Revisa tu internet.');
-                            }
-                          },
-                  ),
-                  const SizedBox(height: 8),
-                ],
-              ),
-            );
-          },
-        );
-      },
+      builder: (_) => _FacebookProfileSheet(draft: draft),
     );
-    phoneCtrl.dispose();
+    if (needsPhoneVerification == true && mounted) {
+      context.go('/confirm');
+    }
   }
 
-  void _toast(String msg) {
+  void _selectRole(LoginRole role) {
+    if (_loading || _facebookLoading || role == _role) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => _role = role);
+  }
+
+  void _toast(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(msg)));
+      ..showSnackBar(
+        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+      );
   }
 
   @override
   Widget build(BuildContext context) {
+    final disableAnimations = MediaQuery.of(context).disableAnimations;
+
     return Scaffold(
       backgroundColor: AppColors.surfaceCream,
       body: NeniBackground(
         child: SafeArea(
-          bottom: false,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: 24),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 22),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 12),
-                  const NenisLogo(markSize: 52, wordmarkSize: 28),
-                  const SizedBox(height: 4),
-                  const _LoginHero(),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Hola de nuevo 💕',
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.display,
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Entra con tu teléfono y contraseña para ver tus pedidos, puntos y lives.',
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.subtitle,
-                  ),
-                  const SizedBox(height: 22),
-                  AppTextField(
-                    controller: _phone,
-                    prefix: '🇲🇽 +52',
-                    hint: '868 145 22 90',
-                    keyboardType: TextInputType.phone,
-                  ),
-                  const SizedBox(height: 12),
-                  PasswordField(
-                    controller: _password,
-                    hint: 'Tu contraseña',
-                    onSubmitted: (_) => _continue(),
-                  ),
-                  const SizedBox(height: 18),
-                  _loading
-                      ? const _LoadingButton()
-                      : PillButton(
-                          label: 'Entrar',
-                          icon: Symbols.arrow_forward,
-                          onPressed: _continue,
-                        ),
-                  const SizedBox(height: 14),
-                  Center(
-                    child: GestureDetector(
-                      onTap: () => context.go('/register'),
-                      child: RichText(
-                        text: TextSpan(
-                          style: AppTextStyles.subtitle.copyWith(fontSize: 13.5),
-                          children: [
-                            const TextSpan(text: '¿Primera vez? '),
-                            TextSpan(
-                              text: 'Crea tu cuenta',
-                              style: AppTextStyles.subtitle.copyWith(
-                                color: AppColors.neniDeep,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13.5,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth >= 900;
+              return SingleChildScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: EdgeInsets.fromLTRB(
+                  isWide ? 40 : 20,
+                  isWide ? 36 : 14,
+                  isWide ? 40 : 20,
+                  28,
+                ),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: isWide ? 980 : 520),
+                    child: isWide
+                        ? Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              const Expanded(child: _LoginIntro()),
+                              const SizedBox(width: 52),
+                              SizedBox(
+                                width: 440,
+                                child: _AuthSurface(
+                                  role: _role,
+                                  loading: _loading,
+                                  facebookLoading: _facebookLoading,
+                                  disableAnimations: disableAnimations,
+                                  clientPhone: _clientPhone,
+                                  clientPassword: _clientPassword,
+                                  sellerEmail: _sellerEmail,
+                                  sellerPassword: _sellerPassword,
+                                  onRoleChanged: _selectRole,
+                                  onContinue: _continue,
+                                  onFacebook: _facebookLogin,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
+                            ],
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const _LoginIntro(compact: true),
+                              const SizedBox(height: 24),
+                              _AuthSurface(
+                                role: _role,
+                                loading: _loading,
+                                facebookLoading: _facebookLoading,
+                                disableAnimations: disableAnimations,
+                                clientPhone: _clientPhone,
+                                clientPassword: _clientPassword,
+                                sellerEmail: _sellerEmail,
+                                sellerPassword: _sellerPassword,
+                                onRoleChanged: _selectRole,
+                                onContinue: _continue,
+                                onFacebook: _facebookLogin,
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LoginIntro extends StatelessWidget {
+  const _LoginIntro({this.compact = false});
+
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: compact
+          ? CrossAxisAlignment.center
+          : CrossAxisAlignment.start,
+      children: [
+        NenisLogo(
+          markSize: compact ? 54 : 72,
+          wordmarkSize: compact ? 27 : 34,
+          subtitle: compact ? null : 'Clientas + vendedoras',
+        ),
+        SizedBox(height: compact ? 22 : 42),
+        Container(
+          width: compact ? double.infinity : null,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFE5EE),
+            borderRadius: AppRadii.pillRadius,
+          ),
+          child: Row(
+            mainAxisSize: compact ? MainAxisSize.max : MainAxisSize.min,
+            mainAxisAlignment: compact
+                ? MainAxisAlignment.center
+                : MainAxisAlignment.start,
+            children: [
+              const Icon(
+                Symbols.join_inner,
+                color: AppColors.neniDeep,
+                size: 18,
+              ),
+              const SizedBox(width: 7),
+              Flexible(
+                child: Text(
+                  'CLIENTAS Y VENDEDORAS, UN MISMO ESPACIO',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.eyebrow(AppColors.neniDeep).copyWith(
+                    fontSize: compact ? 9 : 10.5,
+                    letterSpacing: compact ? 0.4 : 0.8,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Compra, vende y\nsigue conectada.',
+          textAlign: compact ? TextAlign.center : TextAlign.left,
+          style: AppTextStyles.display.copyWith(
+            fontSize: compact ? 31 : 42,
+            height: 1.08,
+            letterSpacing: compact ? -0.7 : -1.1,
+          ),
+        ),
+        const SizedBox(height: 12),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 470),
+          child: Text(
+            'Tus compras y tu tienda viven cerca, sin perder su propio espacio.',
+            textAlign: compact ? TextAlign.center : TextAlign.left,
+            style: AppTextStyles.subtitle.copyWith(
+              fontSize: compact ? 14 : 15.5,
+              color: AppColors.ink2,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AuthSurface extends StatelessWidget {
+  const _AuthSurface({
+    required this.role,
+    required this.loading,
+    required this.facebookLoading,
+    required this.disableAnimations,
+    required this.clientPhone,
+    required this.clientPassword,
+    required this.sellerEmail,
+    required this.sellerPassword,
+    required this.onRoleChanged,
+    required this.onContinue,
+    required this.onFacebook,
+  });
+
+  final LoginRole role;
+  final bool loading;
+  final bool facebookLoading;
+  final bool disableAnimations;
+  final TextEditingController clientPhone;
+  final TextEditingController clientPassword;
+  final TextEditingController sellerEmail;
+  final TextEditingController sellerPassword;
+  final ValueChanged<LoginRole> onRoleChanged;
+  final VoidCallback onContinue;
+  final VoidCallback onFacebook;
+
+  @override
+  Widget build(BuildContext context) {
+    final duration = disableAnimations
+        ? Duration.zero
+        : const Duration(milliseconds: 180);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: const BorderRadius.all(Radius.circular(30)),
+        border: Border.all(color: AppColors.line, width: 1),
+        boxShadow: AppShadows.card,
+      ),
+      child: AutofillGroup(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              '¿Cómo quieres entrar?',
+              style: AppTextStyles.h2.copyWith(fontSize: 18),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              'Puedes volver y cambiar de opción en cualquier momento.',
+              style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+            ),
+            const SizedBox(height: 16),
+            _RoleSelector(
+              selectedRole: role,
+              duration: duration,
+              onChanged: onRoleChanged,
+            ),
+            const SizedBox(height: 20),
+            AnimatedSwitcher(
+              duration: duration,
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeOutCubic,
+              transitionBuilder: (child, animation) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+              child: role == LoginRole.client
+                  ? _ClientLoginForm(
+                      key: const ValueKey(LoginRole.client),
+                      phone: clientPhone,
+                      password: clientPassword,
+                      loading: loading,
+                      facebookLoading: facebookLoading,
+                      onContinue: onContinue,
+                      onFacebook: onFacebook,
+                    )
+                  : _SellerLoginForm(
+                      key: const ValueKey(LoginRole.seller),
+                      email: sellerEmail,
+                      password: sellerPassword,
+                      loading: loading,
+                      facebookLoading: facebookLoading,
+                      onContinue: onContinue,
+                      onFacebook: onFacebook,
+                    ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'Al continuar aceptas los Términos y el Aviso de privacidad.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.subtitle.copyWith(
+                fontSize: 10.5,
+                color: AppColors.ink3,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RoleSelector extends StatelessWidget {
+  const _RoleSelector({
+    required this.selectedRole,
+    required this.duration,
+    required this.onChanged,
+  });
+
+  final LoginRole selectedRole;
+  final Duration duration;
+  final ValueChanged<LoginRole> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(5),
+      decoration: BoxDecoration(
+        color: AppColors.segTrack,
+        borderRadius: AppRadii.fieldRadius,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _RoleOption(
+              key: const Key('login-role-client'),
+              label: 'Clienta',
+              icon: Symbols.shopping_bag,
+              role: LoginRole.client,
+              selected: selectedRole == LoginRole.client,
+              duration: duration,
+              onTap: () => onChanged(LoginRole.client),
+            ),
+          ),
+          const SizedBox(width: 5),
+          Expanded(
+            child: _RoleOption(
+              key: const Key('login-role-seller'),
+              label: 'Vendedora',
+              icon: Symbols.storefront,
+              role: LoginRole.seller,
+              selected: selectedRole == LoginRole.seller,
+              duration: duration,
+              onTap: () => onChanged(LoginRole.seller),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RoleOption extends StatelessWidget {
+  const _RoleOption({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.role,
+    required this.selected,
+    required this.duration,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final LoginRole role;
+  final bool selected;
+  final Duration duration;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = role == LoginRole.client
+        ? AppColors.neniDeep
+        : AppColors.lavender;
+    final selectedBackground = role == LoginRole.client
+        ? const Color(0xFFFFE9F0)
+        : const Color(0xFFF2ECFF);
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: 'Entrar como $label',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: const BorderRadius.all(Radius.circular(14)),
+          child: AnimatedContainer(
+            duration: duration,
+            curve: Curves.easeOutCubic,
+            height: 48,
+            decoration: BoxDecoration(
+              color: selected ? selectedBackground : Colors.transparent,
+              borderRadius: const BorderRadius.all(Radius.circular(14)),
+              border: selected
+                  ? Border.all(color: accent.withValues(alpha: 0.16))
+                  : null,
+              boxShadow: selected ? AppShadows.small : const [],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 20,
+                  color: selected ? accent : AppColors.ink2,
+                  fill: selected ? 1 : 0,
+                ),
+                const SizedBox(width: 7),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.body.copyWith(
+                      color: selected ? AppColors.ink : AppColors.ink2,
+                      fontSize: 13.5,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 18),
-                  _divider(),
-                  const SizedBox(height: 18),
-                  PillButton(
-                    label: _fbLoading ? 'Conectando…' : 'Entrar con Facebook',
-                    icon: Symbols.thumb_up,
-                    variant: PillButtonVariant.facebook,
-                    onPressed: _fbLoading ? null : _facebookLogin,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Al continuar aceptas los Términos y el Aviso de privacidad.',
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.subtitle.copyWith(fontSize: 12),
-                  ),
-                  const SizedBox(height: 10),
-                  Center(
-                    child: GestureDetector(
-                      onTap: _showTeamLogin,
-                      child: Text(
-                        'Acceso de equipo',
-                        style: AppTextStyles.subtitle.copyWith(
-                          color: AppColors.neniDeep,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12.5,
-                        ),
-                      ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ClientLoginForm extends StatelessWidget {
+  const _ClientLoginForm({
+    super.key,
+    required this.phone,
+    required this.password,
+    required this.loading,
+    required this.facebookLoading,
+    required this.onContinue,
+    required this.onFacebook,
+  });
+
+  final TextEditingController phone;
+  final TextEditingController password;
+  final bool loading;
+  final bool facebookLoading;
+  final VoidCallback onContinue;
+  final VoidCallback onFacebook;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _RoleHeading(
+          icon: Symbols.local_mall,
+          iconColor: AppColors.neniDeep,
+          iconBackground: const Color(0xFFFFE5EE),
+          title: 'Tu espacio de compras',
+          subtitle: 'Revisa pedidos, puntos y tus tiendas favoritas.',
+        ),
+        const SizedBox(height: 18),
+        AppTextField(
+          key: const Key('client-phone-field'),
+          controller: phone,
+          label: 'Teléfono',
+          prefix: '+52',
+          hint: '868 145 22 90',
+          keyboardType: TextInputType.phone,
+          textInputAction: TextInputAction.next,
+          autofillHints: const [AutofillHints.telephoneNumber],
+        ),
+        const SizedBox(height: 13),
+        PasswordField(
+          key: const Key('client-password-field'),
+          controller: password,
+          label: 'Contraseña',
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => onContinue(),
+        ),
+        const SizedBox(height: 18),
+        _PrimaryAction(
+          label: 'Entrar a mis compras',
+          icon: Symbols.arrow_forward,
+          role: LoginRole.client,
+          loading: loading,
+          onPressed: loading ? null : onContinue,
+        ),
+        const SizedBox(height: 13),
+        Center(
+          child: TextButton(
+            onPressed: loading ? null : () => context.go('/register'),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.neniDeep,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            child: Text.rich(
+              TextSpan(
+                text: '¿Eres nueva? ',
+                style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+                children: [
+                  TextSpan(
+                    text: 'Crea tu cuenta',
+                    style: AppTextStyles.subtitle.copyWith(
+                      color: AppColors.neniDeep,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
@@ -274,164 +636,660 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _divider() {
-    return Row(
-      children: [
-        const Expanded(child: Divider(color: AppColors.line, thickness: 1)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text(
-            'o',
-            style: AppTextStyles.subtitle.copyWith(fontSize: 12),
-          ),
+        const SizedBox(height: 12),
+        const _OrDivider(),
+        const SizedBox(height: 14),
+        _FacebookButton(
+          loading: facebookLoading,
+          onPressed: loading || facebookLoading ? null : onFacebook,
         ),
-        const Expanded(child: Divider(color: AppColors.line, thickness: 1)),
       ],
-    );
-  }
-
-  void _showTeamLogin() {
-    final email = TextEditingController();
-    final pass = TextEditingController();
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (sheetContext) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 22,
-            right: 22,
-            top: 22,
-            bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 22,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('Acceso de equipo', style: AppTextStyles.h2),
-              const SizedBox(height: 4),
-              Text(
-                'Para administradoras y conductores con correo.',
-                style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
-              ),
-              const SizedBox(height: 16),
-              AppTextField(
-                controller: email,
-                prefixIcon: Symbols.mail,
-                hint: 'tu@correo.com',
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 12),
-              PasswordField(controller: pass),
-              const SizedBox(height: 18),
-              PillButton(
-                label: 'Entrar',
-                onPressed: () async {
-                  try {
-                    await ref
-                        .read(authControllerProvider.notifier)
-                        .loginEmail(email.text.trim(), pass.text);
-                    if (sheetContext.mounted) Navigator.of(sheetContext).pop();
-                  } on AuthException catch (e) {
-                    _toast(e.message);
-                  } catch (_) {
-                    _toast('No pudimos conectar. Revisa tu internet.');
-                  }
-                },
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        );
-      },
     );
   }
 }
 
-class _LoadingButton extends StatelessWidget {
-  const _LoadingButton();
+class _SellerLoginForm extends StatelessWidget {
+  const _SellerLoginForm({
+    super.key,
+    required this.email,
+    required this.password,
+    required this.loading,
+    required this.facebookLoading,
+    required this.onContinue,
+    required this.onFacebook,
+  });
+
+  final TextEditingController email;
+  final TextEditingController password;
+  final bool loading;
+  final bool facebookLoading;
+  final VoidCallback onContinue;
+  final VoidCallback onFacebook;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _RoleHeading(
+          icon: Symbols.storefront,
+          iconColor: Color(0xFF7450A8),
+          iconBackground: Color(0xFFF0E8FF),
+          title: 'Tu espacio de ventas',
+          subtitle: 'Entra con el correo que usas para administrar tu tienda.',
+        ),
+        const SizedBox(height: 18),
+        AppTextField(
+          key: const Key('seller-email-field'),
+          controller: email,
+          label: 'Correo',
+          prefixIcon: Symbols.mail,
+          hint: 'hola@tutienda.com',
+          keyboardType: TextInputType.emailAddress,
+          textInputAction: TextInputAction.next,
+          autofillHints: const [AutofillHints.username, AutofillHints.email],
+          autocorrect: false,
+          enableSuggestions: false,
+        ),
+        const SizedBox(height: 13),
+        PasswordField(
+          key: const Key('seller-password-field'),
+          controller: password,
+          label: 'Contraseña',
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => onContinue(),
+        ),
+        const SizedBox(height: 18),
+        _PrimaryAction(
+          label: 'Entrar a mi tienda',
+          icon: Symbols.arrow_forward,
+          role: LoginRole.seller,
+          loading: loading,
+          onPressed: loading ? null : onContinue,
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(13),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF7F2FF),
+            borderRadius: const BorderRadius.all(Radius.circular(16)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(
+                Symbols.verified_user,
+                color: Color(0xFF7450A8),
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Conservamos tu negocio y los permisos que ya tienes asignados.',
+                  style: AppTextStyles.subtitle.copyWith(
+                    color: AppColors.ink2,
+                    fontSize: 11.5,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        const _OrDivider(),
+        const SizedBox(height: 14),
+        _FacebookButton(
+          loading: facebookLoading,
+          onPressed: loading || facebookLoading ? null : onFacebook,
+        ),
+      ],
+    );
+  }
+}
+
+class _FacebookProfileSheet extends ConsumerStatefulWidget {
+  const _FacebookProfileSheet({required this.draft});
+
+  final FacebookProfileRequiredException draft;
+
+  @override
+  ConsumerState<_FacebookProfileSheet> createState() =>
+      _FacebookProfileSheetState();
+}
+
+class _FacebookProfileSheetState extends ConsumerState<_FacebookProfileSheet> {
+  late final TextEditingController _firstName;
+  late final TextEditingController _lastName;
+  late final TextEditingController _email;
+  late final TextEditingController _phone;
+  late final TextEditingController _businessName;
+  late final TextEditingController _city;
+  late final TextEditingController _existingPassword;
+
+  late bool _requiresExistingPassword;
+  bool _saving = false;
+  String? _error;
+
+  bool get _isSeller => widget.draft.accountType == FacebookAccountType.seller;
+
+  @override
+  void initState() {
+    super.initState();
+    _firstName = TextEditingController(text: widget.draft.firstName);
+    _lastName = TextEditingController(text: widget.draft.lastName);
+    _email = TextEditingController(text: widget.draft.email);
+    _phone = TextEditingController(text: widget.draft.phone);
+    _businessName = TextEditingController();
+    _city = TextEditingController();
+    _existingPassword = TextEditingController();
+    _requiresExistingPassword = widget.draft.requiresExistingPassword;
+  }
+
+  @override
+  void dispose() {
+    _firstName.dispose();
+    _lastName.dispose();
+    _email.dispose();
+    _phone.dispose();
+    _businessName.dispose();
+    _city.dispose();
+    _existingPassword.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_saving) return;
+
+    final firstName = _firstName.text.trim();
+    final lastName = _lastName.text.trim();
+    final email = _email.text.trim();
+    final phone = _phone.text.replaceAll(RegExp(r'\D'), '');
+    final businessName = _businessName.text.trim();
+    final city = _city.text.trim();
+    final existingPassword = _existingPassword.text;
+
+    if (firstName.isEmpty || lastName.isEmpty) {
+      setState(() => _error = 'Escribe tu nombre y apellido.');
+      return;
+    }
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+      setState(() => _error = 'Escribe un correo válido.');
+      return;
+    }
+    if (phone.length != 10) {
+      setState(() => _error = 'Escribe tu teléfono a 10 dígitos.');
+      return;
+    }
+    if (_isSeller && businessName.isEmpty) {
+      setState(() => _error = 'Escribe el nombre de tu negocio.');
+      return;
+    }
+    if (_requiresExistingPassword && existingPassword.isEmpty) {
+      setState(() => _error = 'Escribe la contraseña actual de tu cuenta.');
+      return;
+    }
+
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+
+    final profile = FacebookProfileCompletion(
+      accountType: widget.draft.accountType,
+      firstName: firstName,
+      lastName: lastName,
+      email: email,
+      phone: phone,
+      businessName: _isSeller ? businessName : null,
+      city: _isSeller && city.isNotEmpty ? city : null,
+      existingPassword: _requiresExistingPassword ? existingPassword : null,
+    );
+
+    try {
+      await ref
+          .read(authControllerProvider.notifier)
+          .completeFacebookProfile(profile);
+      if (mounted) Navigator.of(context).pop(false);
+    } on FacebookPhoneVerificationRequiredException {
+      if (mounted) Navigator.of(context).pop(true);
+    } on FacebookProfileRequiredException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _requiresExistingPassword = error.requiresExistingPassword;
+        _error = error.message;
+      });
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = error.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = 'No pudimos conectar. Revisa tu internet.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final role = _isSeller ? LoginRole.seller : LoginRole.client;
+    final accent = _isSeller ? const Color(0xFF7450A8) : AppColors.neniDeep;
+
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(22, 14, 22, bottomInset + 22),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.88,
+          ),
+          child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Center(child: _SheetHandle()),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Completa tu cuenta',
+                        style: AppTextStyles.h1,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 11,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: 0.1),
+                        borderRadius: AppRadii.pillRadius,
+                      ),
+                      child: Text(
+                        _isSeller ? 'Vendedora' : 'Clienta',
+                        style: AppTextStyles.subtitle.copyWith(
+                          color: accent,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  _isSeller
+                      ? 'Facebook ya confirmó tu identidad. Agrega los datos de tu tienda para dejarla lista.'
+                      : 'Facebook ya confirmó tu identidad. Solo necesitamos los datos que usamos para tus compras.',
+                  style: AppTextStyles.subtitle,
+                ),
+                const SizedBox(height: 20),
+                AppTextField(
+                  key: const Key('facebook-first-name-field'),
+                  controller: _firstName,
+                  label: 'Nombre',
+                  prefixIcon: Symbols.person,
+                  hint: 'Tu nombre',
+                  textInputAction: TextInputAction.next,
+                  autofillHints: const [AutofillHints.givenName],
+                ),
+                const SizedBox(height: 13),
+                AppTextField(
+                  key: const Key('facebook-last-name-field'),
+                  controller: _lastName,
+                  label: 'Apellido',
+                  prefixIcon: Symbols.person,
+                  hint: 'Tu apellido',
+                  textInputAction: TextInputAction.next,
+                  autofillHints: const [AutofillHints.familyName],
+                ),
+                const SizedBox(height: 13),
+                AppTextField(
+                  key: const Key('facebook-email-field'),
+                  controller: _email,
+                  label: 'Correo',
+                  prefixIcon: Symbols.mail,
+                  hint: 'hola@correo.com',
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                  autofillHints: const [
+                    AutofillHints.username,
+                    AutofillHints.email,
+                  ],
+                  autocorrect: false,
+                  enableSuggestions: false,
+                ),
+                const SizedBox(height: 13),
+                AppTextField(
+                  key: const Key('facebook-phone-field'),
+                  controller: _phone,
+                  label: 'Teléfono',
+                  prefix: '+52',
+                  hint: '868 145 22 90',
+                  keyboardType: TextInputType.phone,
+                  textInputAction: TextInputAction.next,
+                  autofillHints: const [AutofillHints.telephoneNumber],
+                ),
+                if (_isSeller) ...[
+                  const SizedBox(height: 13),
+                  AppTextField(
+                    key: const Key('facebook-business-name-field'),
+                    controller: _businessName,
+                    label: 'Nombre de tu negocio',
+                    prefixIcon: Symbols.storefront,
+                    hint: 'Ej. Regi Bazar',
+                    textInputAction: TextInputAction.next,
+                    autofillHints: const [AutofillHints.organizationName],
+                  ),
+                  const SizedBox(height: 13),
+                  AppTextField(
+                    key: const Key('facebook-city-field'),
+                    controller: _city,
+                    label: 'Ciudad (opcional)',
+                    prefixIcon: Symbols.location_on,
+                    hint: 'Ej. Matamoros',
+                    textInputAction: _requiresExistingPassword
+                        ? TextInputAction.next
+                        : TextInputAction.done,
+                    autofillHints: const [AutofillHints.addressCity],
+                    onSubmitted: (_) {
+                      if (!_requiresExistingPassword) _submit();
+                    },
+                  ),
+                ],
+                if (_requiresExistingPassword) ...[
+                  const SizedBox(height: 18),
+                  Container(
+                    padding: const EdgeInsets.all(13),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF5E6),
+                      borderRadius: const BorderRadius.all(Radius.circular(16)),
+                    ),
+                    child: Text(
+                      'Ya existe una cuenta con ese correo o teléfono. Escribe su contraseña actual para vincular Facebook sin duplicarla.',
+                      style: AppTextStyles.subtitle.copyWith(
+                        color: AppColors.ink2,
+                        fontSize: 11.5,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 13),
+                  PasswordField(
+                    key: const Key('facebook-existing-password-field'),
+                    controller: _existingPassword,
+                    label: 'Contraseña actual',
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _submit(),
+                  ),
+                ],
+                if (_error != null) ...[
+                  const SizedBox(height: 14),
+                  Text(
+                    _error!,
+                    key: const Key('facebook-profile-error'),
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.subtitle.copyWith(
+                      color: Theme.of(context).colorScheme.error,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+                _PrimaryAction(
+                  label: _requiresExistingPassword
+                      ? 'Vincular y continuar'
+                      : 'Guardar y continuar',
+                  icon: Symbols.arrow_forward,
+                  role: role,
+                  loading: _saving,
+                  onPressed: _saving ? null : _submit,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Después confirmaremos tu teléfono por WhatsApp. Nunca publicaremos en Facebook.',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.subtitle.copyWith(
+                    color: AppColors.ink3,
+                    fontSize: 10.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RoleHeading extends StatelessWidget {
+  const _RoleHeading({
+    required this.icon,
+    required this.iconColor,
+    required this.iconBackground,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBackground;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: iconBackground,
+            borderRadius: const BorderRadius.all(Radius.circular(14)),
+          ),
+          child: Icon(icon, color: iconColor, size: 22, fill: 1),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: AppTextStyles.h2.copyWith(fontSize: 16)),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: AppTextStyles.subtitle.copyWith(fontSize: 11.5),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PrimaryAction extends StatelessWidget {
+  const _PrimaryAction({
+    required this.label,
+    required this.icon,
+    required this.role,
+    required this.loading,
+    required this.onPressed,
+  });
+
+  final String label;
+  final IconData icon;
+  final LoginRole role;
+  final bool loading;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final background = role == LoginRole.client
+        ? AppColors.neniDeep
+        : AppColors.ink;
+    final disabled = onPressed == null;
+
+    return Semantics(
+      button: true,
+      enabled: !disabled,
+      label: label,
+      child: Opacity(
+        opacity: disabled && !loading ? 0.5 : 1,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: AppRadii.pillRadius,
+            child: Ink(
+              height: 56,
+              decoration: BoxDecoration(
+                color: background,
+                borderRadius: AppRadii.pillRadius,
+                boxShadow: disabled
+                    ? const []
+                    : AppShadows.brandPrimary(background),
+              ),
+              child: Center(
+                child: loading
+                    ? const SizedBox.square(
+                        dimension: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.4,
+                          color: AppColors.surface,
+                        ),
+                      )
+                    : FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(label, style: AppTextStyles.button),
+                            const SizedBox(width: 9),
+                            Icon(icon, color: AppColors.surface, size: 21),
+                          ],
+                        ),
+                      ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FacebookButton extends StatelessWidget {
+  const _FacebookButton({required this.loading, required this.onPressed});
+
+  final bool loading;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(54),
+        foregroundColor: AppColors.ink,
+        backgroundColor: AppColors.surface,
+        side: const BorderSide(color: AppColors.line, width: 1.5),
+        shape: const StadiumBorder(),
+        textStyle: AppTextStyles.button.copyWith(
+          color: AppColors.ink,
+          fontSize: 14,
+        ),
+      ),
+      child: loading
+          ? const SizedBox.square(
+              dimension: 21,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.3,
+                color: AppColors.facebook,
+              ),
+            )
+          : FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 24,
+                    height: 24,
+                    alignment: Alignment.center,
+                    decoration: const BoxDecoration(
+                      color: AppColors.facebook,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      'f',
+                      style: AppTextStyles.h2.copyWith(
+                        color: AppColors.surface,
+                        fontSize: 17,
+                        height: 1,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Continuar con Facebook',
+                    style: AppTextStyles.button.copyWith(
+                      color: AppColors.ink,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+}
+
+class _OrDivider extends StatelessWidget {
+  const _OrDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Expanded(child: Divider(color: AppColors.line)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            'o continúa con',
+            style: AppTextStyles.subtitle.copyWith(fontSize: 10.5),
+          ),
+        ),
+        const Expanded(child: Divider(color: AppColors.line)),
+      ],
+    );
+  }
+}
+
+class _SheetHandle extends StatelessWidget {
+  const _SheetHandle();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 56,
+      width: 44,
+      height: 4,
       decoration: BoxDecoration(
+        color: AppColors.line,
         borderRadius: AppRadii.pillRadius,
-        gradient: const LinearGradient(
-          colors: [AppColors.neni, AppColors.neniDeep],
-        ),
-      ),
-      child: const Center(
-        child: SizedBox(
-          width: 24,
-          height: 24,
-          child: CircularProgressIndicator(
-            strokeWidth: 2.5,
-            color: AppColors.surface,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _LoginHero extends StatelessWidget {
-  const _LoginHero();
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 164,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            width: 150,
-            height: 150,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [Color(0xFFFFD9E7), Color(0xFFECE0FF)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-          ),
-          const NenisMark(size: 132),
-          const Positioned(
-            top: 18,
-            right: 92,
-            child: Icon(Symbols.star, color: AppColors.gold, size: 26, fill: 1),
-          ),
-          const Positioned(
-            bottom: 30,
-            left: 88,
-            child: Icon(
-              Symbols.star,
-              color: AppColors.lavender,
-              size: 20,
-              fill: 1,
-            ),
-          ),
-          const Positioned(
-            right: 96,
-            bottom: 44,
-            child: Icon(
-              Symbols.favorite,
-              color: Color(0xFFFF9EC0),
-              size: 22,
-              fill: 1,
-            ),
-          ),
-        ],
       ),
     );
   }

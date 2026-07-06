@@ -1,0 +1,165 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-06T12:00:00-05:00",
+  "title": "Design System: Neni's App",
+  "extensions": {
+    "colorMeta": {
+      "ink-plum": {
+        "role": "neutral",
+        "displayName": "Ciruela tinta",
+        "canonical": "#3A2233",
+        "tonalRamp": ["#21131D", "#3A2233", "#654659", "#8A6F82", "#B6A4B1", "#D8CAD4", "#EEE5EB", "#FBF7FA"]
+      },
+      "neni-pink": {
+        "role": "primary",
+        "displayName": "Rosa Neni",
+        "canonical": "#FB6F9C",
+        "tonalRamp": ["#42101F", "#741F3A", "#A93459", "#D84E78", "#FB6F9C", "#FF9DBB", "#FFC9D9", "#FFF0F5"]
+      },
+      "lavender": {
+        "role": "secondary",
+        "displayName": "Lavanda conexión",
+        "canonical": "#9B7BE0",
+        "tonalRamp": ["#21173D", "#3C286B", "#5B4295", "#795FB9", "#9B7BE0", "#BDA8EC", "#DCCFF6", "#F4EEFC"]
+      },
+      "surface-blush": {
+        "role": "neutral",
+        "displayName": "Rubor",
+        "canonical": "#FDF4F7",
+        "tonalRamp": ["#2B1B22", "#4A333D", "#6C505C", "#967783", "#BFA0AB", "#DEC5CE", "#F0DFE5", "#FDF4F7"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Bienvenidas y mensajes únicos."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Títulos de pantalla."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Instrucciones y contenido."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Controles compactos y estados."
+      }
+    },
+    "shadows": [
+      {
+        "name": "ambient-small",
+        "value": "0 8px 20px -10px rgba(214, 51, 108, 0.18)",
+        "purpose": "Campos y controles interactivos."
+      },
+      {
+        "name": "ambient-card",
+        "value": "0 18px 40px -12px rgba(214, 51, 108, 0.22), 0 6px 16px -8px rgba(58, 34, 51, 0.10)",
+        "purpose": "Superficies protagonistas."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-standard",
+        "value": "180ms cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Selección de rol y respuesta de controles."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact",
+        "value": "600px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Acción principal de alto contraste.",
+      "html": "<button class=\"ds-btn-primary\">Continuar</button>",
+      "css": ".ds-btn-primary { height: 56px; padding: 0 22px; border: 0; border-radius: 999px; background: #E84E83; color: #FFFCFD; font: 600 16px Poppins, sans-serif; box-shadow: 0 14px 26px -12px rgba(232,78,131,.45); transition: transform 180ms cubic-bezier(.22,1,.36,1), box-shadow 180ms cubic-bezier(.22,1,.36,1); } .ds-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 16px 30px -12px rgba(232,78,131,.55); } .ds-btn-primary:active { transform: translateY(0); } .ds-btn-primary:focus-visible { outline: 2px solid #3A2233; outline-offset: 3px; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Acción secundaria sobre superficie clara.",
+      "html": "<button class=\"ds-btn-ghost\">Crear cuenta</button>",
+      "css": ".ds-btn-ghost { height: 56px; padding: 0 22px; border: 1.5px solid rgba(58,34,51,.08); border-radius: 999px; background: #FFFCFD; color: #3A2233; font: 600 16px Poppins, sans-serif; transition: border-color 180ms cubic-bezier(.22,1,.36,1), background 180ms cubic-bezier(.22,1,.36,1); } .ds-btn-ghost:hover { border-color: rgba(58,34,51,.2); background: #FDF4F7; } .ds-btn-ghost:active { background: #F5E8ED; } .ds-btn-ghost:focus-visible { outline: 2px solid #E84E83; outline-offset: 3px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo táctil con superficie pétalo.",
+      "html": "<label class=\"ds-field\"><span>Teléfono</span><input inputmode=\"tel\" placeholder=\"868 145 22 90\"></label>",
+      "css": ".ds-field { display: grid; gap: 6px; color: #8A6F82; font: 600 12.5px Poppins, sans-serif; } .ds-field input { height: 58px; padding: 0 18px; border: 1.5px solid rgba(58,34,51,.08); border-radius: 18px; background: #FFFCFD; color: #3A2233; font: 500 16px Poppins, sans-serif; box-shadow: 0 8px 20px -10px rgba(214,51,108,.18); outline: none; } .ds-field input:hover { border-color: rgba(58,34,51,.18); } .ds-field input:focus-visible { border-color: #E84E83; box-shadow: 0 0 0 3px rgba(232,78,131,.15); }"
+    },
+    {
+      "name": "Role Selector",
+      "kind": "custom",
+      "refersTo": "role-selector",
+      "description": "Dos caminos equivalentes dentro del mismo acceso.",
+      "html": "<div class=\"ds-role\"><button class=\"ds-role-on\">Clienta</button><button>Vendedora</button></div>",
+      "css": ".ds-role { display: flex; gap: 4px; padding: 5px; border-radius: 18px; background: rgba(58,34,51,.05); } .ds-role button { flex: 1; height: 42px; border: 0; border-radius: 13px; background: transparent; color: #8A6F82; font: 600 13px Poppins, sans-serif; transition: background 180ms cubic-bezier(.22,1,.36,1), color 180ms cubic-bezier(.22,1,.36,1); } .ds-role button:hover { color: #3A2233; } .ds-role .ds-role-on { background: #FFFCFD; color: #3A2233; box-shadow: 0 8px 20px -10px rgba(214,51,108,.18); } .ds-role button:focus-visible { outline: 2px solid #E84E83; outline-offset: 1px; }"
+    },
+    {
+      "name": "Status Chip",
+      "kind": "chip",
+      "description": "Estado compacto con fondo tonal.",
+      "html": "<span class=\"ds-chip\">Conectadas</span>",
+      "css": ".ds-chip { display: inline-flex; min-height: 28px; align-items: center; padding: 0 12px; border-radius: 999px; background: #FFE1EC; color: #A93459; font: 600 12.5px Poppins, sans-serif; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "El listón que une",
+    "overview": "La interfaz representa dos recorridos, clienta y vendedora, que se encuentran dentro de una misma comunidad. La feminidad aparece en curvas tensas, detalles de listón y una paleta de pétalo, rosa y ciruela. La estructura se mantiene limpia y reconocible para que el producto se sienta actual y confiable.",
+    "keyCharacteristics": [
+      "Femenino con madurez.",
+      "Dos roles con jerarquía equivalente.",
+      "Controles familiares y táctiles.",
+      "Capas suaves sobre fondos rosados muy claros.",
+      "Movimiento breve que comunica estado."
+    ],
+    "rules": [
+      {
+        "name": "The Pink With Purpose Rule",
+        "body": "El rosa señala marca, selección o acción. Nunca se usa como relleno indiscriminado.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two Roles Rule",
+        "body": "Clienta y vendedora se distinguen también con icono y texto. El color nunca carga solo con el significado.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Voice Rule",
+        "body": "Poppins cubre toda la interfaz. La jerarquía viene de tamaño, peso y espacio, no de mezclar tipografías decorativas.",
+        "section": "typography"
+      },
+      {
+        "name": "The Earned Lift Rule",
+        "body": "Solo lo interactivo o agrupado se eleva. Si toda la pantalla proyecta sombra, ninguna capa tiene significado.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do mostrar “Clienta” y “Vendedora” con el mismo peso visual.",
+      "Do usar rosa, ciruela y lavanda como roles funcionales.",
+      "Do respetar contraste WCAG AA, texto escalable y reducción de movimiento.",
+      "Do mantener controles táctiles de al menos 48px.",
+      "Do expresar lo coquette con curvas, ritmo y detalles precisos."
+    ],
+    "donts": [
+      "Don't crear interfaces genéricas que parezcan una plantilla barata o desactualizada.",
+      "Don't acumular adornos, corazones, brillos o recursos infantiles que resten claridad.",
+      "Don't usar etiquetas impersonales como “Acceso de equipo” para las vendedoras.",
+      "Don't crear jerarquías donde clientas o vendedoras parezcan usuarias de segunda categoría.",
+      "Don't saturar formularios ni usar movimientos decorativos que dificulten entrar.",
+      "Don't usar franjas laterales gruesas, texto con degradado ni glassmorphism decorativo."
+    ]
+  }
+}

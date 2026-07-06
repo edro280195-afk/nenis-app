@@ -16,7 +16,12 @@ class AppTextField extends StatelessWidget {
     this.prefix,
     this.suffix,
     this.keyboardType,
+    this.textInputAction,
+    this.autofillHints,
+    this.focusNode,
     this.obscureText = false,
+    this.autocorrect = true,
+    this.enableSuggestions = true,
     this.maxLines = 1,
     this.onChanged,
     this.onSubmitted,
@@ -29,7 +34,12 @@ class AppTextField extends StatelessWidget {
   final String? prefix;
   final Widget? suffix;
   final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final Iterable<String>? autofillHints;
+  final FocusNode? focusNode;
   final bool obscureText;
+  final bool autocorrect;
+  final bool enableSuggestions;
   final int maxLines;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
@@ -55,8 +65,13 @@ class AppTextField extends StatelessWidget {
       child: isMultiline
           ? TextField(
               controller: controller,
+              focusNode: focusNode,
               keyboardType: keyboardType,
+              textInputAction: textInputAction,
+              autofillHints: autofillHints,
               obscureText: obscureText,
+              autocorrect: autocorrect,
+              enableSuggestions: enableSuggestions,
               maxLines: maxLines,
               onChanged: onChanged,
               onSubmitted: onSubmitted,
@@ -88,8 +103,13 @@ class AppTextField extends StatelessWidget {
                 Expanded(
                   child: TextField(
                     controller: controller,
+                    focusNode: focusNode,
                     keyboardType: keyboardType,
+                    textInputAction: textInputAction,
+                    autofillHints: autofillHints,
                     obscureText: obscureText,
+                    autocorrect: autocorrect,
+                    enableSuggestions: enableSuggestions,
                     onChanged: onChanged,
                     onSubmitted: onSubmitted,
                     style: AppTextStyles.input,
@@ -120,11 +140,14 @@ class AppTextField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label!, style: AppTextStyles.subtitle.copyWith(
-          fontSize: 12.5,
-          fontWeight: FontWeight.w600,
-          color: AppColors.ink2,
-        )),
+        Text(
+          label!,
+          style: AppTextStyles.subtitle.copyWith(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
+            color: AppColors.ink2,
+          ),
+        ),
         const SizedBox(height: 6),
         field,
       ],

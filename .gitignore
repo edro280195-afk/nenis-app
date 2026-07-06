@@ -17,6 +17,12 @@ android/local.properties
 android/**/GeneratedPluginRegistrant.java
 android/key.properties
 *.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+secrets.json
 
 # iOS / macOS
 ios/Pods/
@@ -41,7 +47,8 @@ Thumbs.db
 *.log
 *.lock
 .env
-.env.local
+.env.*
+!.env.example
 *.apk
 *.aab
 *.ipa

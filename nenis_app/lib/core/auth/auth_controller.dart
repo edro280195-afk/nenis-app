@@ -14,8 +14,11 @@ class AuthController extends AsyncNotifier<Session?> {
   String? _pendingPassword;
   bool _pendingDevMode = false;
 
-  // Token de Facebook en espera de teléfono (alta nueva con Facebook).
-  String? _pendingFbToken;
+  // Datos de Facebook en espera de completar perfil o verificar teléfono.
+  FacebookAccessCredential? _pendingFacebookCredential;
+  FacebookAccountType? _pendingFacebookAccountType;
+  String? _pendingFacebookBusinessName;
+  String? _pendingFacebookCity;
 
   /// Teléfono al que se le envió el código de WhatsApp (lo usa la pantalla de
   /// verificación).
@@ -58,7 +61,9 @@ class AuthController extends AsyncNotifier<Session?> {
     required String email,
     required String password,
   }) async {
-    final result = await ref.read(authRepositoryProvider).registerPhone(
+    final result = await ref
+        .read(authRepositoryProvider)
+        .registerPhone(
           firstName: firstName,
           lastName: lastName,
           phone: phone,
@@ -77,8 +82,15 @@ class AuthController extends AsyncNotifier<Session?> {
     if (phone == null) {
       throw AuthException('Primero regístrate o inicia sesión.');
     }
-    final session =
-        await ref.read(authRepositoryProvider).confirmPhone(phone, code);
+    final session = await ref
+        .read(authRepositoryProvider)
+        .confirmPhone(
+          phone,
+          code,
+          accountType: _pendingFacebookAccountType,
+          businessName: _pendingFacebookBusinessName,
+          city: _pendingFacebookCity,
+        );
     await _persist(session, phone: phone, password: _pendingPassword);
   }
 
@@ -86,8 +98,9 @@ class AuthController extends AsyncNotifier<Session?> {
   /// [PhoneNotVerifiedException] tras dejar el pendiente listo para /confirm.
   Future<void> loginPhone(String phone, String password) async {
     try {
-      final session =
-          await ref.read(authRepositoryProvider).loginPhone(phone, password);
+      final session = await ref
+          .read(authRepositoryProvider)
+          .loginPhone(phone, password);
       await _persist(session, phone: phone, password: password);
     } on PhoneNotVerifiedException {
       _pendingPhone = phone;
@@ -105,37 +118,55 @@ class AuthController extends AsyncNotifier<Session?> {
     _pendingDevMode = result.devMode;
   }
 
-  /// Acceso de equipo (correo + contraseña). No guarda credenciales para
-  /// re-login automático (cuentas de administración/conductores).
+  /// Acceso de vendedora con correo y contraseña. No guarda credenciales para
+  /// re-login automático.
   Future<void> loginEmail(String email, String password) async {
-    final session =
-        await ref.read(authRepositoryProvider).loginEmail(email, password);
+    final session = await ref
+        .read(authRepositoryProvider)
+        .loginEmail(email, password);
     await ref.read(sessionStorageProvider).write(session);
     _clearPending();
     state = AsyncData<Session?>(session);
   }
 
-  /// Acceso con Facebook. Abre el diálogo, canjea el token en el backend y guarda
-  /// la sesión. Puede lanzar [FacebookCancelledException] (cancelación, sin
-  /// error grave), [FacebookNeedsPhoneException] (cuenta nueva: pedir teléfono)
-  /// o [AuthException] (error real).
-  Future<void> loginFacebook() async {
+  /// Acceso con Facebook para clientas o vendedoras. Una cuenta vinculada y
+  /// completa entra directamente; una nueva solicita los datos restantes.
+  Future<void> loginFacebook(FacebookAccountType accountType) async {
     final repo = ref.read(authRepositoryProvider);
-    final token = await repo.facebookAccessToken();
-    _pendingFbToken = token;
-    final session = await repo.facebookLogin(token);
+    final credential = await repo.facebookAccessToken();
+    _pendingFacebookCredential = credential;
+    _pendingFacebookAccountType = accountType;
+    final session = await repo.facebookLogin(
+      credential,
+      accountType: accountType,
+    );
     await _persistSocial(session);
   }
 
-  /// Completa el alta con Facebook usando el teléfono capturado por la UI.
-  Future<void> completeFacebookWithPhone(String phone) async {
-    final token = _pendingFbToken;
-    if (token == null) {
+  /// Completa una cuenta nueva o vincula una existente con Facebook. Si falta
+  /// validar el teléfono, deja los datos listos para la pantalla de código.
+  Future<void> completeFacebookProfile(
+    FacebookProfileCompletion profile,
+  ) async {
+    final credential = _pendingFacebookCredential;
+    if (credential == null) {
       throw AuthException('Vuelve a intentar con Facebook.');
     }
-    final session =
-        await ref.read(authRepositoryProvider).facebookLogin(token, phone: phone);
-    await _persistSocial(session);
+    _pendingFacebookAccountType = profile.accountType;
+    _pendingFacebookBusinessName = profile.businessName;
+    _pendingFacebookCity = profile.city;
+
+    try {
+      final session = await ref
+          .read(authRepositoryProvider)
+          .completeFacebookProfile(credential, profile);
+      await _persistSocial(session);
+    } on FacebookPhoneVerificationRequiredException catch (e) {
+      _pendingPhone = e.phone;
+      _pendingPassword = null;
+      _pendingDevMode = e.devMode;
+      rethrow;
+    }
   }
 
   Future<void> logout() async {
@@ -181,7 +212,10 @@ class AuthController extends AsyncNotifier<Session?> {
     _pendingPhone = null;
     _pendingPassword = null;
     _pendingDevMode = false;
-    _pendingFbToken = null;
+    _pendingFacebookCredential = null;
+    _pendingFacebookAccountType = null;
+    _pendingFacebookBusinessName = null;
+    _pendingFacebookCity = null;
   }
 }
 
