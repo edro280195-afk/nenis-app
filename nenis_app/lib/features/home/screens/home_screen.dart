@@ -18,6 +18,9 @@ import '../../notifications/data/notifications_repository.dart';
 import '../data/home_models.dart';
 import '../data/home_repository.dart';
 
+import '../../../core/auth/auth_controller.dart';
+import 'seller_home_screen.dart';
+
 OrderStatus _chipStatus(String status) {
   switch (status) {
     case 'Delivered':
@@ -32,6 +35,17 @@ OrderStatus _chipStatus(String status) {
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final session = ref.watch(authControllerProvider).value;
+    final isSeller = session != null && session.hasMembership;
+    return isSeller ? const SellerHomeScreen() : const BuyerHomeScreen();
+  }
+}
+
+class BuyerHomeScreen extends ConsumerWidget {
+  const BuyerHomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

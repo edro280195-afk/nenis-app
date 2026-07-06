@@ -13,6 +13,8 @@ import '../../features/home/screens/home_screen.dart';
 import '../../features/store/screens/store_screen.dart';
 import '../../features/live/screens/live_screen.dart';
 import '../../features/orders/screens/orders_screen.dart';
+import '../../features/orders/screens/order_create_screen.dart';
+import '../../features/orders/screens/order_detail_screen.dart';
 import '../../features/tracking/screens/tracking_screen.dart';
 import '../../features/points/screens/points_screen.dart';
 import '../../features/tandas/screens/tandas_screen.dart';
@@ -23,6 +25,7 @@ import '../../features/addresses/screens/addresses_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
 import '../../features/payments/screens/payments_screen.dart';
 import '../../features/reserve/screens/reserve_screen.dart';
+import '../../features/routes/screens/seller_routes_screen.dart';
 import '../../shared/screens/splash_screen.dart';
 
 /// Rutas de acceso (sin sesión). El resto exige estar autenticado, salvo
@@ -70,6 +73,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         return _authRoutes.contains(loc) ? null : '/login';
       }
 
+      // Restringir ruta de reparto solo a vendedoras (miembros de negocio)
+      if (loc == '/routes' && !session.hasMembership) return '/home';
+
       // Recién confirmada por WhatsApp y sin negocio propio -> a reclamar perfil.
       if (loc == '/confirm' && !session.hasMembership) return '/claim';
       // Autenticada: no se queda en pantallas de acceso.
@@ -104,6 +110,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
       GoRoute(
+        path: '/routes',
+        builder: (context, state) => const SellerRoutesScreen(),
+      ),
+      GoRoute(
         path: '/store/:businessId',
         builder: (context, state) =>
             StoreScreen(businessId: state.pathParameters['businessId']!),
@@ -116,6 +126,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/orders',
         builder: (context, state) => const OrdersScreen(),
+      ),
+      GoRoute(
+        path: '/orders/new',
+        builder: (context, state) => const OrderCreateScreen(),
+      ),
+      GoRoute(
+        path: '/orders/detail/:id',
+        builder: (context, state) =>
+            OrderDetailScreen(orderId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/tracking/:orderId',

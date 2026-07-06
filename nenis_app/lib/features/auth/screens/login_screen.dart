@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -29,6 +31,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _clientPassword = TextEditingController();
   final _sellerEmail = TextEditingController();
   final _sellerPassword = TextEditingController();
+  final _shakeKey = GlobalKey<ShakeWidgetState>();
 
   LoginRole _role = LoginRole.client;
   bool _loading = false;
@@ -36,12 +39,46 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String? _errorMessage;
 
   @override
+  void initState() {
+    super.initState();
+    _clientPhone.addListener(_onInputChanged);
+    _clientPassword.addListener(_onInputChanged);
+    _sellerEmail.addListener(_onInputChanged);
+    _sellerPassword.addListener(_onInputChanged);
+  }
+
+  @override
   void dispose() {
+    _clientPhone.removeListener(_onInputChanged);
+    _clientPassword.removeListener(_onInputChanged);
+    _sellerEmail.removeListener(_onInputChanged);
+    _sellerPassword.removeListener(_onInputChanged);
     _clientPhone.dispose();
     _clientPassword.dispose();
     _sellerEmail.dispose();
     _sellerPassword.dispose();
     super.dispose();
+  }
+
+  void _onInputChanged() {
+    setState(() {});
+  }
+
+  bool get _isClientValid {
+    final phone = _clientPhone.text.replaceAll(RegExp(r'\D'), '');
+    final password = _clientPassword.text;
+    return phone.length == 10 && password.isNotEmpty;
+  }
+
+  bool get _isSellerValid {
+    final email = _sellerEmail.text.trim();
+    final password = _sellerPassword.text;
+    final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+    return emailRegex.hasMatch(email) && password.isNotEmpty;
+  }
+
+  bool get _isFormValid {
+    return _role == LoginRole.client ? _isClientValid : _isSellerValid;
   }
 
   Future<void> _continue() async {
@@ -59,10 +96,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final phone = _clientPhone.text.replaceAll(RegExp(r'\D'), '');
     if (phone.length != 10) {
       _setError('Escribe tu teléfono a 10 dígitos.');
+      _shakeKey.currentState?.shake();
       return;
     }
     if (_clientPassword.text.isEmpty) {
       _setError('Escribe tu contraseña.');
+      _shakeKey.currentState?.shake();
       return;
     }
 
@@ -81,8 +120,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     } on AuthException catch (error) {
       _setError(error.message);
+      _shakeKey.currentState?.shake();
     } catch (_) {
       _setError('Ocurrió un problema inesperado. Inténtalo nuevamente.');
+      _shakeKey.currentState?.shake();
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -94,10 +135,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final isValidEmail = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
     if (!isValidEmail) {
       _setError('Escribe un correo válido.');
+      _shakeKey.currentState?.shake();
       return;
     }
     if (_sellerPassword.text.isEmpty) {
       _setError('Escribe tu contraseña.');
+      _shakeKey.currentState?.shake();
       return;
     }
 
@@ -111,8 +154,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           .loginEmail(email, _sellerPassword.text);
     } on AuthException catch (error) {
       _setError(error.message);
+      _shakeKey.currentState?.shake();
     } catch (_) {
       _setError('Ocurrió un problema inesperado. Inténtalo nuevamente.');
+      _shakeKey.currentState?.shake();
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -179,76 +224,100 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final disableAnimations = MediaQuery.of(context).disableAnimations;
+    final gradientColor = _role == LoginRole.client
+        ? const Color(0xFFFFE6F0)
+        : const Color(0xFFF2ECFF);
 
     return Scaffold(
       backgroundColor: AppColors.surfaceCream,
-      body: NeniBackground(
-        child: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final isWide = constraints.maxWidth >= 900;
-              return SingleChildScrollView(
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: EdgeInsets.fromLTRB(
-                  isWide ? 40 : 20,
-                  isWide ? 36 : 14,
-                  isWide ? 40 : 20,
-                  28,
-                ),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: isWide ? 980 : 520),
-                    child: isWide
-                        ? Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              const Expanded(child: _LoginIntro()),
-                              const SizedBox(width: 52),
-                              SizedBox(
-                                width: 440,
-                                child: _AuthSurface(
-                                  role: _role,
-                                  loading: _loading,
-                                  facebookLoading: _facebookLoading,
-                                  errorMessage: _errorMessage,
-                                  disableAnimations: disableAnimations,
-                                  clientPhone: _clientPhone,
-                                  clientPassword: _clientPassword,
-                                  sellerEmail: _sellerEmail,
-                                  sellerPassword: _sellerPassword,
-                                  onRoleChanged: _selectRole,
-                                  onContinue: _continue,
-                                  onFacebook: _facebookLogin,
-                                ),
-                              ),
-                            ],
-                          )
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              const _LoginIntro(compact: true),
-                              const SizedBox(height: 24),
-                              _AuthSurface(
-                                role: _role,
-                                loading: _loading,
-                                facebookLoading: _facebookLoading,
-                                errorMessage: _errorMessage,
-                                disableAnimations: disableAnimations,
-                                clientPhone: _clientPhone,
-                                clientPassword: _clientPassword,
-                                sellerEmail: _sellerEmail,
-                                sellerPassword: _sellerPassword,
-                                onRoleChanged: _selectRole,
-                                onContinue: _continue,
-                                onFacebook: _facebookLogin,
-                              ),
-                            ],
-                          ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: const Alignment(0.0, -1.0),
+            radius: 1.0,
+            colors: [
+              gradientColor,
+              AppColors.surfaceCream,
+            ],
+            stops: const [0.0, 1.0],
+          ),
+        ),
+        child: NeniBackground(
+          child: SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth >= 900;
+                return SingleChildScrollView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: EdgeInsets.fromLTRB(
+                    isWide ? 40 : 20,
+                    isWide ? 36 : 14,
+                    isWide ? 40 : 20,
+                    28,
                   ),
-                ),
-              );
-            },
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: isWide ? 980 : 520),
+                      child: isWide
+                          ? Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Expanded(child: _LoginIntro(role: _role)),
+                                const SizedBox(width: 52),
+                                SizedBox(
+                                  width: 440,
+                                  child: ShakeWidget(
+                                    key: _shakeKey,
+                                    child: _AuthSurface(
+                                      role: _role,
+                                      loading: _loading,
+                                      facebookLoading: _facebookLoading,
+                                      errorMessage: _errorMessage,
+                                      disableAnimations: disableAnimations,
+                                      clientPhone: _clientPhone,
+                                      clientPassword: _clientPassword,
+                                      sellerEmail: _sellerEmail,
+                                      sellerPassword: _sellerPassword,
+                                      onRoleChanged: _selectRole,
+                                      onContinue: _continue,
+                                      onFacebook: _facebookLogin,
+                                      isFormValid: _isFormValid,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _LoginIntro(compact: true, role: _role),
+                                const SizedBox(height: 24),
+                                ShakeWidget(
+                                  key: _shakeKey,
+                                  child: _AuthSurface(
+                                    role: _role,
+                                    loading: _loading,
+                                    facebookLoading: _facebookLoading,
+                                    errorMessage: _errorMessage,
+                                    disableAnimations: disableAnimations,
+                                    clientPhone: _clientPhone,
+                                    clientPassword: _clientPassword,
+                                    sellerEmail: _sellerEmail,
+                                    sellerPassword: _sellerPassword,
+                                    onRoleChanged: _selectRole,
+                                    onContinue: _continue,
+                                    onFacebook: _facebookLogin,
+                                    isFormValid: _isFormValid,
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -257,75 +326,169 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 }
 
 class _LoginIntro extends StatelessWidget {
-  const _LoginIntro({this.compact = false});
+  const _LoginIntro({this.compact = false, required this.role});
 
   final bool compact;
+  final LoginRole role;
 
   @override
   Widget build(BuildContext context) {
+    final isClient = role == LoginRole.client;
+
     return Column(
       crossAxisAlignment: compact
           ? CrossAxisAlignment.center
           : CrossAxisAlignment.start,
       children: [
-        NenisLogo(
-          markSize: compact ? 54 : 72,
-          wordmarkSize: compact ? 27 : 34,
-          subtitle: compact ? null : 'Clientas + vendedoras',
-        ),
-        SizedBox(height: compact ? 22 : 42),
-        Container(
-          width: compact ? double.infinity : null,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFE5EE),
-            borderRadius: AppRadii.pillRadius,
-          ),
-          child: Row(
-            mainAxisSize: compact ? MainAxisSize.max : MainAxisSize.min,
-            mainAxisAlignment: compact
-                ? MainAxisAlignment.center
-                : MainAxisAlignment.start,
-            children: [
-              const Icon(
-                Symbols.join_inner,
-                color: AppColors.neniDeep,
-                size: 18,
-              ),
-              const SizedBox(width: 7),
-              Flexible(
-                child: Text(
-                  'CLIENTAS Y VENDEDORAS, UN MISMO ESPACIO',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.eyebrow(AppColors.neniDeep).copyWith(
-                    fontSize: compact ? 9 : 10.5,
-                    letterSpacing: compact ? 0.4 : 0.8,
+        if (compact) ...[
+          const NenisLogo(markSize: 46, wordmarkSize: 23),
+          const SizedBox(height: 18),
+        ] else ...[
+          const NenisLogo(markSize: 60, wordmarkSize: 28),
+          const SizedBox(height: 24),
+        ],
+
+        // Ilustración Héroe Dinámica
+        Center(
+          child: SizedBox(
+            height: 140,
+            width: 200,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Anillo de fondo
+                Container(
+                  width: 110,
+                  height: 110,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        isClient ? const Color(0xFFFFE5EE) : const Color(0xFFF2ECFF),
+                        isClient ? const Color(0xFFFFD0E2) : const Color(0xFFE6DCFF),
+                      ],
+                    ),
+                    border: Border.all(color: Colors.white.withAlpha(200)),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x1A3A2221),
+                        offset: Offset(0, 10),
+                        blurRadius: 20,
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Compra, vende y\nsigue conectada.',
-          textAlign: compact ? TextAlign.center : TextAlign.left,
-          style: AppTextStyles.display.copyWith(
-            fontSize: compact ? 31 : 42,
-            height: 1.08,
-            letterSpacing: compact ? -0.7 : -1.1,
+
+                // Contenedor del ícono principal
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 350),
+                  curve: Curves.easeOutBack,
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(22),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: isClient
+                          ? [const Color(0xFFFF6F9C), const Color(0xFFE84E83)]
+                          : [const Color(0xFF9B7BE0), const Color(0xFF7450A8)],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: (isClient ? const Color(0xFFE84E83) : const Color(0xFF7450A8))
+                            .withAlpha(128),
+                        offset: const Offset(0, 10),
+                        blurRadius: 20,
+                        spreadRadius: -4,
+                      ),
+                    ],
+                  ),
+                  alignment: Alignment.center,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
+                    transitionBuilder: (child, animation) {
+                      return ScaleTransition(
+                        scale: animation,
+                        child: child,
+                      );
+                    },
+                    child: Icon(
+                      isClient ? Symbols.shopping_bag : Symbols.storefront,
+                      key: ValueKey(role),
+                      color: Colors.white,
+                      size: 32,
+                      fill: 1.0,
+                    ),
+                  ),
+                ),
+
+                // Elementos decorativos (sparks/hearts)
+                Positioned(
+                  top: 15,
+                  right: 35,
+                  child: Icon(
+                    Symbols.star,
+                    color: isClient ? const Color(0xFFF3B341) : const Color(0xFFFFB703),
+                    size: 20,
+                    fill: 1.0,
+                  ),
+                ),
+                Positioned(
+                  bottom: 15,
+                  left: 35,
+                  child: Icon(
+                    Symbols.star,
+                    color: isClient ? const Color(0xFF9B7BE0) : const Color(0xFFFF6F9C),
+                    size: 16,
+                    fill: 1.0,
+                  ),
+                ),
+                if (isClient)
+                  const Positioned(
+                    top: 35,
+                    left: 40,
+                    child: Icon(
+                      Symbols.favorite,
+                      color: Color(0xFFFF9EC0),
+                      size: 18,
+                      fill: 1.0,
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 12),
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 470),
+
+        // Textos Dinámicos
+        Center(
           child: Text(
-            'Tus compras y tu tienda viven cerca, sin perder su propio espacio.',
-            textAlign: compact ? TextAlign.center : TextAlign.left,
-            style: AppTextStyles.subtitle.copyWith(
-              fontSize: compact ? 14 : 15.5,
-              color: AppColors.ink2,
+            isClient ? 'Compra en tus Lives' : 'Gestiona tu Tienda',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.display.copyWith(
+              fontSize: compact ? 26 : 32,
+              height: 1.12,
+              letterSpacing: -0.8,
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: Text(
+              isClient
+                  ? 'Rastrea pedidos, junta puntos y entra a los lives de tus tiendas favoritas.'
+                  : 'Controla inventario, recibe pedidos y transmite lives para tus clientas.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.subtitle.copyWith(
+                fontSize: compact ? 13 : 14.5,
+                color: AppColors.ink2,
+                height: 1.4,
+              ),
             ),
           ),
         ),
@@ -348,6 +511,7 @@ class _AuthSurface extends StatelessWidget {
     required this.onRoleChanged,
     required this.onContinue,
     required this.onFacebook,
+    required this.isFormValid,
   });
 
   final LoginRole role;
@@ -362,6 +526,7 @@ class _AuthSurface extends StatelessWidget {
   final ValueChanged<LoginRole> onRoleChanged;
   final VoidCallback onContinue;
   final VoidCallback onFacebook;
+  final bool isFormValid;
 
   @override
   Widget build(BuildContext context) {
@@ -398,11 +563,20 @@ class _AuthSurface extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             AnimatedSwitcher(
-              duration: duration,
+              duration: const Duration(milliseconds: 300),
               switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeOutCubic,
-              transitionBuilder: (child, animation) {
-                return FadeTransition(opacity: animation, child: child);
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (Widget child, Animation<double> animation) {
+                return SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0.15, 0.0),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: FadeTransition(
+                    opacity: animation,
+                    child: child,
+                  ),
+                );
               },
               child: role == LoginRole.client
                   ? _ClientLoginForm(
@@ -414,6 +588,7 @@ class _AuthSurface extends StatelessWidget {
                       errorMessage: errorMessage,
                       onContinue: onContinue,
                       onFacebook: onFacebook,
+                      isFormValid: isFormValid,
                     )
                   : _SellerLoginForm(
                       key: const ValueKey(LoginRole.seller),
@@ -424,6 +599,7 @@ class _AuthSurface extends StatelessWidget {
                       errorMessage: errorMessage,
                       onContinue: onContinue,
                       onFacebook: onFacebook,
+                      isFormValid: isFormValid,
                     ),
             ),
             const SizedBox(height: 18),
@@ -581,6 +757,7 @@ class _ClientLoginForm extends StatelessWidget {
     required this.errorMessage,
     required this.onContinue,
     required this.onFacebook,
+    required this.isFormValid,
   });
 
   final TextEditingController phone;
@@ -590,6 +767,7 @@ class _ClientLoginForm extends StatelessWidget {
   final String? errorMessage;
   final VoidCallback onContinue;
   final VoidCallback onFacebook;
+  final bool isFormValid;
 
   @override
   Widget build(BuildContext context) {
@@ -693,6 +871,7 @@ class _SellerLoginForm extends StatelessWidget {
     required this.errorMessage,
     required this.onContinue,
     required this.onFacebook,
+    required this.isFormValid,
   });
 
   final TextEditingController email;
@@ -702,6 +881,7 @@ class _SellerLoginForm extends StatelessWidget {
   final String? errorMessage;
   final VoidCallback onContinue;
   final VoidCallback onFacebook;
+  final bool isFormValid;
 
   @override
   Widget build(BuildContext context) {
@@ -1351,6 +1531,59 @@ class _SheetHandle extends StatelessWidget {
         color: AppColors.line,
         borderRadius: AppRadii.pillRadius,
       ),
+    );
+  }
+}
+
+class ShakeWidget extends StatefulWidget {
+  const ShakeWidget({
+    required this.child,
+    super.key,
+  });
+
+  final Widget child;
+
+  @override
+  State<ShakeWidget> createState() => ShakeWidgetState();
+}
+
+class ShakeWidgetState extends State<ShakeWidget>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void shake() {
+    _controller.forward(from: 0.0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final double translation = 16.0 *
+            math.sin(_controller.value * 4 * math.pi) *
+            (1.0 - _controller.value);
+
+        return Transform.translate(
+          offset: Offset(translation, 0),
+          child: widget.child,
+        );
+      },
     );
   }
 }

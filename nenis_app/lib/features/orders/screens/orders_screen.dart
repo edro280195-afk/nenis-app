@@ -18,8 +18,22 @@ import '../../../shared/widgets/store_avatar.dart';
 import '../data/orders_models.dart';
 import '../data/orders_repository.dart';
 
+import '../../../core/auth/auth_controller.dart';
+import 'seller_orders_screen.dart';
+
 class OrdersScreen extends ConsumerWidget {
   const OrdersScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final session = ref.watch(authControllerProvider).value;
+    final isSeller = session != null && session.hasMembership;
+    return isSeller ? const SellerOrdersScreen() : const BuyerOrdersScreen();
+  }
+}
+
+class BuyerOrdersScreen extends ConsumerWidget {
+  const BuyerOrdersScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

@@ -16,8 +16,22 @@ import '../../../shared/widgets/store_avatar.dart';
 import '../data/tandas_models.dart';
 import '../data/tandas_repository.dart';
 
+import '../../../core/auth/auth_controller.dart';
+import 'seller_tandas_screen.dart';
+
 class TandasScreen extends ConsumerWidget {
   const TandasScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final session = ref.watch(authControllerProvider).value;
+    final isSeller = session != null && session.hasMembership;
+    return isSeller ? const SellerTandasScreen() : const BuyerTandasScreen();
+  }
+}
+
+class BuyerTandasScreen extends ConsumerWidget {
+  const BuyerTandasScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

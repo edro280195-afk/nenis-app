@@ -65,11 +65,19 @@ void main() {
     await tester.tap(find.byKey(const Key('request-reset-code-button')));
     await tester.pumpAndSettle();
 
+    // En el Paso 2, esperamos ver el mensaje de confirmación y el título.
     expect(find.text('Revisa tu WhatsApp'), findsOneWidget);
-    expect(
-      find.text('Si la cuenta existe, enviaremos un código.'),
-      findsOneWidget,
-    );
+    
+    // Ingresar código OTP de 6 dígitos para avanzar al Paso 3
+    final otpFields = find.byType(TextField);
+    for (int i = 0; i < 6; i++) {
+      await tester.enterText(otpFields.at(i), '0');
+      await tester.pump();
+    }
+    await tester.pumpAndSettle();
+
+    // En el Paso 3, debemos ver la sección de Nueva contraseña y el botón de confirmar
+    expect(find.text('Nueva contraseña'), findsOneWidget);
     expect(
       find.byKey(const Key('confirm-password-reset-button')),
       findsOneWidget,

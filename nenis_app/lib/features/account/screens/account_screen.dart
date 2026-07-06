@@ -16,8 +16,21 @@ import '../../../shared/widgets/store_avatar.dart';
 import '../data/account_models.dart';
 import '../data/account_repository.dart';
 
+import 'seller_account_screen.dart';
+
 class AccountScreen extends ConsumerWidget {
   const AccountScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final session = ref.watch(authControllerProvider).value;
+    final isSeller = session != null && session.hasMembership;
+    return isSeller ? const SellerAccountScreen() : const BuyerAccountScreen();
+  }
+}
+
+class BuyerAccountScreen extends ConsumerWidget {
+  const BuyerAccountScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
