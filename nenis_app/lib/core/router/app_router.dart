@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../auth/auth_controller.dart';
 import '../../features/auth/screens/auth_welcome_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
+import '../../features/auth/screens/password_reset_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/confirm_screen.dart';
 import '../../features/auth/screens/claim_profile_screen.dart';
@@ -26,7 +27,14 @@ import '../../shared/screens/splash_screen.dart';
 
 /// Rutas de acceso (sin sesión). El resto exige estar autenticado, salvo
 /// rastreo público por token.
-const _authRoutes = {'/splash', '/welcome', '/login', '/register', '/confirm'};
+const _authRoutes = {
+  '/splash',
+  '/welcome',
+  '/login',
+  '/register',
+  '/forgot-password',
+  '/confirm',
+};
 
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier<int>(0);
@@ -81,6 +89,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/register',
         builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (context, state) => const PasswordResetScreen(),
       ),
       GoRoute(
         path: '/confirm',

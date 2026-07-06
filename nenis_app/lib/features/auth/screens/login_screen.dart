@@ -13,6 +13,7 @@ import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/nenis_logo.dart';
 import '../../../shared/widgets/password_field.dart';
+import '../widgets/auth_feedback.dart';
 
 enum LoginRole { client, seller }
 
@@ -32,6 +33,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   LoginRole _role = LoginRole.client;
   bool _loading = false;
   bool _facebookLoading = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -53,56 +55,64 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _loginClient() async {
+    if (_loading) return;
     final phone = _clientPhone.text.replaceAll(RegExp(r'\D'), '');
     if (phone.length != 10) {
-      _toast('Escribe tu teléfono a 10 dígitos.');
+      _setError('Escribe tu teléfono a 10 dígitos.');
       return;
     }
     if (_clientPassword.text.isEmpty) {
-      _toast('Escribe tu contraseña.');
+      _setError('Escribe tu contraseña.');
       return;
     }
 
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+    });
     try {
       await ref
           .read(authControllerProvider.notifier)
           .loginPhone(phone, _clientPassword.text);
     } on PhoneNotVerifiedException catch (error) {
       if (mounted) {
-        _toast(error.message);
+        showAuthNotification(context, error.message);
         context.go('/confirm');
       }
     } on AuthException catch (error) {
-      _toast(error.message);
+      _setError(error.message);
     } catch (_) {
-      _toast('No pudimos conectar. Revisa tu internet.');
+      _setError('Ocurrió un problema inesperado. Inténtalo nuevamente.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _loginSeller() async {
+    if (_loading) return;
     final email = _sellerEmail.text.trim();
     final isValidEmail = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
     if (!isValidEmail) {
-      _toast('Escribe un correo válido.');
+      _setError('Escribe un correo válido.');
       return;
     }
     if (_sellerPassword.text.isEmpty) {
-      _toast('Escribe tu contraseña.');
+      _setError('Escribe tu contraseña.');
       return;
     }
 
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+    });
     try {
       await ref
           .read(authControllerProvider.notifier)
           .loginEmail(email, _sellerPassword.text);
     } on AuthException catch (error) {
-      _toast(error.message);
+      _setError(error.message);
     } catch (_) {
-      _toast('No pudimos conectar. Revisa tu internet.');
+      _setError('Ocurrió un problema inesperado. Inténtalo nuevamente.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -114,7 +124,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final accountType = _role == LoginRole.client
         ? FacebookAccountType.client
         : FacebookAccountType.seller;
-    setState(() => _facebookLoading = true);
+    setState(() {
+      _facebookLoading = true;
+      _errorMessage = null;
+    });
     try {
       await ref
           .read(authControllerProvider.notifier)
@@ -124,9 +137,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } on FacebookProfileRequiredException catch (error) {
       if (mounted) await _completeFacebookProfile(error);
     } on AuthException catch (error) {
-      _toast(error.message);
+      _setError(error.message);
     } catch (_) {
-      _toast('No pudimos conectar. Revisa tu internet.');
+      _setError('Ocurrió un problema inesperado. Inténtalo nuevamente.');
     } finally {
       if (mounted) setState(() => _facebookLoading = false);
     }
@@ -152,16 +165,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _selectRole(LoginRole role) {
     if (_loading || _facebookLoading || role == _role) return;
     FocusManager.instance.primaryFocus?.unfocus();
-    setState(() => _role = role);
+    setState(() {
+      _role = role;
+      _errorMessage = null;
+    });
   }
 
-  void _toast(String message) {
+  void _setError(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-      );
+    setState(() => _errorMessage = message);
   }
 
   @override
@@ -199,6 +211,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   role: _role,
                                   loading: _loading,
                                   facebookLoading: _facebookLoading,
+                                  errorMessage: _errorMessage,
                                   disableAnimations: disableAnimations,
                                   clientPhone: _clientPhone,
                                   clientPassword: _clientPassword,
@@ -220,6 +233,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 role: _role,
                                 loading: _loading,
                                 facebookLoading: _facebookLoading,
+                                errorMessage: _errorMessage,
                                 disableAnimations: disableAnimations,
                                 clientPhone: _clientPhone,
                                 clientPassword: _clientPassword,
@@ -325,6 +339,7 @@ class _AuthSurface extends StatelessWidget {
     required this.role,
     required this.loading,
     required this.facebookLoading,
+    required this.errorMessage,
     required this.disableAnimations,
     required this.clientPhone,
     required this.clientPassword,
@@ -338,6 +353,7 @@ class _AuthSurface extends StatelessWidget {
   final LoginRole role;
   final bool loading;
   final bool facebookLoading;
+  final String? errorMessage;
   final bool disableAnimations;
   final TextEditingController clientPhone;
   final TextEditingController clientPassword;
@@ -395,6 +411,7 @@ class _AuthSurface extends StatelessWidget {
                       password: clientPassword,
                       loading: loading,
                       facebookLoading: facebookLoading,
+                      errorMessage: errorMessage,
                       onContinue: onContinue,
                       onFacebook: onFacebook,
                     )
@@ -404,6 +421,7 @@ class _AuthSurface extends StatelessWidget {
                       password: sellerPassword,
                       loading: loading,
                       facebookLoading: facebookLoading,
+                      errorMessage: errorMessage,
                       onContinue: onContinue,
                       onFacebook: onFacebook,
                     ),
@@ -560,6 +578,7 @@ class _ClientLoginForm extends StatelessWidget {
     required this.password,
     required this.loading,
     required this.facebookLoading,
+    required this.errorMessage,
     required this.onContinue,
     required this.onFacebook,
   });
@@ -568,6 +587,7 @@ class _ClientLoginForm extends StatelessWidget {
   final TextEditingController password;
   final bool loading;
   final bool facebookLoading;
+  final String? errorMessage;
   final VoidCallback onContinue;
   final VoidCallback onFacebook;
 
@@ -602,7 +622,22 @@ class _ClientLoginForm extends StatelessWidget {
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => onContinue(),
         ),
-        const SizedBox(height: 18),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            key: const Key('forgot-password-client'),
+            onPressed: loading ? null : () => context.go('/forgot-password'),
+            child: const Text('Olvidé mi contraseña'),
+          ),
+        ),
+        if (errorMessage != null) ...[
+          AuthFeedbackBanner(
+            key: const Key('login-error'),
+            message: errorMessage!,
+          ),
+          const SizedBox(height: 14),
+        ] else
+          const SizedBox(height: 4),
         _PrimaryAction(
           label: 'Entrar a mis compras',
           icon: Symbols.arrow_forward,
@@ -655,6 +690,7 @@ class _SellerLoginForm extends StatelessWidget {
     required this.password,
     required this.loading,
     required this.facebookLoading,
+    required this.errorMessage,
     required this.onContinue,
     required this.onFacebook,
   });
@@ -663,6 +699,7 @@ class _SellerLoginForm extends StatelessWidget {
   final TextEditingController password;
   final bool loading;
   final bool facebookLoading;
+  final String? errorMessage;
   final VoidCallback onContinue;
   final VoidCallback onFacebook;
 
@@ -699,7 +736,22 @@ class _SellerLoginForm extends StatelessWidget {
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => onContinue(),
         ),
-        const SizedBox(height: 18),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            key: const Key('forgot-password-seller'),
+            onPressed: loading ? null : () => context.go('/forgot-password'),
+            child: const Text('Olvidé mi contraseña'),
+          ),
+        ),
+        if (errorMessage != null) ...[
+          AuthFeedbackBanner(
+            key: const Key('login-error'),
+            message: errorMessage!,
+          ),
+          const SizedBox(height: 14),
+        ] else
+          const SizedBox(height: 4),
         _PrimaryAction(
           label: 'Entrar a mi tienda',
           icon: Symbols.arrow_forward,
@@ -1031,18 +1083,26 @@ class _FacebookProfileSheetState extends ConsumerState<_FacebookProfileSheet> {
                     textInputAction: TextInputAction.done,
                     onSubmitted: (_) => _submit(),
                   ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      key: const Key('facebook-forgot-password'),
+                      onPressed: _saving
+                          ? null
+                          : () {
+                              final router = GoRouter.of(context);
+                              Navigator.of(context).pop();
+                              router.go('/forgot-password');
+                            },
+                      child: const Text('No recuerdo mi contraseña'),
+                    ),
+                  ),
                 ],
                 if (_error != null) ...[
                   const SizedBox(height: 14),
-                  Text(
-                    _error!,
+                  AuthFeedbackBanner(
                     key: const Key('facebook-profile-error'),
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.subtitle.copyWith(
-                      color: Theme.of(context).colorScheme.error,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    message: _error!,
                   ),
                 ],
                 const SizedBox(height: 20),

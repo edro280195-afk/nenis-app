@@ -11,17 +11,21 @@ class OtpCell extends StatelessWidget {
     required this.controller,
     required this.focusNode,
     required this.autoSubmit,
+    this.width = 56,
+    this.height = 64,
   });
 
   final TextEditingController controller;
   final FocusNode focusNode;
   final bool autoSubmit;
+  final double width;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 56,
-      height: 64,
+      width: width,
+      height: height,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -30,8 +34,8 @@ class OtpCell extends StatelessWidget {
           color: focusNode.hasFocus
               ? AppColors.neni
               : controller.text.isNotEmpty
-                  ? AppColors.neni
-                  : AppColors.line,
+              ? AppColors.neni
+              : AppColors.line,
           width: 1.5,
         ),
         boxShadow: const [
@@ -73,11 +77,8 @@ class OtpCell extends StatelessWidget {
 }
 
 class OtpInput extends StatefulWidget {
-  const OtpInput({
-    super.key,
-    required this.length,
-    required this.onCompleted,
-  });
+  const OtpInput({super.key, required this.length, required this.onCompleted})
+    : assert(length > 0);
 
   final int length;
   final ValueChanged<String> onCompleted;
@@ -142,16 +143,33 @@ class _OtpInputState extends State<OtpInput> {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: List.generate(widget.length, (i) {
-        final isLast = i == widget.length - 1;
-        return OtpCell(
-          controller: _controllers[i],
-          focusNode: _focusNodes[i],
-          autoSubmit: !isLast,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const minimumGap = 8.0;
+        final availableWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : widget.length * 56.0 + (widget.length - 1) * minimumGap;
+        final cellWidth =
+            ((availableWidth - (widget.length - 1) * minimumGap) /
+                    widget.length)
+                .clamp(36.0, 56.0)
+                .toDouble();
+        final cellHeight = (cellWidth + 8).clamp(50.0, 64.0).toDouble();
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(widget.length, (i) {
+            final isLast = i == widget.length - 1;
+            return OtpCell(
+              controller: _controllers[i],
+              focusNode: _focusNodes[i],
+              autoSubmit: !isLast,
+              width: cellWidth,
+              height: cellHeight,
+            );
+          }),
         );
-      }),
+      },
     );
   }
 }

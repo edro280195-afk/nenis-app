@@ -13,6 +13,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/otp_cell.dart';
 import '../../../shared/widgets/pill_button.dart';
+import '../widgets/auth_feedback.dart';
 
 /// Confirmación del teléfono con el código de 6 dígitos enviado por WhatsApp.
 /// Se usa tanto al registrarse como cuando un login detecta un teléfono sin
@@ -27,6 +28,9 @@ class ConfirmScreen extends ConsumerStatefulWidget {
 class _ConfirmScreenState extends ConsumerState<ConfirmScreen> {
   String _code = '';
   bool _verifying = false;
+  bool _resending = false;
+  String? _errorMessage;
+  int _otpRevision = 0;
   int _seconds = 42;
   Timer? _timer;
 
@@ -59,37 +63,63 @@ class _ConfirmScreenState extends ConsumerState<ConfirmScreen> {
 
   Future<void> _verify(String code) async {
     if (_verifying) return;
-    setState(() => _verifying = true);
+    setState(() {
+      _verifying = true;
+      _errorMessage = null;
+    });
     try {
       await ref.read(authControllerProvider.notifier).confirmPhone(code);
       // Éxito: el redirect del router lleva a /home (o /claim) automáticamente.
     } on AuthException catch (e) {
       if (mounted) {
-        _toast(e.message);
-        setState(() => _verifying = false);
+        setState(() {
+          _verifying = false;
+          _errorMessage = e.message;
+          _code = '';
+          _otpRevision++;
+        });
       }
     } catch (_) {
       if (mounted) {
-        _toast('No pudimos conectar. Revisa tu internet.');
-        setState(() => _verifying = false);
+        setState(() {
+          _verifying = false;
+          _errorMessage =
+              'Ocurrió un problema inesperado. Inténtalo nuevamente.';
+          _code = '';
+          _otpRevision++;
+        });
       }
     }
   }
 
   Future<void> _resend() async {
+    if (_resending || _seconds > 0) return;
+    setState(() {
+      _resending = true;
+      _errorMessage = null;
+    });
     try {
       await ref.read(authControllerProvider.notifier).resendCode();
       _startCountdown();
-      _toast('Te reenviamos el código por WhatsApp 💌');
+      if (mounted) {
+        showAuthNotification(
+          context,
+          'Solicitamos un nuevo código para tu WhatsApp.',
+          tone: AuthFeedbackTone.success,
+        );
+      }
+    } on AuthException catch (error) {
+      if (mounted) setState(() => _errorMessage = error.message);
     } catch (_) {
-      _toast('No pudimos reenviar. Intenta de nuevo.');
+      if (mounted) {
+        setState(
+          () => _errorMessage =
+              'No pudimos solicitar otro código. Inténtalo nuevamente.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _resending = false);
     }
-  }
-
-  void _toast(String msg) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(msg)));
   }
 
   String get _maskedPhone {
@@ -175,6 +205,7 @@ class _ConfirmScreenState extends ConsumerState<ConfirmScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 22),
                   child: OtpInput(
+                    key: ValueKey('confirm-otp-$_otpRevision'),
                     length: 6,
                     onCompleted: (code) {
                       _code = code;
@@ -184,7 +215,15 @@ class _ConfirmScreenState extends ConsumerState<ConfirmScreen> {
                 ),
                 const SizedBox(height: 20),
                 Center(
-                  child: _seconds > 0
+                  child: _resending
+                      ? const SizedBox.square(
+                          dimension: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            color: AppColors.neniDeep,
+                          ),
+                        )
+                      : _seconds > 0
                       ? Text(
                           'Reenvía el código en 0:${_seconds.toString().padLeft(2, '0')}',
                           style: AppTextStyles.subtitle.copyWith(
@@ -203,6 +242,16 @@ class _ConfirmScreenState extends ConsumerState<ConfirmScreen> {
                           ),
                         ),
                 ),
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 18),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 22),
+                    child: AuthFeedbackBanner(
+                      key: const Key('confirm-error'),
+                      message: _errorMessage!,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 18),
                 if (ref.read(authControllerProvider.notifier).pendingDevMode)
                   Padding(

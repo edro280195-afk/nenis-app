@@ -13,6 +13,7 @@ import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/nenis_logo.dart';
 import '../../../shared/widgets/password_field.dart';
 import '../../../shared/widgets/pill_button.dart';
+import '../widgets/auth_feedback.dart';
 
 /// Alta de la compradora: nombre, apellido, correo, teléfono y contraseña.
 /// Al enviar, dispara el código de WhatsApp y navega a /confirm.
@@ -30,6 +31,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _phone = TextEditingController();
   final _password = TextEditingController();
   bool _loading = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -47,31 +49,37 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _submit() async {
+    if (_loading) return;
     final firstName = _firstName.text.trim();
     final lastName = _lastName.text.trim();
     final email = _email.text.trim();
     final phone = _phone.text.replaceAll(RegExp(r'\D'), '');
 
     if (firstName.isEmpty || lastName.isEmpty) {
-      _toast('Escribe tu nombre y tu apellido 🌸');
+      _setError('Escribe tu nombre y tu apellido.');
       return;
     }
     if (!_looksLikeEmail(email)) {
-      _toast('Escribe un correo válido');
+      _setError('Escribe un correo válido.');
       return;
     }
-    if (phone.length < 10) {
-      _toast('Escribe tu teléfono a 10 dígitos');
+    if (phone.length != 10) {
+      _setError('Escribe tu teléfono a 10 dígitos.');
       return;
     }
-    if (_password.text.length < 8) {
-      _toast('La contraseña debe tener al menos 8 caracteres');
+    if (_password.text.length < 8 || _password.text.length > 128) {
+      _setError('La contraseña debe tener entre 8 y 128 caracteres.');
       return;
     }
 
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+    });
     try {
-      await ref.read(authControllerProvider.notifier).registerPhone(
+      await ref
+          .read(authControllerProvider.notifier)
+          .registerPhone(
             firstName: firstName,
             lastName: lastName,
             phone: phone,
@@ -80,18 +88,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           );
       if (mounted) context.go('/confirm');
     } on AuthException catch (e) {
-      _toast(e.message);
+      _setError(e.message);
     } catch (_) {
-      _toast('No pudimos conectar. Revisa tu internet.');
+      _setError('Ocurrió un problema inesperado. Inténtalo nuevamente.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  void _toast(String msg) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(msg)));
+  void _setError(String message) {
+    if (!mounted) return;
+    setState(() => _errorMessage = message);
   }
 
   @override
@@ -111,7 +118,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   const SizedBox(height: 8),
                   Align(
                     alignment: Alignment.centerLeft,
-                    child: BackIconButton(onPressed: () => context.go('/login')),
+                    child: BackIconButton(
+                      onPressed: () => context.go('/login'),
+                    ),
                   ),
                   const SizedBox(height: 14),
                   const NenisLogo(markSize: 46, wordmarkSize: 24),
@@ -128,6 +137,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     children: [
                       Expanded(
                         child: AppTextField(
+                          key: const Key('register-first-name-field'),
                           controller: _firstName,
                           label: 'Nombre',
                           hint: 'Ana',
@@ -137,6 +147,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: AppTextField(
+                          key: const Key('register-last-name-field'),
                           controller: _lastName,
                           label: 'Apellido',
                           hint: 'López',
@@ -147,27 +158,44 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   const SizedBox(height: 14),
                   AppTextField(
+                    key: const Key('register-email-field'),
                     controller: _email,
                     label: 'Correo',
                     prefixIcon: Symbols.mail,
                     hint: 'tu@correo.com',
                     keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    autofillHints: const [AutofillHints.email],
+                    autocorrect: false,
+                    enableSuggestions: false,
                   ),
                   const SizedBox(height: 14),
                   AppTextField(
+                    key: const Key('register-phone-field'),
                     controller: _phone,
                     label: 'Teléfono (WhatsApp)',
                     prefix: '🇲🇽 +52',
                     hint: '868 145 22 90',
                     keyboardType: TextInputType.phone,
+                    textInputAction: TextInputAction.next,
+                    autofillHints: const [AutofillHints.telephoneNumber],
                   ),
                   const SizedBox(height: 14),
                   PasswordField(
+                    key: const Key('register-password-field'),
                     controller: _password,
                     label: 'Contraseña',
-                    hint: 'Mínimo 8 caracteres',
+                    hint: 'Entre 8 y 128 caracteres',
+                    textInputAction: TextInputAction.done,
                     onSubmitted: (_) => _submit(),
                   ),
+                  if (_errorMessage != null) ...[
+                    const SizedBox(height: 14),
+                    AuthFeedbackBanner(
+                      key: const Key('register-error'),
+                      message: _errorMessage!,
+                    ),
+                  ],
                   const SizedBox(height: 22),
                   _loading
                       ? const _LoadingButton()
@@ -182,7 +210,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       onTap: () => context.go('/login'),
                       child: RichText(
                         text: TextSpan(
-                          style: AppTextStyles.subtitle.copyWith(fontSize: 13.5),
+                          style: AppTextStyles.subtitle.copyWith(
+                            fontSize: 13.5,
+                          ),
                           children: [
                             const TextSpan(text: '¿Ya tienes cuenta? '),
                             TextSpan(

@@ -21,6 +21,7 @@ void main() {
     expect(find.byKey(const Key('client-phone-field')), findsOneWidget);
     expect(find.text('Entrar a mis compras'), findsOneWidget);
     expect(find.text('Continuar con Facebook'), findsOneWidget);
+    expect(find.byKey(const Key('forgot-password-client')), findsOneWidget);
     expect(find.text('Acceso de equipo'), findsNothing);
   });
 
@@ -37,6 +38,20 @@ void main() {
     expect(find.text('Entrar a mi tienda'), findsOneWidget);
     expect(find.byKey(const Key('client-phone-field')), findsNothing);
     expect(find.text('Continuar con Facebook'), findsOneWidget);
+    expect(find.byKey(const Key('forgot-password-seller')), findsOneWidget);
+  });
+
+  testWidgets('muestra un error claro cuando faltan las credenciales', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(buildSubject());
+
+    await tester.ensureVisible(find.text('Entrar a mis compras'));
+    await tester.tap(find.text('Entrar a mis compras'));
+    await tester.pump();
+
+    expect(find.byKey(const Key('login-error')), findsOneWidget);
+    expect(find.text('Escribe tu teléfono a 10 dígitos.'), findsOneWidget);
   });
 
   testWidgets('permanece desplazable en una pantalla compacta', (

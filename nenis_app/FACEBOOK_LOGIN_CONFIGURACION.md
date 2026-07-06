@@ -11,7 +11,7 @@ Este documento contiene los valores verificados en los proyectos:
 |---|---|---|
 | Facebook App ID | `1427323549158529` | Android, iOS, Meta y API |
 | Facebook Client Token | `e2e76b65a8e71ba9771ae4c07fcd9590` | Android e iOS |
-| Facebook AppSecret | No está configurado | Solamente en la API |
+| Facebook AppSecret | Guardado fuera del repositorio | Solamente en la API |
 | Paquete Android | `com.nenisapp.nenis_app` | Plataforma Android en Meta |
 | Activity Android | `com.nenisapp.nenis_app.MainActivity` | Plataforma Android en Meta |
 | Bundle ID iOS | `com.nenisapp.nenisApp` | Plataforma iOS en Meta |

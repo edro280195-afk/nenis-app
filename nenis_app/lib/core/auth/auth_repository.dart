@@ -169,17 +169,33 @@ class OtpRequestResult {
   const OtpRequestResult({
     required this.devMode,
     required this.providerConfigured,
+    required this.message,
   });
 
   final bool devMode;
   final bool providerConfigured;
+  final String message;
 
   factory OtpRequestResult.fromJson(Map<String, dynamic> json) {
+    final rawMessage = json['message'];
+    final message =
+        rawMessage is String &&
+            rawMessage.trim().isNotEmpty &&
+            rawMessage.trim().length <= 240
+        ? rawMessage.trim()
+        : 'Código enviado por WhatsApp.';
     return OtpRequestResult(
       devMode: json['devMode'] as bool? ?? false,
       providerConfigured: json['providerConfigured'] as bool? ?? false,
+      message: message,
     );
   }
+}
+
+class PasswordResetResult {
+  const PasswordResetResult(this.message);
+
+  final String message;
 }
 
 class AuthRepository {
@@ -282,6 +298,48 @@ class AuthRepository {
     }
   }
 
+  /// Solicita un código para restablecer la contraseña sin revelar si el
+  /// teléfono corresponde a una cuenta.
+  Future<OtpRequestResult> requestPasswordReset(String phone) async {
+    try {
+      final response = await _dio.post(
+        '/api/auth/password/reset/request',
+        data: {'phone': phone},
+      );
+      return OtpRequestResult.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw AuthException(
+        _message(
+          e,
+          'No pudimos enviar el código. Revisa el número e intenta de nuevo.',
+        ),
+      );
+    }
+  }
+
+  /// Confirma el código de WhatsApp y reemplaza la contraseña.
+  Future<PasswordResetResult> confirmPasswordReset({
+    required String phone,
+    required String code,
+    required String newPassword,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/api/auth/password/reset/confirm',
+        data: {'phone': phone, 'code': code, 'newPassword': newPassword},
+      );
+      final data = _responseMap(response.data);
+      return PasswordResetResult(
+        data?['message'] as String? ??
+            'Contraseña actualizada. Ya puedes iniciar sesión.',
+      );
+    } on DioException catch (e) {
+      throw AuthException(
+        _message(e, 'No pudimos actualizar la contraseña. Revisa el código.'),
+      );
+    }
+  }
+
   /// Acceso de vendedora con correo y contraseña.
   Future<Session> loginEmail(String email, String password) async {
     try {
@@ -328,11 +386,12 @@ class AuthRepository {
       case LoginStatus.cancelled:
         throw FacebookCancelledException();
       case LoginStatus.failed:
+        throw AuthException(
+          'Facebook no pudo completar el acceso. Inténtalo otra vez.',
+        );
       case LoginStatus.operationInProgress:
         throw AuthException(
-          result.message?.trim().isNotEmpty == true
-              ? result.message!
-              : 'No pudimos entrar con Facebook. Intenta de nuevo.',
+          'Ya hay un acceso con Facebook en curso. Espera un momento.',
         );
     }
   }
@@ -415,10 +474,38 @@ class AuthRepository {
   }
 
   String _message(DioException e, String fallback) {
-    final data = _responseMap(e.response?.data);
-    if (data != null && data['message'] is String) {
-      return data['message'] as String;
+    if (e.response?.statusCode == 429) {
+      return 'Hiciste varios intentos. Espera un minuto y vuelve a intentarlo.';
     }
+    if ((e.response?.statusCode ?? 0) >= 500) {
+      return 'El servicio no está disponible por el momento. Inténtalo más tarde.';
+    }
+
+    final data = _responseMap(e.response?.data);
+    final apiMessage = data?['message'];
+    if (apiMessage is String) {
+      final normalized = apiMessage.trim();
+      if (normalized.isNotEmpty && normalized.length <= 240) {
+        return normalized;
+      }
+    }
+
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+        return 'La conexión tardó demasiado. Inténtalo nuevamente.';
+      case DioExceptionType.connectionError:
+        return 'No pudimos conectar con el servidor. Revisa tu internet.';
+      case DioExceptionType.cancel:
+        return 'La operación se canceló. Puedes intentarlo de nuevo.';
+      case DioExceptionType.badCertificate:
+        return 'No pudimos establecer una conexión segura.';
+      case DioExceptionType.badResponse:
+      case DioExceptionType.unknown:
+        break;
+    }
+
     return fallback;
   }
 
