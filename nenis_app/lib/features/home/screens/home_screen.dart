@@ -159,6 +159,7 @@ class _HomeContent extends StatelessWidget {
             ],
           ),
         ),
+        if (home.isEmpty) const _EmptyHome(),
         if (home.stores.isNotEmpty) ...[
           const SizedBox(height: 20),
           _SectionHeader(title: 'Mis tiendas'),
@@ -536,6 +537,51 @@ class _ClaimBanner extends StatelessWidget {
               const Icon(Symbols.chevron_right, color: AppColors.ink3),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Estado vacío del inicio para una compradora nueva (sin pedidos ni tiendas).
+class _EmptyHome extends StatelessWidget {
+  const _EmptyHome();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 20, 22, 0),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: AppRadii.cardRadius,
+          boxShadow: AppShadows.small,
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF2D4),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(Symbols.shopping_bag,
+                  size: 32, color: AppColors.gold, fill: 1),
+            ),
+            const SizedBox(height: 14),
+            Text('Aún no hay nada por aquí',
+                textAlign: TextAlign.center, style: AppTextStyles.h2),
+            const SizedBox(height: 8),
+            Text(
+              'Cuando compres en un live o reclames tu historial, tus pedidos, puntos y tiendas aparecerán aquí.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.subtitle,
+            ),
+          ],
         ),
       ),
     );

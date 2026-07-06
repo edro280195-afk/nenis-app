@@ -14,14 +14,17 @@ import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/otp_cell.dart';
 import '../../../shared/widgets/pill_button.dart';
 
-class OtpScreen extends ConsumerStatefulWidget {
-  const OtpScreen({super.key});
+/// Confirmación del teléfono con el código de 6 dígitos enviado por WhatsApp.
+/// Se usa tanto al registrarse como cuando un login detecta un teléfono sin
+/// confirmar.
+class ConfirmScreen extends ConsumerStatefulWidget {
+  const ConfirmScreen({super.key});
 
   @override
-  ConsumerState<OtpScreen> createState() => _OtpScreenState();
+  ConsumerState<ConfirmScreen> createState() => _ConfirmScreenState();
 }
 
-class _OtpScreenState extends ConsumerState<OtpScreen> {
+class _ConfirmScreenState extends ConsumerState<ConfirmScreen> {
   String _code = '';
   bool _verifying = false;
   int _seconds = 42;
@@ -58,8 +61,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     if (_verifying) return;
     setState(() => _verifying = true);
     try {
-      await ref.read(authControllerProvider.notifier).verifyOtp(code);
-      // Éxito: el redirect del router lleva a /home automáticamente.
+      await ref.read(authControllerProvider.notifier).confirmPhone(code);
+      // Éxito: el redirect del router lleva a /home (o /claim) automáticamente.
     } on AuthException catch (e) {
       if (mounted) {
         _toast(e.message);
@@ -74,12 +77,10 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   }
 
   Future<void> _resend() async {
-    final phone = _phone;
-    if (phone == null) return;
     try {
-      await ref.read(authControllerProvider.notifier).requestOtp(phone);
+      await ref.read(authControllerProvider.notifier).resendCode();
       _startCountdown();
-      _toast('Te reenviamos el código 💌');
+      _toast('Te reenviamos el código por WhatsApp 💌');
     } catch (_) {
       _toast('No pudimos reenviar. Intenta de nuevo.');
     }
@@ -93,7 +94,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
   String get _maskedPhone {
     final p = _phone;
-    if (p == null || p.length < 2) return 'tu teléfono';
+    if (p == null || p.length < 2) return 'tu WhatsApp';
     return '+52 ··· ${p.substring(p.length - 2)}';
   }
 
@@ -126,14 +127,14 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(26),
                       gradient: const LinearGradient(
-                        colors: [Color(0xFFFFE1EC), Color(0xFFFFD0E2)],
+                        colors: [Color(0xFFD6F8DE), Color(0xFFB8F0C6)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                     ),
                     child: const Icon(
-                      Symbols.sms,
-                      color: AppColors.neniDeep,
+                      Symbols.chat,
+                      color: Color(0xFF128C4B),
                       size: 40,
                       fill: 1,
                     ),
@@ -145,13 +146,13 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                   child: Column(
                     children: [
                       Text(
-                        'Verifica tu número',
+                        'Confirma tu número',
                         textAlign: TextAlign.center,
                         style: AppTextStyles.h1,
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Escribe el código de 6 dígitos que mandamos por SMS a $_maskedPhone',
+                        'Escribe el código de 6 dígitos que te enviamos por WhatsApp a $_maskedPhone',
                         textAlign: TextAlign.center,
                         style: AppTextStyles.subtitle,
                       ),
@@ -203,7 +204,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                         ),
                 ),
                 const SizedBox(height: 18),
-                if (ref.read(authControllerProvider.notifier).pendingOtpDevMode)
+                if (ref.read(authControllerProvider.notifier).pendingDevMode)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 22),
                     child: Container(
@@ -237,9 +238,9 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 22),
                   child: _verifying
-                      ? const _OtpLoadingButton()
+                      ? const _ConfirmLoadingButton()
                       : PillButton(
-                          label: 'Verificar',
+                          label: 'Confirmar',
                           icon: Symbols.check,
                           onPressed: _code.length == 6
                               ? () => _verify(_code)
@@ -256,8 +257,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   }
 }
 
-class _OtpLoadingButton extends StatelessWidget {
-  const _OtpLoadingButton();
+class _ConfirmLoadingButton extends StatelessWidget {
+  const _ConfirmLoadingButton();
 
   @override
   Widget build(BuildContext context) {

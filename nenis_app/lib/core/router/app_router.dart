@@ -5,7 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../auth/auth_controller.dart';
 import '../../features/auth/screens/auth_welcome_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
-import '../../features/auth/screens/otp_screen.dart';
+import '../../features/auth/screens/register_screen.dart';
+import '../../features/auth/screens/confirm_screen.dart';
 import '../../features/auth/screens/claim_profile_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/store/screens/store_screen.dart';
@@ -25,7 +26,7 @@ import '../../shared/screens/splash_screen.dart';
 
 /// Rutas de acceso (sin sesión). El resto exige estar autenticado, salvo
 /// rastreo público por token.
-const _authRoutes = {'/splash', '/welcome', '/login', '/otp'};
+const _authRoutes = {'/splash', '/welcome', '/login', '/register', '/confirm'};
 
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier<int>(0);
@@ -54,15 +55,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       final session = auth.value;
       if (session == null) {
         if (loc == '/splash') return '/login';
-        if (loc == '/otp' &&
+        if (loc == '/confirm' &&
             ref.read(authControllerProvider.notifier).pendingPhone == null) {
           return '/login';
         }
         return _authRoutes.contains(loc) ? null : '/login';
       }
 
-      // Recién verificada por OTP y sin negocio propio -> a reclamar perfil.
-      if (loc == '/otp' && !session.hasMembership) return '/claim';
+      // Recién confirmada por WhatsApp y sin negocio propio -> a reclamar perfil.
+      if (loc == '/confirm' && !session.hasMembership) return '/claim';
       // Autenticada: no se queda en pantallas de acceso.
       if (_authRoutes.contains(loc)) return '/home';
       return null;
@@ -77,7 +78,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const AuthWelcomeScreen(),
       ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
-      GoRoute(path: '/otp', builder: (context, state) => const OtpScreen()),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: '/confirm',
+        builder: (context, state) => const ConfirmScreen(),
+      ),
       GoRoute(
         path: '/claim',
         builder: (context, state) => const ClaimProfileScreen(),

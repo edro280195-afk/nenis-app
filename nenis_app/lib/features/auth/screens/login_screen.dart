@@ -11,6 +11,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/nenis_logo.dart';
+import '../../../shared/widgets/password_field.dart';
 import '../../../shared/widgets/pill_button.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -22,24 +23,38 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _phone = TextEditingController();
+  final _password = TextEditingController();
   bool _loading = false;
+  bool _fbLoading = false;
 
   @override
   void dispose() {
     _phone.dispose();
+    _password.dispose();
     super.dispose();
   }
 
   Future<void> _continue() async {
-    final phone = _phone.text.trim();
-    if (phone.length < 8) {
-      _toast('Escribe tu número de teléfono 🌸');
+    final phone = _phone.text.replaceAll(RegExp(r'\D'), '');
+    if (phone.length < 10) {
+      _toast('Escribe tu teléfono a 10 dígitos 🌸');
+      return;
+    }
+    if (_password.text.isEmpty) {
+      _toast('Escribe tu contraseña');
       return;
     }
     setState(() => _loading = true);
     try {
-      await ref.read(authControllerProvider.notifier).requestOtp(phone);
-      if (mounted) context.go('/otp');
+      await ref
+          .read(authControllerProvider.notifier)
+          .loginPhone(phone, _password.text);
+      // Éxito: el redirect del router lleva a /home automáticamente.
+    } on PhoneNotVerifiedException catch (e) {
+      if (mounted) {
+        _toast(e.message);
+        context.go('/confirm');
+      }
     } on AuthException catch (e) {
       _toast(e.message);
     } catch (_) {
@@ -47,6 +62,103 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _facebookLogin() async {
+    if (_fbLoading) return;
+    setState(() => _fbLoading = true);
+    try {
+      await ref.read(authControllerProvider.notifier).loginFacebook();
+      // Éxito: el redirect del router lleva a /home automáticamente.
+    } on FacebookCancelledException {
+      // La usuaria canceló: no mostramos error.
+    } on FacebookNeedsPhoneException {
+      if (mounted) await _askPhoneForFacebook();
+    } on AuthException catch (e) {
+      _toast(e.message);
+    } catch (_) {
+      _toast('No pudimos conectar. Revisa tu internet.');
+    } finally {
+      if (mounted) setState(() => _fbLoading = false);
+    }
+  }
+
+  /// Pide el teléfono cuando Facebook crea una cuenta nueva (lo exige el backend).
+  Future<void> _askPhoneForFacebook() async {
+    final phoneCtrl = TextEditingController();
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) {
+        var saving = false;
+        return StatefulBuilder(
+          builder: (sheetContext, setSheet) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 22,
+                right: 22,
+                top: 22,
+                bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 22,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Un paso más 💕', style: AppTextStyles.h2),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Déjanos tu teléfono para terminar tu cuenta y avisarte de tus pedidos.',
+                    style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+                  ),
+                  const SizedBox(height: 16),
+                  AppTextField(
+                    controller: phoneCtrl,
+                    prefix: '🇲🇽 +52',
+                    hint: '868 145 22 90',
+                    keyboardType: TextInputType.phone,
+                  ),
+                  const SizedBox(height: 18),
+                  PillButton(
+                    label: saving ? 'Guardando…' : 'Continuar',
+                    onPressed: saving
+                        ? null
+                        : () async {
+                            final phone =
+                                phoneCtrl.text.replaceAll(RegExp(r'\D'), '');
+                            if (phone.length < 10) {
+                              _toast('Escribe tu teléfono a 10 dígitos');
+                              return;
+                            }
+                            setSheet(() => saving = true);
+                            try {
+                              await ref
+                                  .read(authControllerProvider.notifier)
+                                  .completeFacebookWithPhone(phone);
+                              if (sheetContext.mounted) {
+                                Navigator.of(sheetContext).pop();
+                              }
+                            } on AuthException catch (e) {
+                              setSheet(() => saving = false);
+                              _toast(e.message);
+                            } catch (_) {
+                              setSheet(() => saving = false);
+                              _toast('No pudimos conectar. Revisa tu internet.');
+                            }
+                          },
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+    phoneCtrl.dispose();
   }
 
   void _toast(String msg) {
@@ -64,100 +176,101 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           bottom: false,
           child: SingleChildScrollView(
             padding: const EdgeInsets.only(bottom: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 12),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 22),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const NenisLogo(markSize: 52, wordmarkSize: 28),
-                      const SizedBox(height: 4),
-                      const _LoginHero(),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Tus compras de los\nlives, en un solo lugar',
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.display,
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Rastrea pedidos, junta puntos y entra a los lives de todas tus tiendas favoritas.',
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.subtitle,
-                      ),
-                      const SizedBox(height: 22),
-                      AppTextField(
-                        controller: _phone,
-                        prefix: '🇲🇽 +52',
-                        hint: '868 145 22 90',
-                        keyboardType: TextInputType.phone,
-                        onSubmitted: (_) => _continue(),
-                      ),
-                      const SizedBox(height: 9),
-                      Row(
-                        children: [
-                          const Icon(
-                            Symbols.lock,
-                            size: 16,
-                            color: AppColors.ink3,
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              'Te mandamos un código por SMS. Sin contraseñas.',
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 22),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 12),
+                  const NenisLogo(markSize: 52, wordmarkSize: 28),
+                  const SizedBox(height: 4),
+                  const _LoginHero(),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Hola de nuevo 💕',
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.display,
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Entra con tu teléfono y contraseña para ver tus pedidos, puntos y lives.',
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.subtitle,
+                  ),
+                  const SizedBox(height: 22),
+                  AppTextField(
+                    controller: _phone,
+                    prefix: '🇲🇽 +52',
+                    hint: '868 145 22 90',
+                    keyboardType: TextInputType.phone,
+                  ),
+                  const SizedBox(height: 12),
+                  PasswordField(
+                    controller: _password,
+                    hint: 'Tu contraseña',
+                    onSubmitted: (_) => _continue(),
+                  ),
+                  const SizedBox(height: 18),
+                  _loading
+                      ? const _LoadingButton()
+                      : PillButton(
+                          label: 'Entrar',
+                          icon: Symbols.arrow_forward,
+                          onPressed: _continue,
+                        ),
+                  const SizedBox(height: 14),
+                  Center(
+                    child: GestureDetector(
+                      onTap: () => context.go('/register'),
+                      child: RichText(
+                        text: TextSpan(
+                          style: AppTextStyles.subtitle.copyWith(fontSize: 13.5),
+                          children: [
+                            const TextSpan(text: '¿Primera vez? '),
+                            TextSpan(
+                              text: 'Crea tu cuenta',
                               style: AppTextStyles.subtitle.copyWith(
-                                fontSize: 12.5,
+                                color: AppColors.neniDeep,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13.5,
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 18),
-                      _loading
-                          ? const _LoadingButton()
-                          : PillButton(
-                              label: 'Continuar',
-                              icon: Symbols.arrow_forward,
-                              onPressed: _continue,
-                            ),
-                      const SizedBox(height: 18),
-                      _divider(),
-                      const SizedBox(height: 18),
-                      PillButton(
-                        label: 'Entrar con Facebook',
-                        icon: Symbols.thumb_up,
-                        variant: PillButtonVariant.facebook,
-                        onPressed: () => _toast(
-                          'Facebook llega pronto. Por ahora entra con tu teléfono 💕',
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Al continuar aceptas los Términos y el Aviso de privacidad.',
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.subtitle.copyWith(fontSize: 12),
-                      ),
-                      const SizedBox(height: 10),
-                      Center(
-                        child: GestureDetector(
-                          onTap: _showTeamLogin,
-                          child: Text(
-                            'Acceso de equipo',
-                            style: AppTextStyles.subtitle.copyWith(
-                              color: AppColors.neniDeep,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12.5,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 18),
+                  _divider(),
+                  const SizedBox(height: 18),
+                  PillButton(
+                    label: _fbLoading ? 'Conectando…' : 'Entrar con Facebook',
+                    icon: Symbols.thumb_up,
+                    variant: PillButtonVariant.facebook,
+                    onPressed: _fbLoading ? null : _facebookLogin,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Al continuar aceptas los Términos y el Aviso de privacidad.',
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.subtitle.copyWith(fontSize: 12),
+                  ),
+                  const SizedBox(height: 10),
+                  Center(
+                    child: GestureDetector(
+                      onTap: _showTeamLogin,
+                      child: Text(
+                        'Acceso de equipo',
+                        style: AppTextStyles.subtitle.copyWith(
+                          color: AppColors.neniDeep,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -217,12 +330,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 12),
-              AppTextField(
-                controller: pass,
-                prefixIcon: Symbols.lock,
-                hint: 'Contraseña',
-                obscureText: true,
-              ),
+              PasswordField(controller: pass),
               const SizedBox(height: 18),
               PillButton(
                 label: 'Entrar',

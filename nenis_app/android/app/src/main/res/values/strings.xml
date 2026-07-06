@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NenisApp</string>
+    <string name="facebook_app_id">1427323549158529</string>
+    <string name="facebook_client_token">e2e76b65a8e71ba9771ae4c07fcd9590</string>
+    <string name="fb_login_protocol_scheme">fb1427323549158529</string>
+</resources>
