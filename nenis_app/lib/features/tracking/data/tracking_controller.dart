@@ -77,6 +77,12 @@ class TrackingController extends AsyncNotifier<OrderTracking?> {
 
     return order;
   }
+
+  void updateRating(OrderRating rating) {
+    final current = state.asData?.value;
+    if (current == null) return;
+    state = AsyncData(current.copyWith(rating: rating));
+  }
 }
 
 final trackingControllerProvider =

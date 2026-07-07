@@ -1,3 +1,23 @@
+/// Modo de seguimiento: determina qué vista se renderiza.
+enum TrackingExperienceMode {
+  /// Mapa en vivo con la ubicación GPS del repartidor.
+  liveMap,
+
+  /// Hilo Nenis con estados y tiempo estimado (sin GPS).
+  statusJourney,
+
+  /// Paquetería externa (envío por carrier).
+  carrierTracking,
+}
+
+/// Resuelve el modo de seguimiento a partir del estado del pedido.
+TrackingExperienceMode resolveTrackingMode(OrderTracking order) {
+  if (order.driverLocation != null && order.status.hasLiveMap) {
+    return TrackingExperienceMode.liveMap;
+  }
+  return TrackingExperienceMode.statusJourney;
+}
+
 /// Estados visibles del pedido en la pantalla de rastreo. Incluye el
 /// `InTransit` sintético que el backend puede mandar cuando el repartidor
 /// viene en camino a la clienta.
@@ -116,6 +136,24 @@ extension TrackingStatusDisplay on TrackingStatus {
       this == TrackingStatus.shipped ||
       this == TrackingStatus.inRoute ||
       this == TrackingStatus.inTransit;
+
+  /// Progreso del Hilo Nenis (0.0 – 1.0).
+  double get threadProgress {
+    switch (this) {
+      case TrackingStatus.pending:
+        return 0.20;
+      case TrackingStatus.confirmed:
+        return 0.45;
+      case TrackingStatus.shipped:
+      case TrackingStatus.inRoute:
+      case TrackingStatus.inTransit:
+        return 0.75;
+      case TrackingStatus.delivered:
+        return 1.0;
+      default:
+        return 0.10;
+    }
+  }
 }
 
 /// Item del pedido.
@@ -163,6 +201,32 @@ class DriverLocation {
       );
 }
 
+/// Evaluación que la clienta deja después de la entrega.
+class OrderRating {
+  const OrderRating({
+    required this.id,
+    required this.stars,
+    required this.createdAt,
+    this.reasons,
+    this.comment,
+  });
+
+  final int id;
+  final int stars;
+  final List<String>? reasons;
+  final String? comment;
+  final DateTime createdAt;
+
+  factory OrderRating.fromJson(Map<String, dynamic> j) => OrderRating(
+        id: (j['id'] as num).toInt(),
+        stars: (j['stars'] as num).toInt(),
+        reasons: (j['reasons'] as List?)?.map((e) => e as String).toList(),
+        comment: j['comment'] as String?,
+        createdAt: DateTime.tryParse((j['createdAt'] ?? '') as String) ??
+            DateTime.now(),
+      );
+}
+
 /// Vista pública del pedido devuelta por `GET /api/pedido/{accessToken}`.
 class OrderTracking {
   const OrderTracking({
@@ -185,6 +249,10 @@ class OrderTracking {
     this.queuePosition,
     this.failureReason,
     this.deliveredAt,
+    this.businessName,
+    this.businessLogoUrl,
+    this.courierName,
+    this.rating,
   });
 
   final int clientId;
@@ -206,6 +274,19 @@ class OrderTracking {
   final int? queuePosition;
   final String? failureReason;
   final DateTime? deliveredAt;
+
+  // ── V3: Campos de la experiencia Nenis ──
+  /// Nombre del negocio (protagonista de la experiencia).
+  final String? businessName;
+
+  /// URL del logo del negocio (Cloudinary).
+  final String? businessLogoUrl;
+
+  /// Nombre del repartidor asignado a la ruta.
+  final String? courierName;
+
+  /// Evaluación previa (si la clienta ya calificó este pedido).
+  final OrderRating? rating;
 
   String get driverHint {
     final ahead = deliveriesAhead ?? 0;
@@ -259,6 +340,12 @@ class OrderTracking {
         deliveredAt: j['deliveredAt'] != null
             ? DateTime.tryParse(j['deliveredAt'] as String)
             : null,
+        businessName: j['businessName'] as String?,
+        businessLogoUrl: j['businessLogoUrl'] as String?,
+        courierName: j['courierName'] as String?,
+        rating: j['rating'] != null
+            ? OrderRating.fromJson(j['rating'] as Map<String, dynamic>)
+            : null,
       );
 
   OrderTracking copyWith({
@@ -267,6 +354,7 @@ class OrderTracking {
     int? deliveriesAhead,
     int? queuePosition,
     bool? isCurrentDelivery,
+    OrderRating? rating,
   }) =>
       OrderTracking(
         clientId: clientId,
@@ -288,6 +376,10 @@ class OrderTracking {
         queuePosition: queuePosition ?? this.queuePosition,
         failureReason: failureReason,
         deliveredAt: deliveredAt,
+        businessName: businessName,
+        businessLogoUrl: businessLogoUrl,
+        courierName: courierName,
+        rating: rating ?? this.rating,
       );
 }
 

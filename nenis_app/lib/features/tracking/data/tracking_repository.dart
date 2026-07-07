@@ -33,9 +33,33 @@ class TrackingRepository {
       }
       throw TrackingException(
           'No pudimos cargar tu pedido. Revisa tu conexión e intenta de nuevo.');
-    } catch (_) {
+    }
+  }
+
+  Future<OrderRating> submitRating({
+    required String accessToken,
+    required int stars,
+    List<String>? reasons,
+    String? comment,
+  }) async {
+    try {
+      final res = await _dio.post(
+        '/api/pedido/$accessToken/rating',
+        data: {
+          'stars': stars,
+          'reasons': reasons,
+          'comment': comment,
+        },
+      );
+      return OrderRating.fromJson(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 410) {
+        throw TrackingException('Este enlace ha expirado.');
+      }
       throw TrackingException(
-          'No pudimos cargar tu pedido. Revisa tu conexión e intenta de nuevo.');
+          e.response?.data?['message'] ?? 'No se pudo enviar la calificación.');
+    } catch (_) {
+      throw TrackingException('Error de conexión.');
     }
   }
 }
