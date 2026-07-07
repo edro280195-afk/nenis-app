@@ -216,7 +216,7 @@ class _MapTopBar extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('Pedido #$orderId',
+                          Text(orderId.isEmpty ? 'Tu pedido' : 'Pedido #$orderId',
                               style: AppTextStyles.body.copyWith(
                                   fontSize: 14, fontWeight: FontWeight.w700)),
                           Text('Rastreo en vivo',

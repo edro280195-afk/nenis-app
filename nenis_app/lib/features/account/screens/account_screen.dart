@@ -10,7 +10,6 @@ import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
-import '../../../shared/widgets/glass_bottom_nav.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/store_avatar.dart';
 import '../data/account_models.dart';
@@ -49,7 +48,7 @@ class BuyerAccountScreen extends ConsumerWidget {
                 onRefresh: () async => ref.invalidate(myClaimedClientsProvider),
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(22, 4, 22, 110),
+                  padding: const EdgeInsets.fromLTRB(22, 4, 22, 24),
                   children: [
                     const _AccountHeader(),
                     const SizedBox(height: 22),
@@ -60,8 +59,7 @@ class BuyerAccountScreen extends ConsumerWidget {
                     claimed.when(
                       loading: () => const _StoresLoading(),
                       error: (e, _) => _StoresError(
-                        onRetry: () =>
-                            ref.invalidate(myClaimedClientsProvider),
+                        onRetry: () => ref.invalidate(myClaimedClientsProvider),
                       ),
                       data: (stores) => stores.isEmpty
                           ? const _StoresEmpty()
@@ -89,19 +87,12 @@ class BuyerAccountScreen extends ConsumerWidget {
                     const SizedBox(height: 18),
                     _LogoutButton(
                       onConfirm: () async {
-                        await ref.read(authControllerProvider.notifier).logout();
+                        await ref
+                            .read(authControllerProvider.notifier)
+                            .logout();
                       },
                     ),
                   ],
-                ),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: GlassBottomNav(
-                  items: buildDefaultNavItems(),
-                  currentRoute: '/account',
                 ),
               ),
             ],
@@ -125,11 +116,15 @@ class _AccountHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Mi cuenta',
-                    style: AppTextStyles.h1.copyWith(fontSize: 26)),
+                Text(
+                  'Mi cuenta',
+                  style: AppTextStyles.h1.copyWith(fontSize: 26),
+                ),
                 const SizedBox(height: 2),
-                Text('Gestiona tu perfil y las tiendas donde compras.',
-                    style: AppTextStyles.subtitle.copyWith(fontSize: 12.5)),
+                Text(
+                  'Gestiona tu perfil y las tiendas donde compras.',
+                  style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+                ),
               ],
             ),
           ),
@@ -145,9 +140,12 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(label,
-        style: AppTextStyles.eyebrow(AppColors.neniDeep)
-            .copyWith(letterSpacing: 1.0));
+    return Text(
+      label,
+      style: AppTextStyles.eyebrow(
+        AppColors.neniDeep,
+      ).copyWith(letterSpacing: 1.0),
+    );
   }
 }
 
@@ -194,12 +192,12 @@ class _ProfileCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Row(
                   children: [
-                    const Icon(Symbols.call,
-                        size: 13, color: AppColors.ink2),
+                    const Icon(Symbols.call, size: 13, color: AppColors.ink2),
                     const SizedBox(width: 5),
-                    Text('+52 ··· XX',
-                        style: AppTextStyles.subtitle
-                            .copyWith(fontSize: 12.5)),
+                    Text(
+                      '+52 ··· XX',
+                      style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+                    ),
                     const SizedBox(width: 6),
                     Container(
                       width: 4,
@@ -210,15 +208,20 @@ class _ProfileCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    const Icon(Symbols.verified,
-                        size: 14, color: AppColors.statusDeliveredFg),
+                    const Icon(
+                      Symbols.verified,
+                      size: 14,
+                      color: AppColors.statusDeliveredFg,
+                    ),
                     const SizedBox(width: 3),
-                    Text('Verificado',
-                        style: AppTextStyles.subtitle.copyWith(
-                          fontSize: 12.5,
-                          color: AppColors.statusDeliveredFg,
-                          fontWeight: FontWeight.w600,
-                        )),
+                    Text(
+                      'Verificado',
+                      style: AppTextStyles.subtitle.copyWith(
+                        fontSize: 12.5,
+                        color: AppColors.statusDeliveredFg,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -283,23 +286,33 @@ class _ClaimedStoreRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(store.businessName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.body.copyWith(
-                        fontSize: 14.5, fontWeight: FontWeight.w600)),
+                Text(
+                  store.businessName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(store.linkedByLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.subtitle.copyWith(
-                      fontSize: 11.5,
-                      color: AppColors.ink2,
-                    )),
+                Text(
+                  store.linkedByLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.subtitle.copyWith(
+                    fontSize: 11.5,
+                    color: AppColors.ink2,
+                  ),
+                ),
                 const SizedBox(height: 1),
-                Text('Vinculada el $fecha',
-                    style: AppTextStyles.subtitle
-                        .copyWith(fontSize: 11, color: AppColors.ink3)),
+                Text(
+                  'Vinculada el $fecha',
+                  style: AppTextStyles.subtitle.copyWith(
+                    fontSize: 11,
+                    color: AppColors.ink3,
+                  ),
+                ),
               ],
             ),
           ),
@@ -331,22 +344,28 @@ class _StoresEmpty extends StatelessWidget {
               color: const Color(0xFFFFE1EC),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(Symbols.storefront,
-                color: AppColors.neniDeep, size: 22),
+            child: const Icon(
+              Symbols.storefront,
+              color: AppColors.neniDeep,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Aún no tienes tiendas',
-                    style: AppTextStyles.body.copyWith(
-                        fontSize: 14, fontWeight: FontWeight.w600)),
+                Text(
+                  'Aún no tienes tiendas',
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 2),
                 Text(
                   'Cuando abras un pedido desde el link de una tienda o ella registre tu número, aparecerá aquí.',
-                  style:
-                      AppTextStyles.subtitle.copyWith(fontSize: 12),
+                  style: AppTextStyles.subtitle.copyWith(fontSize: 12),
                 ),
               ],
             ),
@@ -400,22 +419,28 @@ class _StoresError extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Symbols.cloud_off,
-                  size: 22, color: AppColors.ink3),
+              const Icon(Symbols.cloud_off, size: 22, color: AppColors.ink3),
               const SizedBox(width: 10),
-              Text('No pudimos cargar tus tiendas',
-                  style: AppTextStyles.body.copyWith(
-                      fontSize: 14, fontWeight: FontWeight.w600)),
+              Text(
+                'No pudimos cargar tus tiendas',
+                style: AppTextStyles.body.copyWith(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 6),
-          Text('Revisa tu conexión e intenta de nuevo.',
-              style: AppTextStyles.subtitle.copyWith(fontSize: 12)),
+          Text(
+            'Revisa tu conexión e intenta de nuevo.',
+            style: AppTextStyles.subtitle.copyWith(fontSize: 12),
+          ),
           const SizedBox(height: 12),
           PillButton(
-              label: 'Reintentar',
-              icon: Symbols.refresh,
-              onPressed: onRetry),
+            label: 'Reintentar',
+            icon: Symbols.refresh,
+            onPressed: onRetry,
+          ),
         ],
       ),
     );
@@ -465,13 +490,21 @@ class _AccountMenuCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title,
-                        style: AppTextStyles.body.copyWith(
-                            fontSize: 14.5, fontWeight: FontWeight.w600)),
+                    Text(
+                      title,
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 1),
-                    Text(subtitle,
-                        style: AppTextStyles.subtitle
-                            .copyWith(fontSize: 11.5, color: AppColors.ink3)),
+                    Text(
+                      subtitle,
+                      style: AppTextStyles.subtitle.copyWith(
+                        fontSize: 11.5,
+                        color: AppColors.ink3,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -492,11 +525,11 @@ class _LogoutButton extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text('¿Cerrar sesión?'),
         content: const Text(
-            'Tendrás que volver a verificar tu número para entrar.'),
+          'Tendrás que volver a verificar tu número para entrar.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -504,10 +537,13 @@ class _LogoutButton extends StatelessWidget {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Cerrar sesión',
-                style: TextStyle(
-                    color: AppColors.neniDeep,
-                    fontWeight: FontWeight.w600)),
+            child: Text(
+              'Cerrar sesión',
+              style: TextStyle(
+                color: AppColors.neniDeep,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),

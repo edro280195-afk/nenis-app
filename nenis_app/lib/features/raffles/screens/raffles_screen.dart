@@ -10,7 +10,6 @@ import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/color_hex.dart';
 import '../../../shared/widgets/background.dart';
-import '../../../shared/widgets/glass_bottom_nav.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/segmented.dart';
 import '../data/raffles_models.dart';
@@ -29,52 +28,38 @@ class RafflesScreen extends ConsumerWidget {
       body: NeniBackground(
         child: SafeArea(
           bottom: false,
-          child: Stack(
-            children: [
-              feed.when(
-                loading: () => const Center(
-                  child: CircularProgressIndicator(color: AppColors.neni),
-                ),
-                error: (e, _) => _RafflesError(
-                  onRetry: () => ref.invalidate(rafflesControllerProvider),
-                ),
-                data: (raffles) {
-                  final filtered = _applyFilter(raffles, filter);
-                  return Column(
-                    children: [
-                      const _RafflesHeader(),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(22, 12, 22, 12),
-                        child: SegmentedControl(
-                          items: RafflesFilter.values
-                              .map((f) => SegmentedItem(label: f.label))
-                              .toList(),
-                          selectedIndex:
-                              RafflesFilter.values.indexOf(filter),
-                          onChanged: (i) => ref
-                              .read(rafflesControllerProvider.notifier)
-                              .setFilter(RafflesFilter.values[i]),
-                        ),
-                      ),
-                      Expanded(
-                        child: filtered.isEmpty
-                            ? _RafflesEmpty(filter: filter)
-                            : _RafflesList(raffles: filtered),
-                      ),
-                    ],
-                  );
-                },
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: GlassBottomNav(
-                  items: buildDefaultNavItems(),
-                  currentRoute: '/raffles',
-                ),
-              ),
-            ],
+          child: feed.when(
+            loading: () => const Center(
+              child: CircularProgressIndicator(color: AppColors.neni),
+            ),
+            error: (e, _) => _RafflesError(
+              onRetry: () => ref.invalidate(rafflesControllerProvider),
+            ),
+            data: (raffles) {
+              final filtered = _applyFilter(raffles, filter);
+              return Column(
+                children: [
+                  const _RafflesHeader(),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 12, 22, 12),
+                    child: SegmentedControl(
+                      items: RafflesFilter.values
+                          .map((f) => SegmentedItem(label: f.label))
+                          .toList(),
+                      selectedIndex: RafflesFilter.values.indexOf(filter),
+                      onChanged: (i) => ref
+                          .read(rafflesControllerProvider.notifier)
+                          .setFilter(RafflesFilter.values[i]),
+                    ),
+                  ),
+                  Expanded(
+                    child: filtered.isEmpty
+                        ? _RafflesEmpty(filter: filter)
+                        : _RafflesList(raffles: filtered),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -103,22 +88,26 @@ class _RafflesHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Sorteos',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 26,
-                fontWeight: FontWeight.w700,
-                color: AppColors.ink,
-                letterSpacing: -0.4,
-              )),
+          Text(
+            'Sorteos',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 26,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
+              letterSpacing: -0.4,
+            ),
+          ),
           SizedBox(height: 2),
-          Text('Participa y gana con tus tiendas favoritas.',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 12.5,
-                fontWeight: FontWeight.w500,
-                color: AppColors.ink2,
-              )),
+          Text(
+            'Participa y gana con tus tiendas favoritas.',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
+              color: AppColors.ink2,
+            ),
+          ),
         ],
       ),
     );
@@ -135,7 +124,7 @@ class _RafflesList extends ConsumerWidget {
       color: AppColors.neniDeep,
       onRefresh: () async => ref.invalidate(rafflesControllerProvider),
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(22, 0, 22, 110),
+        padding: const EdgeInsets.fromLTRB(22, 0, 22, 24),
         itemCount: raffles.length,
         itemBuilder: (context, i) => Padding(
           padding: const EdgeInsets.only(bottom: 12),
@@ -183,22 +172,33 @@ class _RaffleCard extends StatelessWidget {
                     ),
                     borderRadius: BorderRadius.circular(15),
                   ),
-                  child: const Icon(Symbols.celebration,
-                      color: Colors.white, size: 26),
+                  child: const Icon(
+                    Symbols.celebration,
+                    color: Colors.white,
+                    size: 26,
+                  ),
                 ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(raffle.businessName,
-                        style: AppTextStyles.subtitle
-                            .copyWith(fontSize: 11.5, color: AppColors.ink3)),
-                    Text(raffle.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.body.copyWith(
-                            fontSize: 15.5, fontWeight: FontWeight.w700)),
+                    Text(
+                      raffle.businessName,
+                      style: AppTextStyles.subtitle.copyWith(
+                        fontSize: 11.5,
+                        color: AppColors.ink3,
+                      ),
+                    ),
+                    Text(
+                      raffle.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -208,8 +208,11 @@ class _RaffleCard extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              const Icon(Symbols.card_giftcard,
-                  size: 14, color: AppColors.neniDeep),
+              const Icon(
+                Symbols.card_giftcard,
+                size: 14,
+                color: AppColors.neniDeep,
+              ),
               const SizedBox(width: 5),
               Expanded(
                 child: Text(
@@ -218,7 +221,9 @@ class _RaffleCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.subtitle.copyWith(
-                      fontSize: 12.5, color: AppColors.ink2),
+                    fontSize: 12.5,
+                    color: AppColors.ink2,
+                  ),
                 ),
               ),
             ],
@@ -226,12 +231,19 @@ class _RaffleCard extends StatelessWidget {
           const SizedBox(height: 6),
           Row(
             children: [
-              const Icon(Symbols.calendar_today,
-                  size: 14, color: AppColors.ink3),
+              const Icon(
+                Symbols.calendar_today,
+                size: 14,
+                color: AppColors.ink3,
+              ),
               const SizedBox(width: 5),
-              Text('Sorteo: ${_formatDate(raffle.raffleDate)}',
-                  style: AppTextStyles.subtitle
-                      .copyWith(fontSize: 12, color: AppColors.ink3)),
+              Text(
+                'Sorteo: ${_formatDate(raffle.raffleDate)}',
+                style: AppTextStyles.subtitle.copyWith(
+                  fontSize: 12,
+                  color: AppColors.ink3,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -239,8 +251,10 @@ class _RaffleCard extends StatelessWidget {
             children: [
               if (raffle.isMineEntered)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFF7E6),
                     borderRadius: AppRadii.pillRadius,
@@ -248,8 +262,11 @@ class _RaffleCard extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Symbols.confirmation_number,
-                          size: 14, color: AppColors.gold),
+                      const Icon(
+                        Symbols.confirmation_number,
+                        size: 14,
+                        color: AppColors.gold,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         raffle.myEntryCount == 1
@@ -265,8 +282,10 @@ class _RaffleCard extends StatelessWidget {
                 )
               else
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.segTrack,
                     borderRadius: AppRadii.pillRadius,
@@ -358,20 +377,19 @@ class _Pill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: AppRadii.pillRadius,
-      ),
+      decoration: BoxDecoration(color: bg, borderRadius: AppRadii.pillRadius),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 12, color: fg),
           const SizedBox(width: 4),
-          Text(label,
-              style: AppTextStyles.chip.copyWith(
-                color: fg,
-                fontWeight: FontWeight.w700,
-              )),
+          Text(
+            label,
+            style: AppTextStyles.chip.copyWith(
+              color: fg,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
@@ -393,16 +411,21 @@ class _WinnerBadge extends StatelessWidget {
       child: const Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Symbols.celebration,
-              size: 14, color: AppColors.statusDeliveredFg),
+          Icon(
+            Symbols.celebration,
+            size: 14,
+            color: AppColors.statusDeliveredFg,
+          ),
           SizedBox(width: 4),
-          Text('¡Ganaste!',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
-                color: AppColors.statusDeliveredFg,
-              )),
+          Text(
+            '¡Ganaste!',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.statusDeliveredFg,
+            ),
+          ),
         ],
       ),
     );
@@ -438,7 +461,7 @@ class _RafflesEmpty extends StatelessWidget {
       onRefresh: () async {},
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(top: 30, bottom: 110),
+        padding: const EdgeInsets.only(top: 30, bottom: 24),
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 30),
@@ -451,26 +474,32 @@ class _RafflesEmpty extends StatelessWidget {
                     color: isActive
                         ? const Color(0xFFFFE1EC)
                         : (isMine
-                            ? const Color(0xFFFFF2D4)
-                            : const Color(0xFFD9F3E6)),
+                              ? const Color(0xFFFFF2D4)
+                              : const Color(0xFFD9F3E6)),
                     borderRadius: BorderRadius.circular(28),
                   ),
                   child: Icon(
                     icon,
                     color: isActive
                         ? AppColors.neniDeep
-                        : (isMine ? AppColors.gold : AppColors.statusDeliveredFg),
+                        : (isMine
+                              ? AppColors.gold
+                              : AppColors.statusDeliveredFg),
                     size: 40,
                   ),
                 ),
                 const SizedBox(height: 18),
-                Text(title,
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.h2.copyWith(fontSize: 18)),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.h2.copyWith(fontSize: 18),
+                ),
                 const SizedBox(height: 8),
-                Text(body,
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.subtitle.copyWith(fontSize: 13)),
+                Text(
+                  body,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.subtitle.copyWith(fontSize: 13),
+                ),
                 const SizedBox(height: 22),
                 PillButton(
                   label: 'Explorar tiendas',
@@ -499,16 +528,23 @@ class _RafflesError extends StatelessWidget {
         children: [
           const Icon(Symbols.cloud_off, size: 46, color: AppColors.ink3),
           const SizedBox(height: 14),
-          Text('No pudimos cargar tus sorteos',
-              textAlign: TextAlign.center, style: AppTextStyles.h2),
+          Text(
+            'No pudimos cargar tus sorteos',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.h2,
+          ),
           const SizedBox(height: 8),
-          Text('Revisa tu conexión e intenta de nuevo.',
-              textAlign: TextAlign.center, style: AppTextStyles.subtitle),
+          Text(
+            'Revisa tu conexión e intenta de nuevo.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.subtitle,
+          ),
           const SizedBox(height: 22),
           PillButton(
-              label: 'Reintentar',
-              icon: Symbols.refresh,
-              onPressed: onRetry),
+            label: 'Reintentar',
+            icon: Symbols.refresh,
+            onPressed: onRetry,
+          ),
         ],
       ),
     );

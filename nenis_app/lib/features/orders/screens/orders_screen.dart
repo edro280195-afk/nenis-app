@@ -10,7 +10,6 @@ import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/color_hex.dart';
 import '../../../shared/widgets/background.dart';
-import '../../../shared/widgets/glass_bottom_nav.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/segmented.dart';
 import '../../../shared/widgets/status_chip.dart';
@@ -45,44 +44,30 @@ class BuyerOrdersScreen extends ConsumerWidget {
       body: NeniBackground(
         child: SafeArea(
           bottom: false,
-          child: Stack(
+          child: Column(
             children: [
-              Column(
-                children: [
-                  const _OrdersHeader(),
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(22, 8, 22, 14),
-                    child: SegmentedControl(
-                      items: OrdersFilter.values
-                          .map((f) => SegmentedItem(label: f.label))
-                          .toList(),
-                      selectedIndex: OrdersFilter.values.indexOf(filter),
-                      onChanged: (i) => ref
-                          .read(ordersControllerProvider.notifier)
-                          .setFilter(OrdersFilter.values[i]),
-                    ),
-                  ),
-                  Expanded(
-                    child: feed.when(
-                      loading: () => const Center(
-                        child: CircularProgressIndicator(color: AppColors.neni),
-                      ),
-                      error: (e, _) => _OrdersError(
-                        onRetry: () =>
-                            ref.invalidate(ordersControllerProvider),
-                      ),
-                      data: (page) => _OrdersList(page: page),
-                    ),
-                  ),
-                ],
+              const _OrdersHeader(),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(22, 8, 22, 14),
+                child: SegmentedControl(
+                  items: OrdersFilter.values
+                      .map((f) => SegmentedItem(label: f.label))
+                      .toList(),
+                  selectedIndex: OrdersFilter.values.indexOf(filter),
+                  onChanged: (i) => ref
+                      .read(ordersControllerProvider.notifier)
+                      .setFilter(OrdersFilter.values[i]),
+                ),
               ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: GlassBottomNav(
-                  items: buildDefaultNavItems(),
-                  currentRoute: '/orders',
+              Expanded(
+                child: feed.when(
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(color: AppColors.neni),
+                  ),
+                  error: (e, _) => _OrdersError(
+                    onRetry: () => ref.invalidate(ordersControllerProvider),
+                  ),
+                  data: (page) => _OrdersList(page: page),
                 ),
               ),
             ],
@@ -106,11 +91,15 @@ class _OrdersHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Mis pedidos',
-                    style: AppTextStyles.h1.copyWith(fontSize: 26)),
+                Text(
+                  'Mis pedidos',
+                  style: AppTextStyles.h1.copyWith(fontSize: 26),
+                ),
                 const SizedBox(height: 2),
-                Text('Tu historial con todas tus tiendas.',
-                    style: AppTextStyles.subtitle.copyWith(fontSize: 12.5)),
+                Text(
+                  'Tu historial con todas tus tiendas.',
+                  style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+                ),
               ],
             ),
           ),
@@ -132,11 +121,8 @@ class _OrdersList extends ConsumerWidget {
         onRefresh: () async => ref.invalidate(ordersControllerProvider),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.only(bottom: 110),
-          children: const [
-            SizedBox(height: 40),
-            _OrdersEmpty(),
-          ],
+          padding: const EdgeInsets.only(bottom: 24),
+          children: const [SizedBox(height: 40), _OrdersEmpty()],
         ),
       );
     }
@@ -145,7 +131,7 @@ class _OrdersList extends ConsumerWidget {
       color: AppColors.neniDeep,
       onRefresh: () async => ref.invalidate(ordersControllerProvider),
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(22, 0, 22, 110),
+        padding: const EdgeInsets.fromLTRB(22, 0, 22, 24),
         itemCount: page.orders.length + 1,
         itemBuilder: (context, i) {
           if (i == page.orders.length) {
@@ -174,7 +160,8 @@ class _OrderRow extends StatelessWidget {
     final dateLabel = _formatDate(order.createdAt);
     return GestureDetector(
       onTap: () => context.go(
-          '/tracking/${order.orderId}?token=${order.accessToken ?? ''}'),
+        '/tracking/${order.orderId}?token=${order.accessToken ?? ''}',
+      ),
       child: Container(
         padding: const EdgeInsets.all(13),
         decoration: BoxDecoration(
@@ -196,18 +183,28 @@ class _OrderRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Pedido #${order.orderId}',
-                      style: AppTextStyles.body.copyWith(
-                          fontSize: 14.5, fontWeight: FontWeight.w600)),
+                  Text(
+                    'Pedido #${order.orderId}',
+                    style: AppTextStyles.body.copyWith(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 1),
-                  Text('${order.businessName} · $items',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.subtitle.copyWith(fontSize: 12.5)),
+                  Text(
+                    '${order.businessName} · $items',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+                  ),
                   const SizedBox(height: 1),
-                  Text(dateLabel,
-                      style: AppTextStyles.subtitle
-                          .copyWith(fontSize: 11.5, color: AppColors.ink3)),
+                  Text(
+                    dateLabel,
+                    style: AppTextStyles.subtitle.copyWith(
+                      fontSize: 11.5,
+                      color: AppColors.ink3,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -230,8 +227,10 @@ class _Pager extends ConsumerWidget {
       return Padding(
         padding: const EdgeInsets.only(top: 4),
         child: Center(
-          child: Text('${page.total} pedido${page.total == 1 ? '' : 's'}',
-              style: AppTextStyles.subtitle.copyWith(fontSize: 12)),
+          child: Text(
+            '${page.total} pedido${page.total == 1 ? '' : 's'}',
+            style: AppTextStyles.subtitle.copyWith(fontSize: 12),
+          ),
         ),
       );
     }
@@ -248,8 +247,10 @@ class _Pager extends ConsumerWidget {
             onTap: page.hasPrev ? notifier.prevPage : null,
           ),
           const SizedBox(width: 12),
-          Text('Página ${page.page} de ${page.totalPages}',
-              style: AppTextStyles.subtitle.copyWith(fontSize: 12.5)),
+          Text(
+            'Página ${page.page} de ${page.totalPages}',
+            style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+          ),
           const SizedBox(width: 12),
           _PagerButton(
             icon: Symbols.chevron_right,
@@ -283,9 +284,14 @@ class _PagerButton extends StatelessWidget {
     final children = <Widget>[
       if (!trailingIcon) Icon(icon, size: 16, color: fg),
       if (!trailingIcon) const SizedBox(width: 4),
-      Text(label,
-          style: AppTextStyles.body.copyWith(
-              fontSize: 13, fontWeight: FontWeight.w600, color: fg)),
+      Text(
+        label,
+        style: AppTextStyles.body.copyWith(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: fg,
+        ),
+      ),
       if (trailingIcon) const SizedBox(width: 4),
       if (trailingIcon) Icon(icon, size: 16, color: fg),
     ];
@@ -324,13 +330,18 @@ class _OrdersEmpty extends StatelessWidget {
               color: const Color(0xFFFFE1EC),
               borderRadius: BorderRadius.circular(28),
             ),
-            child: const Icon(Symbols.receipt_long,
-                color: AppColors.neniDeep, size: 40),
+            child: const Icon(
+              Symbols.receipt_long,
+              color: AppColors.neniDeep,
+              size: 40,
+            ),
           ),
           const SizedBox(height: 18),
-          Text('Aún no hay pedidos aquí',
-              textAlign: TextAlign.center,
-              style: AppTextStyles.h2.copyWith(fontSize: 18)),
+          Text(
+            'Aún no hay pedidos aquí',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.h2.copyWith(fontSize: 18),
+          ),
           const SizedBox(height: 8),
           Text(
             'Cuando hagas un pedido con alguna de tus tiendas aparecerá en este lugar.',
@@ -363,16 +374,23 @@ class _OrdersError extends StatelessWidget {
         children: [
           const Icon(Symbols.cloud_off, size: 46, color: AppColors.ink3),
           const SizedBox(height: 14),
-          Text('No pudimos cargar tus pedidos',
-              textAlign: TextAlign.center, style: AppTextStyles.h2),
+          Text(
+            'No pudimos cargar tus pedidos',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.h2,
+          ),
           const SizedBox(height: 8),
-          Text('Revisa tu conexión e intenta de nuevo.',
-              textAlign: TextAlign.center, style: AppTextStyles.subtitle),
+          Text(
+            'Revisa tu conexión e intenta de nuevo.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.subtitle,
+          ),
           const SizedBox(height: 22),
           PillButton(
-              label: 'Reintentar',
-              icon: Symbols.refresh,
-              onPressed: onRetry),
+            label: 'Reintentar',
+            icon: Symbols.refresh,
+            onPressed: onRetry,
+          ),
         ],
       ),
     );

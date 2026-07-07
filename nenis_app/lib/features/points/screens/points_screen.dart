@@ -9,7 +9,6 @@ import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/color_hex.dart';
 import '../../../shared/widgets/background.dart';
-import '../../../shared/widgets/glass_bottom_nav.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/store_avatar.dart';
 import '../data/points_models.dart';
@@ -27,27 +26,13 @@ class PointsScreen extends ConsumerWidget {
       body: NeniBackground(
         child: SafeArea(
           bottom: false,
-          child: Stack(
-            children: [
-              feed.when(
-                loading: () => const Center(
-                  child: CircularProgressIndicator(color: AppColors.neni),
-                ),
-                error: (e, _) => _PointsError(
-                  onRetry: () => ref.invalidate(pointsFeedProvider),
-                ),
-                data: (stores) => _PointsContent(stores: stores),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: GlassBottomNav(
-                  items: buildDefaultNavItems(),
-                  currentRoute: '/points',
-                ),
-              ),
-            ],
+          child: feed.when(
+            loading: () => const Center(
+              child: CircularProgressIndicator(color: AppColors.neni),
+            ),
+            error: (e, _) =>
+                _PointsError(onRetry: () => ref.invalidate(pointsFeedProvider)),
+            data: (stores) => _PointsContent(stores: stores),
           ),
         ),
       ),
@@ -69,7 +54,7 @@ class _PointsContent extends ConsumerWidget {
         onRefresh: () async => ref.invalidate(pointsFeedProvider),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.only(bottom: 110),
+          padding: const EdgeInsets.only(bottom: 24),
           children: const [
             SizedBox(height: 12),
             _PointsHeader(),
@@ -88,7 +73,7 @@ class _PointsContent extends ConsumerWidget {
       color: AppColors.neniDeep,
       onRefresh: () async => ref.invalidate(pointsFeedProvider),
       child: ListView(
-        padding: const EdgeInsets.only(bottom: 110),
+        padding: const EdgeInsets.only(bottom: 24),
         children: [
           const _PointsHeader(),
           const SizedBox(height: 16),
@@ -108,10 +93,12 @@ class _PointsContent extends ConsumerWidget {
             const SizedBox(height: 12),
             ...stores
                 .where((s) => s.hasRewards)
-                .map((s) => Padding(
-                      padding: const EdgeInsets.only(bottom: 18),
-                      child: _RewardsByStore(store: s),
-                    )),
+                .map(
+                  (s) => Padding(
+                    padding: const EdgeInsets.only(bottom: 18),
+                    child: _RewardsByStore(store: s),
+                  ),
+                ),
           ],
         ],
       ),
@@ -129,22 +116,26 @@ class _PointsHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Tus puntos',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 26,
-                fontWeight: FontWeight.w700,
-                color: AppColors.ink,
-                letterSpacing: -0.4,
-              )),
+          Text(
+            'Tus puntos',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 26,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
+              letterSpacing: -0.4,
+            ),
+          ),
           SizedBox(height: 2),
-          Text('Tu lealtad con todas tus tiendas.',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 12.5,
-                fontWeight: FontWeight.w500,
-                color: AppColors.ink2,
-              )),
+          Text(
+            'Tu lealtad con todas tus tiendas.',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
+              color: AppColors.ink2,
+            ),
+          ),
         ],
       ),
     );
@@ -192,22 +183,28 @@ class _TotalHero extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Puntos acumulados',
-                      style: AppTextStyles.subtitle.copyWith(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.ink2,
-                      )),
-                  const SizedBox(height: 2),
-                  Text('$total',
-                      style: AppTextStyles.display
-                          .copyWith(fontSize: 38, letterSpacing: -0.8)),
                   Text(
-                    storeCount == 1
-                        ? 'en 1 tienda'
-                        : 'en $storeCount tiendas',
-                    style: AppTextStyles.subtitle
-                        .copyWith(fontSize: 12, color: AppColors.ink3),
+                    'Puntos acumulados',
+                    style: AppTextStyles.subtitle.copyWith(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.ink2,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '$total',
+                    style: AppTextStyles.display.copyWith(
+                      fontSize: 38,
+                      letterSpacing: -0.8,
+                    ),
+                  ),
+                  Text(
+                    storeCount == 1 ? 'en 1 tienda' : 'en $storeCount tiendas',
+                    style: AppTextStyles.subtitle.copyWith(
+                      fontSize: 12,
+                      color: AppColors.ink3,
+                    ),
                   ),
                 ],
               ),
@@ -266,15 +263,20 @@ class _StorePointsRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(store.businessName,
-                      style: AppTextStyles.body.copyWith(
-                          fontSize: 14.5, fontWeight: FontWeight.w600)),
+                  Text(
+                    store.businessName,
+                    style: AppTextStyles.body.copyWith(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 1),
-                  Text('$pointsLabel acumulados aquí$canjea',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.subtitle
-                          .copyWith(fontSize: 12.5)),
+                  Text(
+                    '$pointsLabel acumulados aquí$canjea',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+                  ),
                 ],
               ),
             ),
@@ -318,9 +320,13 @@ class _RewardsByStore extends StatelessWidget {
                   ),
                 ),
               ),
-              Text('${store.rewards.length} premios',
-                  style: AppTextStyles.subtitle
-                      .copyWith(fontSize: 11.5, color: AppColors.ink3)),
+              Text(
+                '${store.rewards.length} premios',
+                style: AppTextStyles.subtitle.copyWith(
+                  fontSize: 11.5,
+                  color: AppColors.ink3,
+                ),
+              ),
             ],
           ),
         ),
@@ -392,8 +398,7 @@ class _RewardCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: const Color(0xFFFFF7E6),
                 borderRadius: AppRadii.pillRadius,
@@ -496,9 +501,11 @@ class _PointsEmpty extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-          Text('Aún no tienes puntos',
-              textAlign: TextAlign.center,
-              style: AppTextStyles.h2.copyWith(fontSize: 18)),
+          Text(
+            'Aún no tienes puntos',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.h2.copyWith(fontSize: 18),
+          ),
           const SizedBox(height: 8),
           Text(
             'Reclama tu perfil para juntar puntos con tus tiendas y desbloquear premios.',
@@ -531,16 +538,23 @@ class _PointsError extends StatelessWidget {
         children: [
           const Icon(Symbols.cloud_off, size: 46, color: AppColors.ink3),
           const SizedBox(height: 14),
-          Text('No pudimos cargar tus puntos',
-              textAlign: TextAlign.center, style: AppTextStyles.h2),
+          Text(
+            'No pudimos cargar tus puntos',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.h2,
+          ),
           const SizedBox(height: 8),
-          Text('Revisa tu conexión e intenta de nuevo.',
-              textAlign: TextAlign.center, style: AppTextStyles.subtitle),
+          Text(
+            'Revisa tu conexión e intenta de nuevo.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.subtitle,
+          ),
           const SizedBox(height: 22),
           PillButton(
-              label: 'Reintentar',
-              icon: Symbols.refresh,
-              onPressed: onRetry),
+            label: 'Reintentar',
+            icon: Symbols.refresh,
+            onPressed: onRetry,
+          ),
         ],
       ),
     );

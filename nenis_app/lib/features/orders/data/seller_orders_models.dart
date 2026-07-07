@@ -153,6 +153,7 @@ class SellerOrder {
     this.clientPoints = 0,
     this.salesPeriodName,
     this.link,
+    this.shareUrl,
     this.items = const [],
     this.payments = const [],
   });
@@ -183,6 +184,10 @@ class SellerOrder {
   final int clientPoints;
   final String? salesPeriodName;
   final String? link;
+
+  /// Enlace corto compartible (`{ShareLinkBaseUrl}/o/{token}`) que abre el muro
+  /// de instalación o, si la app está instalada, directamente el pedido.
+  final String? shareUrl;
   final List<SellerOrderItem> items;
   final List<SellerPayment> payments;
 
@@ -238,6 +243,7 @@ class SellerOrder {
     clientPoints: _i(j['clientPoints']),
     salesPeriodName: j['salesPeriodName'] as String?,
     link: j['link'] as String?,
+    shareUrl: j['shareUrl'] as String?,
     items: ((j['items'] as List?) ?? const [])
         .map((e) => SellerOrderItem.fromJson(e as Map<String, dynamic>))
         .toList(),

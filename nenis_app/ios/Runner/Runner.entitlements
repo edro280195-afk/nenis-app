@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Universal Links del enlace del pedido. Requiere el archivo
+	     /.well-known/apple-app-site-association en https://sellgeneral.app.
+	     PENDIENTE (paso manual en Xcode desde una Mac): añadir este archivo al
+	     target Runner en "Signing & Capabilities" → "Associated Domains"
+	     (o poner CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements en el
+	     project.pbxproj para las 3 configuraciones). -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:sellgeneral.app</string>
+	</array>
+</dict>
+</plist>

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../auth/auth_controller.dart';
+import '../deeplinks/deep_link_service.dart';
 import '../../features/auth/screens/auth_welcome_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/password_reset_screen.dart';
@@ -16,6 +17,7 @@ import '../../features/orders/screens/orders_screen.dart';
 import '../../features/orders/screens/order_create_screen.dart';
 import '../../features/orders/screens/order_detail_screen.dart';
 import '../../features/tracking/screens/tracking_screen.dart';
+import '../../features/tracking/screens/order_link_screen.dart';
 import '../../features/points/screens/points_screen.dart';
 import '../../features/tandas/screens/tandas_screen.dart';
 import '../../features/raffles/screens/raffles_screen.dart';
@@ -27,6 +29,7 @@ import '../../features/payments/screens/payments_screen.dart';
 import '../../features/reserve/screens/reserve_screen.dart';
 import '../../features/routes/screens/seller_routes_screen.dart';
 import '../../shared/screens/splash_screen.dart';
+import '../../shared/widgets/app_shell.dart';
 
 /// Rutas de acceso (sin sesión). El resto exige estar autenticado, salvo
 /// rastreo público por token.
@@ -43,6 +46,8 @@ final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier<int>(0);
   ref.onDispose(refresh.dispose);
   ref.listen(authControllerProvider, (_, _) => refresh.value++);
+  // Un pedido que llega por deep link también dispara re-evaluación de rutas.
+  ref.listen(pendingDeepLinkProvider, (_, _) => refresh.value++);
 
   return GoRouter(
     initialLocation: '/splash',
@@ -51,6 +56,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       final auth = ref.read(authControllerProvider);
       final loc = state.matchedLocation;
       final path = state.uri.path;
+
+      // Normaliza el short-link /o/{token} al destino interno /pedido/{token}.
+      if (path.startsWith('/o/')) {
+        final token = path.substring(3).trim();
+        if (token.isNotEmpty) return '/pedido/$token';
+      }
+
       final hasTrackingToken =
           state.uri.queryParameters['token']?.trim().isNotEmpty ?? false;
       final isPublicTracking =
@@ -58,19 +70,34 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (isPublicTracking) return null;
 
-      // Cargando la sesión persistida -> splash.
+      final pendingToken = ref.read(pendingDeepLinkProvider);
+      final hasPending = pendingToken != null && pendingToken.isNotEmpty;
+
+      // Cargando la sesión persistida -> splash (el pendiente se conserva).
       if (auth.isLoading || !auth.hasValue) {
         return loc == '/splash' ? null : '/splash';
       }
 
       final session = auth.value;
       if (session == null) {
+        // Deep link sin sesión: orillar a crear cuenta para desbloquear el
+        // pedido, dejando pasar las pantallas de acceso.
+        if (hasPending) {
+          return _authRoutes.contains(loc) ? null : '/welcome';
+        }
         if (loc == '/splash') return '/login';
         if (loc == '/confirm' &&
             ref.read(authControllerProvider.notifier).pendingPhone == null) {
           return '/login';
         }
         return _authRoutes.contains(loc) ? null : '/login';
+      }
+
+      // Autenticada con un pedido pendiente por deep link: tiene prioridad
+      // sobre el resto (incluido el reclamo por teléfono).
+      if (hasPending) {
+        final target = '/pedido/$pendingToken';
+        return loc == target ? null : target;
       }
 
       // Restringir ruta de reparto solo a vendedoras (miembros de negocio)
@@ -108,24 +135,49 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/claim',
         builder: (context, state) => const ClaimProfileScreen(),
       ),
-      GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
-      GoRoute(
-        path: '/routes',
-        builder: (context, state) => const SellerRoutesScreen(),
-      ),
-      GoRoute(
-        path: '/store/:businessId',
-        builder: (context, state) =>
-            StoreScreen(businessId: state.pathParameters['businessId']!),
+      ShellRoute(
+        builder: (context, state, child) =>
+            AppShell(currentRoute: state.uri.path, child: child),
+        routes: [
+          GoRoute(
+            path: '/home',
+            builder: (context, state) => const HomeScreen(),
+          ),
+          GoRoute(
+            path: '/routes',
+            builder: (context, state) => const SellerRoutesScreen(),
+          ),
+          GoRoute(
+            path: '/store/:businessId',
+            builder: (context, state) =>
+                StoreScreen(businessId: state.pathParameters['businessId']!),
+          ),
+          GoRoute(
+            path: '/orders',
+            builder: (context, state) => const OrdersScreen(),
+          ),
+          GoRoute(
+            path: '/points',
+            builder: (context, state) => const PointsScreen(),
+          ),
+          GoRoute(
+            path: '/tandas',
+            builder: (context, state) => const TandasScreen(),
+          ),
+          GoRoute(
+            path: '/raffles',
+            builder: (context, state) => const RafflesScreen(),
+          ),
+          GoRoute(
+            path: '/account',
+            builder: (context, state) => const AccountScreen(),
+          ),
+        ],
       ),
       GoRoute(
         path: '/live/:sessionId',
         builder: (context, state) =>
             LiveScreen(sessionId: state.pathParameters['sessionId']!),
-      ),
-      GoRoute(
-        path: '/orders',
-        builder: (context, state) => const OrdersScreen(),
       ),
       GoRoute(
         path: '/orders/new',
@@ -144,21 +196,17 @@ final routerProvider = Provider<GoRouter>((ref) {
           accessToken: state.uri.queryParameters['token'],
         ),
       ),
+      // Destino del enlace del pedido (deep link). `/o/:token` es red de
+      // seguridad: normalmente el redirect reescribe /o/ a /pedido/.
       GoRoute(
-        path: '/points',
-        builder: (context, state) => const PointsScreen(),
+        path: '/pedido/:token',
+        builder: (context, state) =>
+            OrderLinkScreen(token: state.pathParameters['token']!),
       ),
       GoRoute(
-        path: '/tandas',
-        builder: (context, state) => const TandasScreen(),
-      ),
-      GoRoute(
-        path: '/raffles',
-        builder: (context, state) => const RafflesScreen(),
-      ),
-      GoRoute(
-        path: '/account',
-        builder: (context, state) => const AccountScreen(),
+        path: '/o/:token',
+        builder: (context, state) =>
+            OrderLinkScreen(token: state.pathParameters['token']!),
       ),
       GoRoute(
         path: '/reserve/:businessId/:productId',

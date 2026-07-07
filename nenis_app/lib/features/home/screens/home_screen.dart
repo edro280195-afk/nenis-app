@@ -10,7 +10,6 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/color_hex.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/background.dart';
-import '../../../shared/widgets/glass_bottom_nav.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/status_chip.dart';
 import '../../../shared/widgets/store_avatar.dart';
@@ -56,31 +55,17 @@ class BuyerHomeScreen extends ConsumerWidget {
       body: NeniBackground(
         child: SafeArea(
           bottom: false,
-          child: Stack(
-            children: [
-              feed.when(
-                loading: () => const Center(
-                  child: CircularProgressIndicator(color: AppColors.neni),
-                ),
-                error: (e, _) => _HomeError(
-                  onRetry: () => ref.invalidate(homeFeedProvider),
-                ),
-                data: (home) => RefreshIndicator(
-                  color: AppColors.neniDeep,
-                  onRefresh: () async => ref.invalidate(homeFeedProvider),
-                  child: _HomeContent(home: home),
-                ),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: GlassBottomNav(
-                  items: buildDefaultNavItems(),
-                  currentRoute: '/home',
-                ),
-              ),
-            ],
+          child: feed.when(
+            loading: () => const Center(
+              child: CircularProgressIndicator(color: AppColors.neni),
+            ),
+            error: (e, _) =>
+                _HomeError(onRetry: () => ref.invalidate(homeFeedProvider)),
+            data: (home) => RefreshIndicator(
+              color: AppColors.neniDeep,
+              onRefresh: () async => ref.invalidate(homeFeedProvider),
+              child: _HomeContent(home: home),
+            ),
           ),
         ),
       ),
@@ -101,24 +86,26 @@ class _HomeContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.only(bottom: 110),
+      padding: const EdgeInsets.only(bottom: 24),
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(22, 4, 22, 0),
           child: Row(
             children: [
-              UserAvatar(
-                label: _firstName.characters.first.toUpperCase(),
-              ),
+              UserAvatar(label: _firstName.characters.first.toUpperCase()),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Hola de nuevo',
-                        style: AppTextStyles.subtitle.copyWith(fontSize: 12.5)),
-                    Text(_firstName,
-                        style: AppTextStyles.h2.copyWith(fontSize: 18)),
+                    Text(
+                      'Hola de nuevo',
+                      style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+                    ),
+                    Text(
+                      _firstName,
+                      style: AppTextStyles.h2.copyWith(fontSize: 18),
+                    ),
                   ],
                 ),
               ),
@@ -135,8 +122,10 @@ class _HomeContent extends StatelessWidget {
         if (home.activeOrder != null) ...[
           Padding(
             padding: const EdgeInsets.fromLTRB(22, 0, 22, 8),
-            child: Text('Tu pedido en camino',
-                style: AppTextStyles.eyebrow(AppColors.neniDeep)),
+            child: Text(
+              'Tu pedido en camino',
+              style: AppTextStyles.eyebrow(AppColors.neniDeep),
+            ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 22),
@@ -240,7 +229,8 @@ class _ActiveOrderHero extends StatelessWidget {
     final brand = colorFromHex(order.brandPrimaryColor);
     return GestureDetector(
       onTap: () => context.go(
-          '/tracking/${order.orderId}?token=${order.accessToken ?? ''}'),
+        '/tracking/${order.orderId}?token=${order.accessToken ?? ''}',
+      ),
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -272,13 +262,20 @@ class _ActiveOrderHero extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(order.businessName,
-                          style: AppTextStyles.body.copyWith(
-                              color: Colors.white, fontWeight: FontWeight.w600)),
-                      Text('Pedido #${order.orderId}',
-                          style: AppTextStyles.subtitle.copyWith(
-                              color: Colors.white.withValues(alpha: 0.85),
-                              fontSize: 11.5)),
+                      Text(
+                        order.businessName,
+                        style: AppTextStyles.body.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        'Pedido #${order.orderId}',
+                        style: AppTextStyles.subtitle.copyWith(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          fontSize: 11.5,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -286,8 +283,7 @@ class _ActiveOrderHero extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            Text(_title,
-                style: AppTextStyles.h1.copyWith(color: Colors.white)),
+            Text(_title, style: AppTextStyles.h1.copyWith(color: Colors.white)),
             const SizedBox(height: 14),
             Row(
               children: [
@@ -296,11 +292,12 @@ class _ActiveOrderHero extends StatelessWidget {
                     i == 0
                         ? Symbols.inventory_2
                         : i == 1
-                            ? Symbols.local_shipping
-                            : Symbols.home,
+                        ? Symbols.local_shipping
+                        : Symbols.home,
                     size: 18,
-                    color: Colors.white
-                        .withValues(alpha: i < _progress ? 1 : 0.55),
+                    color: Colors.white.withValues(
+                      alpha: i < _progress ? 1 : 0.55,
+                    ),
                   ),
                   if (i < 2)
                     Expanded(
@@ -308,8 +305,9 @@ class _ActiveOrderHero extends StatelessWidget {
                         height: 5,
                         margin: const EdgeInsets.symmetric(horizontal: 6),
                         decoration: BoxDecoration(
-                          color: Colors.white
-                              .withValues(alpha: i < _progress - 1 ? 0.95 : 0.3),
+                          color: Colors.white.withValues(
+                            alpha: i < _progress - 1 ? 0.95 : 0.3,
+                          ),
                           borderRadius: BorderRadius.circular(99),
                         ),
                       ),
@@ -367,12 +365,20 @@ class _BentoTile extends StatelessWidget {
             child: Icon(icon, color: iconColor, size: 23, fill: 1),
           ),
           const SizedBox(height: 12),
-          Text(value,
-              style: AppTextStyles.display
-                  .copyWith(fontSize: 26, letterSpacing: -0.5)),
-          Text(caption,
-              style: AppTextStyles.subtitle
-                  .copyWith(fontSize: 12.5, fontWeight: FontWeight.w500)),
+          Text(
+            value,
+            style: AppTextStyles.display.copyWith(
+              fontSize: 26,
+              letterSpacing: -0.5,
+            ),
+          ),
+          Text(
+            caption,
+            style: AppTextStyles.subtitle.copyWith(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
@@ -416,24 +422,35 @@ class _StoreCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(99),
                         border: Border.all(color: AppColors.surface, width: 2),
                       ),
-                      child: Text('LIVE',
-                          style: AppTextStyles.chip.copyWith(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700)),
+                      child: Text(
+                        'LIVE',
+                        style: AppTextStyles.chip.copyWith(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
               ],
             ),
             const SizedBox(height: 8),
-            Text(store.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.body
-                    .copyWith(fontSize: 13, fontWeight: FontWeight.w600)),
-            Text('${store.points} pts',
-                style: AppTextStyles.subtitle
-                    .copyWith(fontSize: 11, color: AppColors.ink3)),
+            Text(
+              store.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.body.copyWith(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Text(
+              '${store.points} pts',
+              style: AppTextStyles.subtitle.copyWith(
+                fontSize: 11,
+                color: AppColors.ink3,
+              ),
+            ),
           ],
         ),
       ),
@@ -474,14 +491,20 @@ class _RecentOrderRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Pedido #${order.orderId}',
-                      style: AppTextStyles.body.copyWith(
-                          fontSize: 14.5, fontWeight: FontWeight.w600)),
+                  Text(
+                    'Pedido #${order.orderId}',
+                    style: AppTextStyles.body.copyWith(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 1),
-                  Text('${order.businessName} · $items',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.subtitle.copyWith(fontSize: 12.5)),
+                  Text(
+                    '${order.businessName} · $items',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+                  ),
                 ],
               ),
             ),
@@ -502,8 +525,7 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 22),
-      child: Text(title,
-          style: AppTextStyles.h2.copyWith(fontSize: 17)),
+      child: Text(title, style: AppTextStyles.h2.copyWith(fontSize: 17)),
     );
   }
 }
@@ -531,20 +553,30 @@ class _ClaimBanner extends StatelessWidget {
                   color: const Color(0xFFFFE1EC),
                   borderRadius: BorderRadius.circular(15),
                 ),
-                child: const Icon(Symbols.favorite,
-                    color: AppColors.neniDeep, size: 24, fill: 1),
+                child: const Icon(
+                  Symbols.favorite,
+                  color: AppColors.neniDeep,
+                  size: 24,
+                  fill: 1,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Reclama tu historial',
-                        style: AppTextStyles.body.copyWith(
-                            fontSize: 15, fontWeight: FontWeight.w600)),
+                    Text(
+                      'Reclama tu historial',
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 2),
-                    Text('Conecta tus compras con tus tiendas y junta puntos.',
-                        style: AppTextStyles.subtitle.copyWith(fontSize: 12.5)),
+                    Text(
+                      'Conecta tus compras con tus tiendas y junta puntos.',
+                      style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+                    ),
                   ],
                 ),
               ),
@@ -583,12 +615,19 @@ class _EmptyHome extends StatelessWidget {
                 color: const Color(0xFFFFF2D4),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Icon(Symbols.shopping_bag,
-                  size: 32, color: AppColors.gold, fill: 1),
+              child: const Icon(
+                Symbols.shopping_bag,
+                size: 32,
+                color: AppColors.gold,
+                fill: 1,
+              ),
             ),
             const SizedBox(height: 14),
-            Text('Aún no hay nada por aquí',
-                textAlign: TextAlign.center, style: AppTextStyles.h2),
+            Text(
+              'Aún no hay nada por aquí',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.h2,
+            ),
             const SizedBox(height: 8),
             Text(
               'Cuando compres en un live o reclames tu historial, tus pedidos, puntos y tiendas aparecerán aquí.',
@@ -615,14 +654,23 @@ class _HomeError extends StatelessWidget {
         children: [
           const Icon(Symbols.cloud_off, size: 46, color: AppColors.ink3),
           const SizedBox(height: 14),
-          Text('No pudimos cargar tu inicio',
-              textAlign: TextAlign.center, style: AppTextStyles.h2),
+          Text(
+            'No pudimos cargar tu inicio',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.h2,
+          ),
           const SizedBox(height: 8),
-          Text('Revisa tu conexión e intenta de nuevo.',
-              textAlign: TextAlign.center, style: AppTextStyles.subtitle),
+          Text(
+            'Revisa tu conexión e intenta de nuevo.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.subtitle,
+          ),
           const SizedBox(height: 22),
           PillButton(
-              label: 'Reintentar', icon: Symbols.refresh, onPressed: onRetry),
+            label: 'Reintentar',
+            icon: Symbols.refresh,
+            onPressed: onRetry,
+          ),
         ],
       ),
     );

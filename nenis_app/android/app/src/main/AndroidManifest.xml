@@ -41,6 +41,25 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+
+            <!-- App Link verificado del enlace del pedido:
+                 https://sellgeneral.app/o/{token} y /pedido/{token}.
+                 Requiere /.well-known/assetlinks.json en el dominio. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="sellgeneral.app" android:pathPrefix="/o/" />
+                <data android:scheme="https" android:host="sellgeneral.app" android:pathPrefix="/pedido/" />
+            </intent-filter>
+
+            <!-- Fallback por scheme propio (no verificado): nenis://o/{token}. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="nenis" />
+            </intent-filter>
         </activity>
 
         <!-- Facebook Login: FacebookActivity y CustomTabActivity para el flujo

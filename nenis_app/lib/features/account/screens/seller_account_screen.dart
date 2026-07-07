@@ -7,7 +7,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../shared/widgets/background.dart';
-import '../../../shared/widgets/glass_bottom_nav.dart';
 import '../../../shared/widgets/pill_button.dart';
 
 class SellerAccountScreen extends ConsumerWidget {
@@ -25,7 +24,7 @@ class SellerAccountScreen extends ConsumerWidget {
           child: Stack(
             children: [
               ListView(
-                padding: const EdgeInsets.fromLTRB(22, 4, 22, 110),
+                padding: const EdgeInsets.fromLTRB(22, 4, 22, 24),
                 children: [
                   // Header
                   const Column(
@@ -110,7 +109,10 @@ class SellerAccountScreen extends ConsumerWidget {
                               ),
                               const SizedBox(height: 4),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFFCECD2),
                                   borderRadius: BorderRadius.circular(6),
@@ -145,7 +147,7 @@ class SellerAccountScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  
+
                   Container(
                     decoration: BoxDecoration(
                       color: AppColors.surface,
@@ -154,13 +156,29 @@ class SellerAccountScreen extends ConsumerWidget {
                     ),
                     child: Column(
                       children: [
-                        _buildMenuRow(Symbols.storefront, 'Perfil de la tienda', 'Colores, logo, dirección pública'),
+                        _buildMenuRow(
+                          Symbols.storefront,
+                          'Perfil de la tienda',
+                          'Colores, logo, dirección pública',
+                        ),
                         const Divider(height: 1, color: AppColors.lineSoft),
-                        _buildMenuRow(Symbols.payments, 'Métodos de pago', 'Mercado Pago link, Transferencias'),
+                        _buildMenuRow(
+                          Symbols.payments,
+                          'Métodos de pago',
+                          'Mercado Pago link, Transferencias',
+                        ),
                         const Divider(height: 1, color: AppColors.lineSoft),
-                        _buildMenuRow(Symbols.groups, 'Equipo de reparto', 'Administra a tus choferes autorizados'),
+                        _buildMenuRow(
+                          Symbols.groups,
+                          'Equipo de reparto',
+                          'Administra a tus choferes autorizados',
+                        ),
                         const Divider(height: 1, color: AppColors.lineSoft),
-                        _buildMenuRow(Symbols.settings, 'Preferencias generales', 'Notificaciones de ventas, alertas'),
+                        _buildMenuRow(
+                          Symbols.settings,
+                          'Preferencias generales',
+                          'Notificaciones de ventas, alertas',
+                        ),
                       ],
                     ),
                   ),
@@ -176,17 +194,6 @@ class SellerAccountScreen extends ConsumerWidget {
                     },
                   ),
                 ],
-              ),
-              
-              // Bottom Nav
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: GlassBottomNav(
-                  items: buildSellerNavItems(),
-                  currentRoute: '/account',
-                ),
               ),
             ],
           ),

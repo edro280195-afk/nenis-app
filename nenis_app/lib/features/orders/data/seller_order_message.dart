@@ -31,7 +31,12 @@ String buildSellerOrderMessage(SellerOrder order) {
   final name = order.clientName.trim().isEmpty
       ? 'bonita'
       : order.clientName.trim();
-  final link = publicOrderLink(order.link ?? '');
+  // Preferimos el enlace corto compartible (dominio compartido, /o/{token}),
+  // que orilla a instalar la app. Si el backend no lo mandó (ShareLinkBaseUrl
+  // sin configurar), caemos al enlace público legacy (/pedido/{token}).
+  final link = (order.shareUrl?.trim().isNotEmpty ?? false)
+      ? order.shareUrl!.trim()
+      : publicOrderLink(order.link ?? '');
   final deliveryDate =
       order.scheduledDeliveryDate ??
       order.expiresAt?.subtract(const Duration(days: 1));

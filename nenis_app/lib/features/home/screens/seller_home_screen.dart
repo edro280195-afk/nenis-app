@@ -11,7 +11,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
-import '../../../shared/widgets/glass_bottom_nav.dart';
 import '../../orders/data/seller_orders_models.dart';
 import '../../orders/data/seller_orders_repository.dart';
 import '../../orders/screens/seller_orders_screen.dart' show GradientText;
@@ -35,8 +34,9 @@ class SellerHomeScreen extends ConsumerWidget {
       );
       if (m.businessName.trim().isNotEmpty) businessName = m.businessName;
     }
-    final logoInitial =
-        businessName.trim().isEmpty ? 'N' : businessName.trim()[0].toUpperCase();
+    final logoInitial = businessName.trim().isEmpty
+        ? 'N'
+        : businessName.trim()[0].toUpperCase();
 
     return Scaffold(
       backgroundColor: AppColors.surfaceCream,
@@ -65,8 +65,10 @@ class SellerHomeScreen extends ConsumerWidget {
                       loading: () => const SliverFillRemaining(
                         hasScrollBody: false,
                         child: Center(
-                            child: CircularProgressIndicator(
-                                color: AppColors.neni)),
+                          child: CircularProgressIndicator(
+                            color: AppColors.neni,
+                          ),
+                        ),
                       ),
                       error: (e, _) => SliverFillRemaining(
                         hasScrollBody: false,
@@ -81,8 +83,9 @@ class SellerHomeScreen extends ConsumerWidget {
                         sliver: SliverList(
                           delegate: SliverChildListDelegate([
                             _Greeting(
-                                firstName: firstName,
-                                hasActivePeriod: d.activePeriod != null),
+                              firstName: firstName,
+                              hasActivePeriod: d.activePeriod != null,
+                            ),
                             const SizedBox(height: 16),
                             if (d.activePeriod != null) ...[
                               _CorteCard(period: d.activePeriod!),
@@ -102,17 +105,8 @@ class SellerHomeScreen extends ConsumerWidget {
               ),
               Positioned(
                 right: 20,
-                bottom: 104,
+                bottom: 16,
                 child: _Fab(onTap: () => context.push('/orders/new')),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: GlassBottomNav(
-                  items: buildSellerNavItems(),
-                  currentRoute: '/home',
-                ),
               ),
             ],
           ),
@@ -154,25 +148,35 @@ class _AppBar extends StatelessWidget {
                   boxShadow: AppShadows.brandSmall(AppColors.neniDeep),
                 ),
                 alignment: Alignment.center,
-                child: Text(logoInitial,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 19)),
+                child: Text(
+                  logoInitial,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 19,
+                  ),
+                ),
               ),
               const SizedBox(width: 11),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(businessName,
-                      style: AppTextStyles.body.copyWith(
-                          fontSize: 14.5, fontWeight: FontWeight.w800)),
-                  Text('VENDEDORA',
-                      style: TextStyle(
-                          fontSize: 8.5,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.3,
-                          color: AppColors.lavender)),
+                  Text(
+                    businessName,
+                    style: AppTextStyles.body.copyWith(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    'VENDEDORA',
+                    style: TextStyle(
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.3,
+                      color: AppColors.lavender,
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -192,8 +196,11 @@ class _AppBar extends StatelessWidget {
                       borderRadius: BorderRadius.circular(13),
                       border: Border.all(color: AppColors.line),
                     ),
-                    child: const Icon(Symbols.notifications,
-                        size: 20, color: AppColors.ink),
+                    child: const Icon(
+                      Symbols.notifications,
+                      size: 20,
+                      color: AppColors.ink,
+                    ),
                   ),
                 ),
               ),
@@ -204,7 +211,9 @@ class _AppBar extends StatelessWidget {
                   width: 8,
                   height: 8,
                   decoration: const BoxDecoration(
-                      color: AppColors.neni, shape: BoxShape.circle),
+                    color: AppColors.neni,
+                    shape: BoxShape.circle,
+                  ),
                 ),
               ),
             ],
@@ -270,15 +279,20 @@ class _Greeting extends StatelessWidget {
                     width: 6,
                     height: 6,
                     decoration: const BoxDecoration(
-                        color: Color(0xFF1F9A6A), shape: BoxShape.circle),
+                      color: Color(0xFF1F9A6A),
+                      shape: BoxShape.circle,
+                    ),
                   ),
                   const SizedBox(width: 6),
-                  const Text('CORTE ABIERTO',
-                      style: TextStyle(
-                          color: Color(0xFF1F9A6A),
-                          fontWeight: FontWeight.w800,
-                          fontSize: 8.5,
-                          letterSpacing: 0.5)),
+                  const Text(
+                    'CORTE ABIERTO',
+                    style: TextStyle(
+                      color: Color(0xFF1F9A6A),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 8.5,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -314,15 +328,22 @@ class _CorteCard extends StatelessWidget {
               Flexible(
                 child: Row(
                   children: [
-                    const Icon(Symbols.calendar_today,
-                        size: 18, color: AppColors.neniDeep),
+                    const Icon(
+                      Symbols.calendar_today,
+                      size: 18,
+                      color: AppColors.neniDeep,
+                    ),
                     const SizedBox(width: 8),
                     Flexible(
-                      child: Text('Corte: ${period.name}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.body.copyWith(
-                              fontSize: 12.5, fontWeight: FontWeight.w700)),
+                      child: Text(
+                        'Corte: ${period.name}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.body.copyWith(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -333,12 +354,15 @@ class _CorteCard extends StatelessWidget {
                   color: Colors.white.withValues(alpha: 0.75),
                   borderRadius: BorderRadius.circular(999),
                 ),
-                child: Text('ACTIVO',
-                    style: TextStyle(
-                        fontSize: 8,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
-                        color: AppColors.ink2)),
+                child: Text(
+                  'ACTIVO',
+                  style: TextStyle(
+                    fontSize: 8,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                    color: AppColors.ink2,
+                  ),
+                ),
               ),
             ],
           ),
@@ -346,19 +370,22 @@ class _CorteCard extends StatelessWidget {
           Row(
             children: [
               _CorteStat(
-                  label: 'Ventas',
-                  value: money(period.totalSales),
-                  color: const Color(0xFF1F9A6A)),
+                label: 'Ventas',
+                value: money(period.totalSales),
+                color: const Color(0xFF1F9A6A),
+              ),
               const SizedBox(width: 9),
               _CorteStat(
-                  label: 'Invertido',
-                  value: money(period.totalInvested),
-                  color: const Color(0xFFFF2D55)),
+                label: 'Invertido',
+                value: money(period.totalInvested),
+                color: const Color(0xFFFF2D55),
+              ),
               const SizedBox(width: 9),
               _CorteStat(
-                  label: 'Utilidad',
-                  value: money(period.netProfit),
-                  color: AppColors.neniDeep),
+                label: 'Utilidad',
+                value: money(period.netProfit),
+                color: AppColors.neniDeep,
+              ),
             ],
           ),
         ],
@@ -368,8 +395,11 @@ class _CorteCard extends StatelessWidget {
 }
 
 class _CorteStat extends StatelessWidget {
-  const _CorteStat(
-      {required this.label, required this.value, required this.color});
+  const _CorteStat({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
   final String label;
   final String value;
   final Color color;
@@ -387,21 +417,27 @@ class _CorteStat extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label.toUpperCase(),
-                style: const TextStyle(
-                    fontSize: 8,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.4,
-                    color: AppColors.ink3)),
+            Text(
+              label.toUpperCase(),
+              style: const TextStyle(
+                fontSize: 8,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.4,
+                color: AppColors.ink3,
+              ),
+            ),
             const SizedBox(height: 3),
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
-              child: Text(value,
-                  style: TextStyle(
-                      color: color,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15)),
+              child: Text(
+                value,
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                ),
+              ),
             ),
           ],
         ),
@@ -499,39 +535,52 @@ class _KpiCard extends StatelessWidget {
                 width: 30,
                 height: 30,
                 decoration: BoxDecoration(
-                    color: bg, borderRadius: BorderRadius.circular(10)),
+                  color: bg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
                 alignment: Alignment.center,
                 child: Icon(icon, size: 17, color: color),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: BoxDecoration(
-                    color: bg, borderRadius: BorderRadius.circular(999)),
-                child: Text(badge,
-                    style: TextStyle(
-                        fontSize: 8,
-                        fontWeight: FontWeight.w800,
-                        color: color)),
+                  color: bg,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  badge,
+                  style: TextStyle(
+                    fontSize: 8,
+                    fontWeight: FontWeight.w800,
+                    color: color,
+                  ),
+                ),
               ),
             ],
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title.toUpperCase(),
-                  style: const TextStyle(
-                      fontSize: 8.5,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.4,
-                      color: AppColors.ink3)),
+              Text(
+                title.toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 8.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                  color: AppColors.ink3,
+                ),
+              ),
               const SizedBox(height: 2),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
-                child: Text(value,
-                    style: AppTextStyles.h1
-                        .copyWith(fontSize: 19, letterSpacing: -0.4)),
+                child: Text(
+                  value,
+                  style: AppTextStyles.h1.copyWith(
+                    fontSize: 19,
+                    letterSpacing: -0.4,
+                  ),
+                ),
               ),
             ],
           ),
@@ -560,14 +609,21 @@ class _SalesChartCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Symbols.query_stats, size: 16, color: AppColors.neniDeep),
+              const Icon(
+                Symbols.query_stats,
+                size: 16,
+                color: AppColors.neniDeep,
+              ),
               const SizedBox(width: 6),
-              Text('VENTAS MENSUALES',
-                  style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.6,
-                      color: AppColors.ink2)),
+              Text(
+                'VENTAS MENSUALES',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.6,
+                  color: AppColors.ink2,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -575,9 +631,11 @@ class _SalesChartCard extends StatelessWidget {
             SizedBox(
               height: 120,
               child: Center(
-                child: Text('Aún no hay suficientes ventas para la gráfica',
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.subtitle.copyWith(fontSize: 12)),
+                child: Text(
+                  'Aún no hay suficientes ventas para la gráfica',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.subtitle.copyWith(fontSize: 12),
+                ),
               ),
             )
           else
@@ -601,8 +659,9 @@ class _ChartPainter extends CustomPainter {
     if (data.length < 2) return;
     const labelH = 18.0;
     final chartH = size.height - labelH;
-    final maxSales =
-        data.map((e) => e.sales).fold<double>(0, (a, b) => b > a ? b : a);
+    final maxSales = data
+        .map((e) => e.sales)
+        .fold<double>(0, (a, b) => b > a ? b : a);
     final maxV = maxSales <= 0 ? 1.0 : maxSales;
 
     final gridPaint = Paint()
@@ -617,7 +676,8 @@ class _ChartPainter extends CustomPainter {
     final step = data.length == 1 ? size.width : size.width / (data.length - 1);
     for (var i = 0; i < data.length; i++) {
       final x = step * i;
-      final y = chartH - (data[i].sales / maxV) * (chartH * 0.86) - chartH * 0.07;
+      final y =
+          chartH - (data[i].sales / maxV) * (chartH * 0.86) - chartH * 0.07;
       points.add(Offset(x, y));
     }
 
@@ -663,9 +723,10 @@ class _ChartPainter extends CustomPainter {
         text: TextSpan(
           text: data[i].month,
           style: const TextStyle(
-              color: AppColors.ink3,
-              fontSize: 9,
-              fontWeight: FontWeight.w600),
+            color: AppColors.ink3,
+            fontSize: 9,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         textDirection: ui.TextDirection.ltr,
       )..layout();
@@ -690,12 +751,15 @@ class _RecentActivity extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 2),
-          child: Text('ACTIVIDAD RECIENTE',
-              style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.8,
-                  color: AppColors.ink3)),
+          child: Text(
+            'ACTIVIDAD RECIENTE',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
+              color: AppColors.ink3,
+            ),
+          ),
         ),
         const SizedBox(height: 10),
         if (orders.isEmpty)
@@ -707,9 +771,11 @@ class _RecentActivity extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: AppColors.line),
             ),
-            child: Text('Aún no hay actividad reciente',
-                textAlign: TextAlign.center,
-                style: AppTextStyles.subtitle.copyWith(fontSize: 12.5)),
+            child: Text(
+              'Aún no hay actividad reciente',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+            ),
           )
         else
           for (final o in orders.take(6))
@@ -747,7 +813,8 @@ class _ActivityRow extends StatelessWidget {
               height: 38,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                    colors: [Color(0xFFFFF0F5), Color(0xFFF3EBFF)]),
+                  colors: [Color(0xFFFFF0F5), Color(0xFFF3EBFF)],
+                ),
                 borderRadius: BorderRadius.circular(12),
               ),
               alignment: Alignment.center,
@@ -758,13 +825,19 @@ class _ActivityRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(o.clientName.isEmpty ? 'Sin nombre' : o.clientName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.body.copyWith(
-                          fontSize: 12.5, fontWeight: FontWeight.w700)),
-                  Text('$date · ${o.itemsCount} art',
-                      style: AppTextStyles.subtitle.copyWith(fontSize: 10.5)),
+                  Text(
+                    o.clientName.isEmpty ? 'Sin nombre' : o.clientName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.body.copyWith(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    '$date · ${o.itemsCount} art',
+                    style: AppTextStyles.subtitle.copyWith(fontSize: 10.5),
+                  ),
                 ],
               ),
             ),
@@ -792,11 +865,18 @@ class _MiniStatus extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-      decoration:
-          BoxDecoration(color: status.bg, borderRadius: BorderRadius.circular(999)),
-      child: Text(status.label,
-          style: TextStyle(
-              color: status.fg, fontSize: 8, fontWeight: FontWeight.w800)),
+      decoration: BoxDecoration(
+        color: status.bg,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        status.label,
+        style: TextStyle(
+          color: status.fg,
+          fontSize: 8,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
     );
   }
 }
@@ -846,13 +926,17 @@ class _ErrorState extends StatelessWidget {
         children: [
           const Icon(Symbols.cloud_off, size: 46, color: AppColors.ink3),
           const SizedBox(height: 14),
-          Text('No pudimos cargar tu panel',
-              textAlign: TextAlign.center,
-              style: AppTextStyles.h2.copyWith(fontSize: 17)),
+          Text(
+            'No pudimos cargar tu panel',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.h2.copyWith(fontSize: 17),
+          ),
           const SizedBox(height: 6),
-          Text(message,
-              textAlign: TextAlign.center,
-              style: AppTextStyles.subtitle.copyWith(fontSize: 12.5)),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+          ),
           const SizedBox(height: 18),
           Material(
             color: Colors.transparent,
@@ -860,11 +944,14 @@ class _ErrorState extends StatelessWidget {
               onTap: onRetry,
               borderRadius: BorderRadius.circular(999),
               child: Ink(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 22,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                      colors: [AppColors.neni, AppColors.neniDeep]),
+                    colors: [AppColors.neni, AppColors.neniDeep],
+                  ),
                   borderRadius: BorderRadius.circular(999),
                   boxShadow: AppShadows.brandSmall(AppColors.neniDeep),
                 ),
@@ -873,8 +960,10 @@ class _ErrorState extends StatelessWidget {
                   children: [
                     const Icon(Symbols.refresh, size: 18, color: Colors.white),
                     const SizedBox(width: 7),
-                    Text('Reintentar',
-                        style: AppTextStyles.button.copyWith(fontSize: 14)),
+                    Text(
+                      'Reintentar',
+                      style: AppTextStyles.button.copyWith(fontSize: 14),
+                    ),
                   ],
                 ),
               ),

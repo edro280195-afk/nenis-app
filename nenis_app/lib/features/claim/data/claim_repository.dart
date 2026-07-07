@@ -21,6 +21,50 @@ class ClaimRepository {
   Future<void> claimByPhone(int clientId) async {
     await _dio.post('/api/client-claims/by-phone/$clientId');
   }
+
+  /// Camino principal del deep link: la posesión del `accessToken` (que la
+  /// vendedora mandó por WhatsApp) es la prueba. Enlaza el `Client` del pedido
+  /// con la cuenta autenticada. Requiere sesión (el interceptor inyecta el JWT).
+  ///
+  /// Nunca lanza: mapea los códigos del backend a un [ClaimByTokenResult] para
+  /// que el llamador decida (los 4xx son definitivos; los de red son
+  /// transitorios y conviene reintentar).
+  Future<ClaimByTokenResult> claimByOrderToken(String accessToken) async {
+    try {
+      final res =
+          await _dio.post('/api/client-claims/by-order-token/$accessToken');
+      final data = (res.data as Map).cast<String, dynamic>();
+      return ClaimByTokenResult(
+        status: ClaimByTokenStatus.linked,
+        businessName: data['businessName'] as String?,
+        clientName: data['clientName'] as String?,
+      );
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final map = data is Map ? data.cast<String, dynamic>() : null;
+      final message = map?['message'] as String?;
+      switch (e.response?.statusCode) {
+        case 409:
+          return ClaimByTokenResult(
+              status: ClaimByTokenStatus.alreadyClaimedByOther,
+              message: message);
+        case 404:
+          return ClaimByTokenResult(
+              status: ClaimByTokenStatus.notFound, message: message);
+        case 403:
+          return ClaimByTokenResult(
+              status: map?['error'] == 'no_proof'
+                  ? ClaimByTokenStatus.noProof
+                  : ClaimByTokenStatus.forbidden,
+              message: message);
+        default:
+          return ClaimByTokenResult(
+              status: ClaimByTokenStatus.error, message: message);
+      }
+    } catch (_) {
+      return const ClaimByTokenResult(status: ClaimByTokenStatus.error);
+    }
+  }
 }
 
 final claimRepositoryProvider = Provider<ClaimRepository>((ref) {

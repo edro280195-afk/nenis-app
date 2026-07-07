@@ -26,6 +26,14 @@
 				<string>fb1427323549158529</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>app.sellgeneral.nenis</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>nenis</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleShortVersionString</key>
 	<string>$(FLUTTER_BUILD_NAME)</string>

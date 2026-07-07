@@ -10,7 +10,6 @@ import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
-import '../../../shared/widgets/glass_bottom_nav.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/segmented.dart';
 import '../data/seller_tandas_models.dart';
@@ -143,12 +142,7 @@ class _SellerTandasScreenState extends ConsumerState<SellerTandasScreen> {
                             final wide = constraints.maxWidth >= 720;
                             return ListView(
                               physics: const AlwaysScrollableScrollPhysics(),
-                              padding: const EdgeInsets.fromLTRB(
-                                22,
-                                8,
-                                22,
-                                130,
-                              ),
+                              padding: const EdgeInsets.fromLTRB(22, 8, 22, 24),
                               children: [
                                 _KpiGrid(dashboard: workspace.dashboard),
                                 const SizedBox(height: 14),
@@ -232,19 +226,10 @@ class _SellerTandasScreenState extends ConsumerState<SellerTandasScreen> {
               async.maybeWhen(
                 data: (workspace) => Positioned(
                   right: 22,
-                  bottom: 104,
+                  bottom: 16,
                   child: _CreateFab(onTap: () => _createTanda(workspace)),
                 ),
                 orElse: () => const SizedBox.shrink(),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: GlassBottomNav(
-                  items: buildSellerNavItems(),
-                  currentRoute: '/tandas',
-                ),
               ),
             ],
           ),
@@ -1864,7 +1849,7 @@ class _ErrorState extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(22, 80, 22, 130),
+      padding: const EdgeInsets.fromLTRB(22, 80, 22, 24),
       children: [
         _EmptyState(
           icon: Symbols.error,

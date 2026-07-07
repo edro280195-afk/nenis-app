@@ -9,7 +9,6 @@ import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/color_hex.dart';
 import '../../../shared/widgets/background.dart';
-import '../../../shared/widgets/glass_bottom_nav.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/store_avatar.dart';
 import '../../raffles/data/raffles_models.dart';
@@ -52,24 +51,12 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
             loading: () => const _StoreLoading(),
             error: (e, _) => _StoreError(
               message: e.toString(),
-              onBack: () => context.canPop() ? context.pop() : context.go('/home'),
+              onBack: () =>
+                  context.canPop() ? context.pop() : context.go('/home'),
             ),
             data: (store) {
               if (store == null) return const _StoreLoading();
-              return Stack(
-                children: [
-                  _StoreContent(store: store),
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: GlassBottomNav(
-                      items: buildDefaultNavItems(),
-                      currentRoute: '/store/${store.businessId}',
-                    ),
-                  ),
-                ],
-              );
+              return _StoreContent(store: store);
             },
           ),
         ),
@@ -122,7 +109,7 @@ class _StoreContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tab = ref.watch(storeSelectedTabProvider);
     return ListView(
-      padding: const EdgeInsets.only(bottom: 110),
+      padding: const EdgeInsets.only(bottom: 24),
       children: [
         _StoreHeader(store: store),
         _ProfileRow(store: store),
@@ -131,8 +118,7 @@ class _StoreContent extends ConsumerWidget {
         _TabsRow(
           store: store,
           selected: tab,
-          onChanged: (t) =>
-              ref.read(storeSelectedTabProvider.notifier).set(t),
+          onChanged: (t) => ref.read(storeSelectedTabProvider.notifier).set(t),
         ),
         _TabContent(store: store, tab: tab),
       ],
@@ -169,9 +155,8 @@ class _StoreHeader extends StatelessWidget {
               left: 14,
               child: _HeaderIcon(
                 icon: Symbols.arrow_back,
-                onPressed: () => context.canPop()
-                    ? context.pop()
-                    : context.go('/home'),
+                onPressed: () =>
+                    context.canPop() ? context.pop() : context.go('/home'),
               ),
             ),
             Positioned(
@@ -181,12 +166,14 @@ class _StoreHeader extends StatelessWidget {
                 children: [
                   _HeaderIcon(
                     icon: Symbols.favorite,
-                    onPressed: () => _soonToast(context, 'Pronto podrás favoritarla'),
+                    onPressed: () =>
+                        _soonToast(context, 'Pronto podrás favoritarla'),
                   ),
                   const SizedBox(width: 8),
                   _HeaderIcon(
                     icon: Symbols.ios_share,
-                    onPressed: () => _soonToast(context, 'Compartir llega pronto'),
+                    onPressed: () =>
+                        _soonToast(context, 'Compartir llega pronto'),
                   ),
                 ],
               ),
@@ -196,7 +183,9 @@ class _StoreHeader extends StatelessWidget {
               bottom: 12,
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 4),
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.liveRed,
                   borderRadius: AppRadii.pillRadius,
@@ -283,8 +272,11 @@ class _ProfileRow extends StatelessWidget {
                         ),
                         if (store.isVerified) ...[
                           const SizedBox(width: 6),
-                          const Icon(Symbols.verified,
-                              size: 16, color: AppColors.statusDeliveredFg),
+                          const Icon(
+                            Symbols.verified,
+                            size: 16,
+                            color: AppColors.statusDeliveredFg,
+                          ),
                         ],
                       ],
                     ),
@@ -359,28 +351,37 @@ class _PtsBar extends StatelessWidget {
                   color: const Color(0xFFFFF2D4),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Symbols.stars,
-                    color: AppColors.gold, size: 20, fill: 1),
+                child: const Icon(
+                  Symbols.stars,
+                  color: AppColors.gold,
+                  size: 20,
+                  fill: 1,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${store.points.currentPoints} puntos',
-                        style: AppTextStyles.body.copyWith(
-                            fontSize: 15, fontWeight: FontWeight.w700)),
+                    Text(
+                      '${store.points.currentPoints} puntos',
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     const SizedBox(height: 1),
                     Text(
                       _caption(store.points.nextRewardAt),
-                      style: AppTextStyles.subtitle
-                          .copyWith(fontSize: 11.5, color: AppColors.ink3),
+                      style: AppTextStyles.subtitle.copyWith(
+                        fontSize: 11.5,
+                        color: AppColors.ink3,
+                      ),
                     ),
                   ],
                 ),
               ),
-              Icon(Symbols.chevron_right,
-                  size: 20, color: lighten(brand, 0.1)),
+              Icon(Symbols.chevron_right, size: 20, color: lighten(brand, 0.1)),
             ],
           ),
         ),
@@ -426,21 +427,27 @@ class _LiveStrip extends StatelessWidget {
                   color: Colors.white.withValues(alpha: 0.22),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Symbols.sensors,
-                    color: Colors.white, size: 22),
+                child: const Icon(
+                  Symbols.sensors,
+                  color: Colors.white,
+                  size: 22,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${live.title} en vivo',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.body.copyWith(
-                            fontSize: 14.5,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700)),
+                    Text(
+                      '${live.title} en vivo',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 14.5,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     const SizedBox(height: 1),
                     Text(
                       live.topics ?? 'Toca para entrar',
@@ -457,18 +464,22 @@ class _LiveStrip extends StatelessWidget {
               ),
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 8),
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: AppRadii.pillRadius,
                 ),
-                child: const Text('Entrar',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.neniDeep,
-                    )),
+                child: const Text(
+                  'Entrar',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.neniDeep,
+                  ),
+                ),
               ),
             ],
           ),
@@ -551,9 +562,10 @@ class _TabPill extends StatelessWidget {
         child: Text(
           label,
           style: AppTextStyles.body.copyWith(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w600,
-              color: isActive ? AppColors.surface : AppColors.ink2),
+            fontSize: 13.5,
+            fontWeight: FontWeight.w600,
+            color: isActive ? AppColors.surface : AppColors.ink2,
+          ),
         ),
       ),
     );
@@ -610,7 +622,8 @@ class _ProductsGrid extends StatelessWidget {
           product: store.products[i],
           brand: brand,
           onTap: () => context.push(
-              '/reserve/${store.businessId}/${store.products[i].id}'),
+            '/reserve/${store.businessId}/${store.products[i].id}',
+          ),
         ),
       ),
     );
@@ -665,33 +678,43 @@ class _ProductCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(product.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.body.copyWith(
-                          fontSize: 12.5,
-                          height: 1.2,
-                          fontWeight: FontWeight.w500)),
+                  Text(
+                    product.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.body.copyWith(
+                      fontSize: 12.5,
+                      height: 1.2,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      Text('\$${product.price.toStringAsFixed(0)}',
-                          style: AppTextStyles.body.copyWith(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700)),
+                      Text(
+                        '\$${product.price.toStringAsFixed(0)}',
+                        style: AppTextStyles.body.copyWith(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                       const Spacer(),
                       Material(
                         color: brand,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(11)),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(11),
                           onTap: onTap,
                           child: const SizedBox(
                             width: 32,
                             height: 32,
-                            child: Icon(Symbols.add,
-                                color: Colors.white, size: 18),
+                            child: Icon(
+                              Symbols.add,
+                              color: Colors.white,
+                              size: 18,
+                            ),
                           ),
                         ),
                       ),
@@ -747,48 +770,65 @@ class _LiveTabContent extends StatelessWidget {
                       ),
                       borderRadius: BorderRadius.circular(15),
                     ),
-                    child: const Icon(Symbols.sensors,
-                        color: Colors.white, size: 24),
+                    child: const Icon(
+                      Symbols.sensors,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(live.title,
-                            style: AppTextStyles.body.copyWith(
-                                fontSize: 15.5, fontWeight: FontWeight.w700)),
-                        Text(live.topics ?? 'Live reciente',
-                            style: AppTextStyles.subtitle
-                                .copyWith(fontSize: 12, color: AppColors.ink2)),
+                        Text(
+                          live.title,
+                          style: AppTextStyles.body.copyWith(
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          live.topics ?? 'Live reciente',
+                          style: AppTextStyles.subtitle.copyWith(
+                            fontSize: 12,
+                            color: AppColors.ink2,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.liveRed,
                       borderRadius: AppRadii.pillRadius,
                     ),
-                    child: const Text('LIVE',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          letterSpacing: 1.2,
-                        )),
+                    child: const Text(
+                      'LIVE',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              const Text('Toca para ver el live →',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 12,
-                    color: AppColors.ink3,
-                  )),
+              const Text(
+                'Toca para ver el live →',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 12,
+                  color: AppColors.ink3,
+                ),
+              ),
             ],
           ),
         ),
@@ -811,7 +851,9 @@ class _TandasTabContent extends ConsumerWidget {
             width: 22,
             height: 22,
             child: CircularProgressIndicator(
-                strokeWidth: 2.4, color: AppColors.neni),
+              strokeWidth: 2.4,
+              color: AppColors.neni,
+            ),
           ),
         ),
       ),
@@ -872,32 +914,40 @@ class _TandaCompactRow extends StatelessWidget {
               color: const Color(0xFFFFE1EC),
               borderRadius: BorderRadius.circular(13),
             ),
-            child: const Icon(Symbols.groups,
-                color: AppColors.neniDeep, size: 22),
+            child: const Icon(
+              Symbols.groups,
+              color: AppColors.neniDeep,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(tanda.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.body.copyWith(
-                        fontSize: 14, fontWeight: FontWeight.w600)),
+                Text(
+                  tanda.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 1),
                 Text(
                   tanda.isMine
                       ? 'Tu turno ${tanda.myTurn ?? '—'} · ${tanda.weeklyAmountLabel}'
                       : 'Disponible · ${tanda.weeklyAmountLabel}',
-                  style: AppTextStyles.subtitle
-                      .copyWith(fontSize: 11.5, color: AppColors.ink2),
+                  style: AppTextStyles.subtitle.copyWith(
+                    fontSize: 11.5,
+                    color: AppColors.ink2,
+                  ),
                 ),
               ],
             ),
           ),
-          Icon(Symbols.chevron_right,
-              color: lighten(brand, 0.1), size: 20),
+          Icon(Symbols.chevron_right, color: lighten(brand, 0.1), size: 20),
         ],
       ),
     );
@@ -918,7 +968,9 @@ class _SorteosTabContent extends ConsumerWidget {
             width: 22,
             height: 22,
             child: CircularProgressIndicator(
-                strokeWidth: 2.4, color: AppColors.neni),
+              strokeWidth: 2.4,
+              color: AppColors.neni,
+            ),
           ),
         ),
       ),
@@ -981,34 +1033,42 @@ class _RaffleCompactRow extends StatelessWidget {
               ),
               borderRadius: BorderRadius.circular(13),
             ),
-            child: const Icon(Symbols.celebration,
-                color: Colors.white, size: 22),
+            child: const Icon(
+              Symbols.celebration,
+              color: Colors.white,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(raffle.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.body.copyWith(
-                        fontSize: 14, fontWeight: FontWeight.w600)),
+                Text(
+                  raffle.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 1),
                 Text(
                   raffle.prizeDescription ?? raffle.prizeLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.subtitle
-                      .copyWith(fontSize: 11.5, color: AppColors.ink2),
+                  style: AppTextStyles.subtitle.copyWith(
+                    fontSize: 11.5,
+                    color: AppColors.ink2,
+                  ),
                 ),
               ],
             ),
           ),
           if (raffle.isMineEntered)
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: const Color(0xFFFFF7E6),
                 borderRadius: AppRadii.pillRadius,
@@ -1016,8 +1076,9 @@ class _RaffleCompactRow extends StatelessWidget {
               child: Text(
                 '${raffle.myEntryCount} boleto${raffle.myEntryCount == 1 ? '' : 's'}',
                 style: AppTextStyles.chip.copyWith(
-                    color: const Color(0xFF8A5A0E),
-                    fontWeight: FontWeight.w700),
+                  color: const Color(0xFF8A5A0E),
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
         ],
@@ -1055,13 +1116,17 @@ class _EmptyTab extends StatelessWidget {
             child: Icon(icon, color: iconColor, size: 40),
           ),
           const SizedBox(height: 18),
-          Text(title,
-              textAlign: TextAlign.center,
-              style: AppTextStyles.h2.copyWith(fontSize: 18)),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.h2.copyWith(fontSize: 18),
+          ),
           const SizedBox(height: 8),
-          Text(body,
-              textAlign: TextAlign.center,
-              style: AppTextStyles.subtitle.copyWith(fontSize: 13)),
+          Text(
+            body,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.subtitle.copyWith(fontSize: 13),
+          ),
         ],
       ),
     );

@@ -9,7 +9,6 @@ import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
-import '../../../shared/widgets/glass_bottom_nav.dart';
 import '../../../shared/widgets/segmented.dart';
 import '../data/seller_routes_models.dart';
 import '../data/seller_routes_repository.dart';
@@ -50,30 +49,17 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
       body: NeniBackground(
         child: SafeArea(
           bottom: false,
-          child: Stack(
-            children: [
-              RefreshIndicator(
-                color: AppColors.neniDeep,
-                onRefresh: () async {
-                  ref.invalidate(sellerRoutesWorkspaceProvider);
-                  await ref.read(sellerRoutesWorkspaceProvider.future);
-                },
-                child: workspaceAsync.when(
-                  loading: _buildLoading,
-                  error: (error, _) => _buildError(error),
-                  data: _buildContent,
-                ),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: GlassBottomNav(
-                  items: buildSellerNavItems(),
-                  currentRoute: '/routes',
-                ),
-              ),
-            ],
+          child: RefreshIndicator(
+            color: AppColors.neniDeep,
+            onRefresh: () async {
+              ref.invalidate(sellerRoutesWorkspaceProvider);
+              await ref.read(sellerRoutesWorkspaceProvider.future);
+            },
+            child: workspaceAsync.when(
+              loading: _buildLoading,
+              error: (error, _) => _buildError(error),
+              data: _buildContent,
+            ),
           ),
         ),
       ),
@@ -82,7 +68,7 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
 
   Widget _buildLoading() {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(22, 4, 22, 120),
+      padding: const EdgeInsets.fromLTRB(22, 4, 22, 24),
       children: [
         _buildHeader(),
         const SizedBox(height: 18),
@@ -98,7 +84,7 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
         ? error.message
         : 'No pudimos cargar las rutas.';
     return ListView(
-      padding: const EdgeInsets.fromLTRB(22, 4, 22, 120),
+      padding: const EdgeInsets.fromLTRB(22, 4, 22, 24),
       children: [
         _buildHeader(),
         const SizedBox(height: 18),
@@ -115,7 +101,7 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
 
   Widget _buildContent(SellerRoutesWorkspace workspace) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(22, 4, 22, 120),
+      padding: const EdgeInsets.fromLTRB(22, 4, 22, 24),
       children: [
         _buildHeader(),
         const SizedBox(height: 14),
