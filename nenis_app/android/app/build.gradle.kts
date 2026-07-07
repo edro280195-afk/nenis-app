@@ -23,6 +23,26 @@ val releaseStoreFile = signingValue("storeFile", "NENIS_KEYSTORE_PATH")
 val releaseStorePassword = signingValue("storePassword", "NENIS_KEYSTORE_PASSWORD")
 val releaseKeyAlias = signingValue("keyAlias", "NENIS_KEY_ALIAS")
 val releaseKeyPassword = signingValue("keyPassword", "NENIS_KEY_PASSWORD")
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    FileInputStream(localPropertiesFile).use(localProperties::load)
+}
+
+fun localValue(environmentName: String, vararg propertyNames: String): String {
+    return propertyNames.firstNotNullOfOrNull { propertyName ->
+        localProperties.getProperty(propertyName)?.takeIf(String::isNotBlank)
+    }
+        ?.takeIf(String::isNotBlank)
+        ?: System.getenv(environmentName)?.takeIf(String::isNotBlank)
+        ?: ""
+}
+
+val googleMapsApiKey = localValue(
+    "GOOGLE_MAPS_API_KEY",
+    "googleMapsApiKey",
+    "MAPS_API_KEY",
+)
 val hasReleaseSigning = listOf(
     releaseStoreFile,
     releaseStorePassword,
@@ -59,6 +79,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
     }
 
     signingConfigs {

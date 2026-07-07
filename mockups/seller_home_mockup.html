@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Neni's App · Vendedora · Inicio (Dashboard) — Mockup claro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,500;1,600&family=Playfair+Display:ital,wght@1,500;1,600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+<style>
+:root{
+  --cream:#FDF4F7; --surface:#FFFCFD;
+  --ink:#3A2233; --ink2:#8A6F82; --ink3:#B6A4B1;
+  --line:rgba(58,34,51,.09); --line-soft:rgba(58,34,51,.05);
+  --neni:#FB6F9C; --neni-deep:#E84E83; --lavender:#9B7BE0; --gold:#F3B341;
+  --green:#1F9A6A; --rose:#FF2D55;
+  --sh-card:0 18px 40px -12px rgba(214,51,108,.24), 0 6px 16px -8px rgba(58,34,51,.10);
+  --sh-sm:0 10px 22px -12px rgba(214,51,108,.28);
+  --sh-nav:0 22px 44px -18px rgba(124,31,74,.42);
+  --grad-rosa:linear-gradient(135deg,#FB6F9C 0%,#E84E83 100%);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{
+  font-family:'Poppins',system-ui,sans-serif;color:var(--ink);min-height:100vh;
+  background:
+    radial-gradient(120% 80% at 12% 0%, #FFE1EE 0%, rgba(255,225,238,0) 46%),
+    radial-gradient(120% 80% at 92% 4%, #E9DEFB 0%, rgba(233,222,251,0) 44%),
+    radial-gradient(120% 90% at 84% 100%, #FFE7D8 0%, rgba(255,231,216,0) 50%),
+    var(--cream);
+  padding:44px 20px 90px;
+}
+.ico{font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24;line-height:1;display:inline-flex;vertical-align:middle}
+.ico.ln{font-variation-settings:'FILL' 0,'wght' 500}
+.pf{font-family:'Playfair Display',serif;font-style:italic}
+.blob{position:fixed;border-radius:50%;filter:blur(70px);opacity:.55;z-index:0;pointer-events:none;animation:drift 18s ease-in-out infinite}
+.blob.b1{width:340px;height:340px;background:#FFC6DD;top:-60px;left:-40px}
+.blob.b2{width:300px;height:300px;background:#DCC8FB;top:40px;right:-60px;animation-delay:-6s}
+.blob.b3{width:320px;height:320px;background:#FFD9C2;bottom:-80px;left:40%;animation-delay:-11s}
+@keyframes drift{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(18px,-22px) scale(1.06)}}
+
+.page-head{position:relative;z-index:2;text-align:center;max-width:760px;margin:0 auto 40px}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:2.2px;color:var(--neni-deep);text-transform:uppercase}
+.page-head h1{font-size:38px;font-weight:800;letter-spacing:-1px;margin:12px 0 6px;line-height:1.05}
+.page-head h1 .pf{font-weight:600;color:var(--neni-deep)}
+.page-head p{font-size:14.5px;color:var(--ink2);font-weight:500;margin:0 auto;max-width:560px;line-height:1.55}
+
+.gallery{position:relative;z-index:2;display:flex;gap:44px;justify-content:center;align-items:flex-start;flex-wrap:wrap;max-width:824px;margin:0 auto}
+.frame{width:372px;display:flex;flex-direction:column;align-items:center;gap:16px;opacity:0;transform:translateY(26px);animation:rise .8s cubic-bezier(.22,1,.36,1) forwards}
+.frame:nth-child(1){animation-delay:.05s}.frame:nth-child(2){animation-delay:.18s}
+@keyframes rise{to{opacity:1;transform:none}}
+.frame .caption{text-align:center}
+.frame .caption .n{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--grad-rosa);color:#fff;font-weight:700;font-size:13px;margin-right:8px;box-shadow:var(--sh-sm)}
+.frame .caption h3{display:inline;font-size:17px;font-weight:700;color:var(--ink)}
+.frame .caption p{font-size:12.5px;color:var(--ink2);margin:6px 0 0;font-weight:500}
+
+.device{width:372px;height:806px;border-radius:54px;background:#fff;padding:9px;box-shadow:0 50px 90px -30px rgba(214,51,108,.42), 0 12px 30px -12px rgba(58,34,51,.18), inset 0 0 0 1px rgba(255,255,255,.9);position:relative;transition:transform .5s cubic-bezier(.22,1,.36,1)}
+.device:hover{transform:translateY(-8px)}
+.screen{position:relative;width:100%;height:100%;border-radius:46px;overflow:hidden;background:
+  radial-gradient(90% 55% at 8% 0%, #FFE1EE 0%, rgba(255,225,238,0) 42%),
+  radial-gradient(85% 50% at 96% 3%, #E9DEFB 0%, rgba(233,222,251,0) 42%),
+  radial-gradient(90% 45% at 90% 100%, #FFE7D8 0%, rgba(255,231,216,0) 48%),
+  var(--cream);}
+.scroll{position:absolute;inset:0;overflow-y:auto;scrollbar-width:none;padding-bottom:150px}
+.scroll::-webkit-scrollbar{display:none}
+.pad{padding:0 18px}
+
+.statusbar{height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:relative;z-index:5}
+.statusbar .t{font-size:13px;font-weight:700}
+.statusbar .r{display:flex;gap:6px;align-items:center}
+.statusbar .r .ico{font-size:16px}
+.island{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:104px;height:26px;background:#1a1020;border-radius:999px}
+
+.appbar{display:flex;align-items:center;justify-content:space-between;padding:6px 18px 2px}
+.brand{display:flex;align-items:center;gap:11px}
+.logo{width:42px;height:42px;border-radius:14px;background:var(--grad-rosa);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:19px;box-shadow:0 8px 18px -6px rgba(232,78,131,.6);position:relative;overflow:hidden}
+.logo::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,.45) 50%,transparent 70%);animation:sheen 3.4s ease-in-out infinite}
+@keyframes sheen{0%,60%{transform:translateX(-120%)}80%,100%{transform:translateX(120%)}}
+.brand .bt{font-size:14px;font-weight:800;display:flex;align-items:center;gap:5px}
+.brand .bt .pf{font-size:11px;color:var(--neni-deep);font-weight:600}
+.brand .bs{font-size:8.5px;font-weight:700;letter-spacing:1.3px;color:var(--lavender);text-transform:uppercase;margin-top:1px}
+.iconbtn{width:38px;height:38px;border-radius:13px;background:rgba(255,255,255,.8);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--ink);position:relative;transition:.25s}
+.iconbtn:hover{color:var(--neni-deep);border-color:rgba(232,78,131,.35);transform:translateY(-1px)}
+.iconbtn .ico{font-size:20px}
+.dot{position:absolute;top:9px;right:9px;width:8px;height:8px;border-radius:50%;background:var(--neni)}
+.dot::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--neni);animation:ping 1.8s cubic-bezier(0,0,.2,1) infinite}
+@keyframes ping{75%,100%{transform:scale(2.4);opacity:0}}
+
+.greet{display:flex;align-items:flex-end;justify-content:space-between;margin-top:16px}
+.greet .hi{font-size:12px;color:var(--ink2);font-weight:500}
+.greet .big{font-size:22px;font-weight:800;letter-spacing:-.6px;display:flex;align-items:baseline;gap:6px}
+.greet .big .pf{font-size:19px;color:var(--neni-deep);font-weight:600}
+.open-pill{display:inline-flex;align-items:center;gap:6px;background:#D9F3E6;border:1px solid rgba(31,154,106,.22);color:var(--green);font-size:8.5px;font-weight:800;letter-spacing:.5px;padding:6px 10px;border-radius:999px}
+.open-pill i{width:6px;height:6px;border-radius:50%;background:var(--green);display:block;box-shadow:0 0 0 0 rgba(31,154,106,.5);animation:beat 1.8s infinite}
+@keyframes beat{0%{box-shadow:0 0 0 0 rgba(31,154,106,.5)}70%{box-shadow:0 0 0 7px rgba(31,154,106,0)}100%{box-shadow:0 0 0 0 rgba(31,154,106,0)}}
+
+.corte{margin-top:16px;background:linear-gradient(135deg,#FFF0F5,#F3EBFF);border:1px solid rgba(232,78,131,.13);border-radius:28px;padding:16px;box-shadow:var(--sh-sm)}
+.corte-h{display:flex;align-items:center;justify-content:space-between}
+.corte-h .l{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700}
+.corte-h .l .ico{font-size:18px;color:var(--neni-deep)}
+.corte-h .badge{font-size:8px;font-weight:800;letter-spacing:.5px;background:rgba(255,255,255,.75);padding:4px 9px;border-radius:999px;color:var(--ink2)}
+.corte-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-top:14px}
+.cstat{background:rgba(255,255,255,.72);border:1px solid var(--line);border-radius:16px;padding:10px}
+.cstat .k{font-size:8px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--ink3)}
+.cstat .v{font-size:15px;font-weight:800;margin-top:3px}
+
+.kpigrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:14px;box-shadow:var(--sh-sm);position:relative;overflow:hidden;transition:.35s}
+.kpi:hover{transform:translateY(-3px);box-shadow:0 22px 40px -16px rgba(214,51,108,.3)}
+.kpi .top{display:flex;align-items:center;justify-content:space-between}
+.kpi .ib{width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center}
+.kpi .ib .ico{font-size:17px}
+.kpi .badge{font-size:8px;font-weight:800;padding:3px 7px;border-radius:999px}
+.kpi .k{font-size:8.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--ink3);margin-top:14px}
+.kpi .v{font-size:19px;font-weight:800;letter-spacing:-.4px;margin-top:2px}
+.kpi .v small{font-size:10px;font-weight:600;color:var(--ink3)}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:28px;padding:16px;box-shadow:var(--sh-sm);margin-top:14px}
+.cami{background:linear-gradient(135deg,#F3EBFF,#FFF0F5);border-color:rgba(155,123,224,.2)}
+.cami-h{display:flex;align-items:center;justify-content:space-between}
+.cami-h .l{display:flex;align-items:center;gap:10px}
+.cami-ic{width:34px;height:34px;border-radius:11px;background:linear-gradient(135deg,#9B7BE0,#6366F1);display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 8px 16px -6px rgba(139,92,246,.5)}
+.cami-ic .ico{font-size:19px}
+.cami-h .tt{font-size:12.5px;font-weight:800}
+.cami-h .st{font-size:7.5px;font-weight:700;letter-spacing:1px;color:var(--neni-deep);text-transform:uppercase;margin-top:1px}
+.regen{display:inline-flex;align-items:center;gap:5px;background:var(--grad-rosa);color:#fff;font-size:9px;font-weight:700;padding:7px 11px;border-radius:11px;box-shadow:0 8px 16px -8px rgba(232,78,131,.7);cursor:pointer}
+.regen .ico{font-size:13px}
+.cami-box{margin-top:12px;background:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.7);border-radius:16px;padding:13px;font-size:11.5px;font-style:italic;color:var(--ink2);line-height:1.5}
+
+.card-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.card-h .l{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--ink2)}
+.card-h .l .ico{font-size:16px;color:var(--neni-deep)}
+.card-h .a{font-size:9px;font-weight:700;color:var(--neni-deep)}
+.chart-wrap{height:150px;margin-top:8px}
+
+.sec-title{display:flex;align-items:center;justify-content:space-between;margin:20px 2px 10px}
+.sec-title .l{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--ink3)}
+.sec-title .a{font-size:8.5px;font-weight:700;letter-spacing:.5px;color:var(--neni-deep)}
+.act{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:12px;box-shadow:var(--sh-sm);margin-bottom:9px;transition:.3s}
+.act:hover{transform:translateY(-2px);border-color:rgba(232,78,131,.22)}
+.act .l{display:flex;align-items:center;gap:11px}
+.act .thumb{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#FFF0F5,#F3EBFF);display:flex;align-items:center;justify-content:center;font-size:17px}
+.act .nm{font-size:12.5px;font-weight:700}
+.act .sub{font-size:9.5px;color:var(--ink2);font-weight:500;margin-top:1px}
+.act .amt{font-size:12.5px;font-weight:800;color:var(--neni-deep);text-align:right}
+.act .st{font-size:7.5px;font-weight:800;letter-spacing:.4px;padding:3px 7px;border-radius:999px;margin-top:4px;display:inline-block}
+.st-green{background:#D9F3E6;color:var(--green)}
+.st-lav{background:#F1E9FF;color:#7C5AC9}
+
+.fab{position:absolute;bottom:104px;right:18px;width:54px;height:54px;border-radius:50%;background:var(--grad-rosa);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 16px 30px -10px rgba(232,78,131,.75);z-index:8;cursor:pointer;animation:floaty 3.4s ease-in-out infinite}
+.fab:hover{transform:translateY(-3px) scale(1.05)}
+.fab .ico{font-size:27px}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+
+.nav{position:absolute;left:16px;right:16px;bottom:16px;height:70px;border-radius:26px;background:rgba(255,255,255,.72);border:1px solid rgba(255,255,255,.72);backdrop-filter:blur(18px);box-shadow:var(--sh-nav);display:flex;align-items:center;justify-content:space-around;z-index:7}
+.nav a{display:flex;flex-direction:column;align-items:center;gap:3px;text-decoration:none;color:var(--ink3);flex:1}
+.nav a .ib{padding:5px 14px;border-radius:14px;display:flex}
+.nav a .ico{font-size:24px}
+.nav a span{font-size:10px;font-weight:600}
+.nav a.on{color:var(--neni-deep)}
+.nav a.on .ib{background:linear-gradient(135deg,#FFE1EC,#FFD0E2)}
+</style>
+</head>
+<body>
+<div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+
+<header class="page-head">
+  <div class="eyebrow">Neni's App · Frente Vendedora</div>
+  <h1>Vista de <span class="pf">Inicio</span></h1>
+  <p>El dashboard de la vendedora reconvertido a la estética clara/crema girly — hermanado con Pedidos. Corte activo, KPIs, C.A.M.I. y actividad reciente, todo en luz.</p>
+</header>
+
+<div class="gallery">
+  <div class="frame">
+    <div class="device"><div class="screen">
+      <div class="statusbar"><span class="t">9:41</span><div class="island"></div><div class="r"><span class="ico">signal_cellular_alt</span><span class="ico">wifi</span><span class="ico">battery_full</span></div></div>
+      <div class="scroll">
+        <div class="appbar">
+          <div class="brand"><div class="logo">R</div><div><div class="bt">Regi Bazar <span class="pf">Premium</span></div><div class="bs">Socio Elite 💎</div></div></div>
+          <div style="display:flex;gap:8px">
+            <div class="iconbtn"><span class="ico">light_mode</span></div>
+            <div class="iconbtn"><span class="ico">notifications</span><span class="dot"></span></div>
+          </div>
+        </div>
+        <div class="pad">
+          <div class="greet">
+            <div>
+              <div class="hi">¡Hola Yazmin! 🌸</div>
+              <div class="big">Tu Dashboard <span class="pf">Resumen</span></div>
+            </div>
+            <div class="open-pill"><i></i>CORTE ABIERTO</div>
+          </div>
+
+          <div class="corte">
+            <div class="corte-h">
+              <div class="l"><span class="ico">calendar_today</span>Corte: Fin de Mes Junio</div>
+              <div class="badge">ACTIVO</div>
+            </div>
+            <div class="corte-stats">
+              <div class="cstat"><div class="k">Ventas</div><div class="v" style="color:var(--green)">$34,850</div></div>
+              <div class="cstat"><div class="k">Invertido</div><div class="v" style="color:var(--rose)">$12,300</div></div>
+              <div class="cstat"><div class="k">Utilidad</div><div class="v" style="color:var(--neni-deep)">$22,550</div></div>
+            </div>
+          </div>
+
+          <div class="kpigrid">
+            <div class="kpi">
+              <div class="top"><span class="ib" style="background:#D9F3E6;color:var(--green)"><span class="ico">payments</span></span><span class="badge" style="background:#D9F3E6;color:var(--green)">+14%</span></div>
+              <div class="k">Ventas Hoy</div><div class="v">$12,450</div>
+            </div>
+            <div class="kpi">
+              <div class="top"><span class="ib" style="background:#FFE1EC;color:var(--neni-deep)"><span class="ico">shopping_bag</span></span><span class="badge" style="background:#FFE1EC;color:var(--neni-deep)">Hoy</span></div>
+              <div class="k">Pendientes</div><div class="v">24 <small>/ 6 ruta</small></div>
+            </div>
+            <div class="kpi">
+              <div class="top"><span class="ib" style="background:#FCECD2;color:#B5730A"><span class="ico">account_balance_wallet</span></span><span class="badge" style="background:#FCECD2;color:#B5730A">Cobrar</span></div>
+              <div class="k">Por Cobrar</div><div class="v">$3,850</div>
+            </div>
+            <div class="kpi">
+              <div class="top"><span class="ib" style="background:#F1E9FF;color:var(--lavender)"><span class="ico">map</span></span><span class="badge" style="background:#F1E9FF;color:var(--lavender)">Activas</span></div>
+              <div class="k">Repartos</div><div class="v">3 <small>rutas</small></div>
+            </div>
+          </div>
+
+          <div class="card cami">
+            <div class="cami-h">
+              <div class="l"><div class="cami-ic"><span class="ico">psychology</span></div><div><div class="tt">C.A.M.I. Smart Insights</div><div class="st">Asistente Virtual IA</div></div></div>
+              <div class="regen"><span class="ico">auto_awesome</span>Regenerar</div>
+            </div>
+            <div class="cami-box">"¡Yazmin! El set de sábanas King cuadros es el más apartado en la Tanda #4. Sugiero avisar de stock limitado para acelerar cierres de venta. 🌸"</div>
+          </div>
+
+          <div class="card">
+            <div class="card-h"><div class="l"><span class="ico">query_stats</span>Ventas mensuales</div><div class="a">Ver detalle</div></div>
+            <div class="chart-wrap">
+              <svg viewBox="0 0 320 150" width="100%" height="100%" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#FB6F9C" stop-opacity="0.35"/>
+                    <stop offset="100%" stop-color="#FB6F9C" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <line x1="0" y1="37" x2="320" y2="37" stroke="#FB6F9C" stroke-opacity="0.08"/>
+                <line x1="0" y1="75" x2="320" y2="75" stroke="#FB6F9C" stroke-opacity="0.08"/>
+                <line x1="0" y1="113" x2="320" y2="113" stroke="#FB6F9C" stroke-opacity="0.08"/>
+                <path d="M0,120 C27,120 27,82 53,82 C80,82 80,98 107,98 C133,98 133,60 160,60 C186,60 186,45 213,45 C240,45 240,15 266,15 C293,15 293,38 320,38 L320,150 L0,150 Z" fill="url(#fill)"/>
+                <path d="M0,120 C27,120 27,82 53,82 C80,82 80,98 107,98 C133,98 133,60 160,60 C186,60 186,45 213,45 C240,45 240,15 266,15 C293,15 293,38 320,38" fill="none" stroke="#E84E83" stroke-width="3.5" stroke-linecap="round"/>
+                <g fill="#E84E83" stroke="#fff" stroke-width="2.5">
+                  <circle cx="53" cy="82" r="4.5"/><circle cx="160" cy="60" r="4.5"/><circle cx="266" cy="15" r="4.5"/><circle cx="320" cy="38" r="4.5"/>
+                </g>
+              </svg>
+            </div>
+          </div>
+
+          <div class="sec-title"><div class="l">Actividad reciente</div><div class="a">VER TODO</div></div>
+          <div class="act">
+            <div class="l"><div class="thumb">🛍️</div><div><div class="nm">Gar Cia</div><div class="sub">9:15 AM · 💵 Efectivo</div></div></div>
+            <div><div class="amt">$410</div><span class="st st-green">Entregado</span></div>
+          </div>
+          <div class="act">
+            <div class="l"><div class="thumb">🌀</div><div><div class="nm">Ana Lucía</div><div class="sub">Ayer · 🏦 Transferencia</div></div></div>
+            <div><div class="amt">$1,200</div><span class="st st-lav">Tanda #4</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="fab"><span class="ico">add</span></div>
+      <nav class="nav">
+        <a class="on"><span class="ib"><span class="ico">home</span></span><span>Inicio</span></a>
+        <a><span class="ib"><span class="ico">receipt_long</span></span><span>Pedidos</span></a>
+        <a><span class="ib"><span class="ico">groups</span></span><span>Tandas</span></a>
+        <a><span class="ib"><span class="ico">directions_car</span></span><span>Reparto</span></a>
+        <a><span class="ib"><span class="ico">person</span></span><span>Cuenta</span></a>
+      </nav>
+    </div></div>
+    <div class="caption"><span class="n">★</span><h3>Inicio · Dashboard</h3><p>Versión clara del panel: corte activo, KPIs, C.A.M.I. y actividad — misma familia visual que Pedidos.</p></div>
+  </div>
+</div>
+</body>
+</html>

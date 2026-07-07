@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Neni's App · Vendedora · Rutas API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,500;1,600&family=Playfair+Display:ital,wght@1,500;1,600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+<style>
+:root{
+  --cream:#FDF4F7;--surface:#FFFCFD;--ink:#3A2233;--ink2:#8A6F82;--ink3:#B6A4B1;
+  --line:rgba(58,34,51,.09);--neni:#FB6F9C;--neni-deep:#E84E83;--lavender:#9B7BE0;
+  --gold:#F3B341;--green:#1F9A6A;--blue:#2E6BD6;--red:#FF2D55;
+  --sh-card:0 18px 40px -12px rgba(214,51,108,.24),0 6px 16px -8px rgba(58,34,51,.10);
+  --sh-sm:0 10px 22px -12px rgba(214,51,108,.28);--sh-nav:0 22px 44px -18px rgba(124,31,74,.42);
+  --grad-rosa:linear-gradient(135deg,#FB6F9C 0%,#E84E83 100%);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{
+  min-height:100vh;font-family:Poppins,system-ui,sans-serif;color:var(--ink);
+  background:
+    radial-gradient(120% 80% at 12% 0%,#FFE1EE 0%,rgba(255,225,238,0) 46%),
+    radial-gradient(120% 80% at 92% 4%,#E9DEFB 0%,rgba(233,222,251,0) 44%),
+    radial-gradient(120% 90% at 84% 100%,#FFE7D8 0%,rgba(255,231,216,0) 50%),
+    var(--cream);
+  padding:44px 20px 90px;overflow-x:auto;
+}
+button,input,textarea{font-family:inherit}
+button{border:0;cursor:pointer}
+.ico{font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24;line-height:1;display:inline-flex}
+.pf{font-family:'Playfair Display',serif;font-style:italic}
+.page-head{position:relative;z-index:2;text-align:center;max-width:760px;margin:0 auto 38px}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:2px;color:var(--neni-deep);text-transform:uppercase}
+.page-head h1{font-size:38px;font-weight:800;letter-spacing:-1px;margin:12px 0 6px;line-height:1.05}
+.page-head h1 .pf{font-weight:600;color:var(--neni-deep)}
+.page-head p{font-size:14.5px;color:var(--ink2);font-weight:500;margin:0 auto;max-width:620px;line-height:1.55}
+.gallery{display:flex;gap:38px;justify-content:center;align-items:flex-start;flex-wrap:wrap;max-width:1160px;margin:0 auto}
+.device{width:372px;height:806px;border-radius:54px;background:#fff;padding:9px;box-shadow:0 50px 90px -30px rgba(214,51,108,.42),0 12px 30px -12px rgba(58,34,51,.18)}
+.screen{position:relative;width:100%;height:100%;border-radius:46px;overflow:hidden;background:radial-gradient(90% 55% at 8% 0%,#FFE1EE 0%,rgba(255,225,238,0) 42%),radial-gradient(85% 50% at 96% 3%,#E9DEFB 0%,rgba(233,222,251,0) 42%),var(--cream)}
+.statusbar{height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:relative;z-index:5}
+.statusbar .t{font-size:13px;font-weight:700}.statusbar .r{display:flex;gap:6px}.statusbar .r .ico{font-size:16px}
+.island{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:104px;height:26px;background:#1a1020;border-radius:999px}
+.scroll{position:absolute;inset:46px 0 0;overflow-y:auto;scrollbar-width:none;padding-bottom:118px}.scroll::-webkit-scrollbar{display:none}
+.pad{padding:0 18px}
+.appbar{display:flex;align-items:center;justify-content:space-between;padding:6px 18px 4px}
+.brand{display:flex;align-items:center;gap:11px;min-width:0}
+.logo{width:42px;height:42px;border-radius:14px;background:var(--grad-rosa);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:19px;box-shadow:0 8px 18px -6px rgba(232,78,131,.6);flex-shrink:0}
+.bt{font-size:14px;font-weight:800;white-space:nowrap}.bt .pf{font-size:11px;color:var(--neni-deep)}.bs{font-size:8.5px;font-weight:700;letter-spacing:1.2px;color:var(--lavender);text-transform:uppercase}
+.iconbtn{width:38px;height:38px;border-radius:13px;background:rgba(255,255,255,.8);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--ink)}
+.route-title{font-size:26px;font-weight:800;line-height:1.08;margin-top:10px}.route-title .pf{font-size:24px;color:var(--neni-deep);font-weight:600}
+.route-sub{font-size:12.5px;color:var(--ink2);font-weight:500;margin-top:4px;line-height:1.38}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;background:rgba(58,34,51,.05);border-radius:17px;padding:5px;margin-top:13px}
+.tabs button{height:38px;border-radius:13px;background:transparent;color:var(--ink2);font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:5px}
+.tabs button.on{background:var(--surface);color:var(--neni-deep);box-shadow:var(--sh-sm)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}.kpi{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:10px 8px;box-shadow:var(--sh-sm)}
+.kpi .k{font-size:8px;font-weight:700;color:var(--ink3);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.kpi .v{font-size:15px;font-weight:800;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:14px;box-shadow:var(--sh-sm);margin-top:13px}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}.field span{font-size:10px;font-weight:800;text-transform:uppercase;color:var(--ink3)}
+.field input,.field textarea{width:100%;border:1px solid var(--line);border-radius:14px;padding:11px 12px;background:#fff;color:var(--ink);outline:0;font-size:12px;font-weight:600}.field textarea{min-height:70px;resize:vertical}
+.btnrow{display:grid;grid-template-columns:1fr 1fr;gap:9px}.btn{height:42px;border-radius:14px;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:7px}.primary{background:var(--grad-rosa);color:#fff;box-shadow:0 12px 22px -10px rgba(232,78,131,.72)}.soft{background:#fff;border:1px solid rgba(232,78,131,.16);color:var(--neni-deep)}
+.list{display:flex;flex-direction:column;gap:10px;margin-top:12px}.card{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:13px;box-shadow:var(--sh-sm)}
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.name{font-size:13.5px;font-weight:800}.sub{font-size:10.5px;color:var(--ink2);font-weight:500;margin-top:2px;line-height:1.35}
+.avatar{width:38px;height:38px;border-radius:14px;background:var(--grad-rosa);color:#fff;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 16px -8px rgba(214,51,108,.5);flex-shrink:0}
+.id{display:flex;align-items:center;gap:10px;min-width:0}.chip{display:inline-flex;border-radius:999px;padding:4px 8px;font-size:9px;font-weight:800;background:#F1E9FF;color:#7C5AC9;margin:8px 5px 0 0}.chip.green{background:#D9F3E6;color:var(--green)}.chip.blue{background:#E4ECFF;color:var(--blue)}.chip.warn{background:#FCECD2;color:#B5730A}.chip.pink{background:#FFE1EC;color:var(--neni-deep)}
+.map{height:236px;border-radius:22px;overflow:hidden;background:#eef1f6;border:1px solid var(--line);position:relative;margin-top:12px;box-shadow:var(--sh-card)}.map iframe{position:absolute;inset:0;width:100%;height:100%;border:0;filter:saturate(.9)}
+.view{display:none}.view.on{display:block}.empty{padding:28px 14px;text-align:center;color:var(--ink2);font-size:12.5px;font-weight:600;border:1px dashed rgba(232,78,131,.22);border-radius:22px;background:rgba(255,255,255,.52)}
+.toast{position:absolute;left:22px;right:22px;bottom:188px;z-index:30;background:#1f1724;color:#fff;border-radius:18px;padding:12px 14px;font-size:12px;font-weight:700;box-shadow:0 16px 28px -12px rgba(31,23,36,.55);opacity:0;transform:translateY(12px);pointer-events:none;transition:.25s}.toast.show{opacity:1;transform:none}
+.nav{position:absolute;left:16px;right:16px;bottom:16px;height:70px;border-radius:26px;background:rgba(255,255,255,.72);border:1px solid rgba(255,255,255,.72);backdrop-filter:blur(18px);box-shadow:var(--sh-nav);display:flex;align-items:center;justify-content:space-around;z-index:7}
+.nav a{display:flex;flex-direction:column;align-items:center;gap:3px;text-decoration:none;color:var(--ink3);flex:1}.nav a .ib{padding:5px 12px;border-radius:14px;display:flex}.nav a .ico{font-size:23px}.nav a span{font-size:10px;font-weight:600}.nav a.on{color:var(--neni-deep)}.nav a.on .ib{background:linear-gradient(135deg,#FFE1EC,#FFD0E2)}
+.notes{width:min(100%,620px)}.note-card{background:rgba(255,255,255,.74);border:1px solid rgba(255,255,255,.76);border-radius:28px;padding:22px;box-shadow:var(--sh-card);backdrop-filter:blur(18px);margin-bottom:16px}.note-card h2{font-size:20px;line-height:1.2;margin:0 0 8px;font-weight:800}.note-card h2 .pf{color:var(--neni-deep)}.note-card p,.note-card li{font-size:13px;line-height:1.55;color:var(--ink2);font-weight:500}
+</style>
+</head>
+<body>
+<header class="page-head">
+  <div class="eyebrow">Neni's App · Frente Vendedora</div>
+  <h1>Rutas de <span class="pf">reparto</span></h1>
+  <p>Mockup conectado a `sellgeneral-api`. No contiene clientas, pedidos ni rutas inventadas: carga todo desde endpoints reales con token.</p>
+</header>
+
+<main class="gallery">
+  <section class="device">
+    <div class="screen">
+      <div class="statusbar"><span class="t">9:41</span><div class="island"></div><div class="r"><span class="ico">signal_cellular_alt</span><span class="ico">wifi</span><span class="ico">battery_full</span></div></div>
+      <div class="scroll">
+        <div class="appbar">
+          <div class="brand"><div class="logo">R</div><div><div class="bt">Regi Bazar <span class="pf">Premium</span></div><div class="bs">Datos reales del API</div></div></div>
+          <button class="iconbtn" id="refreshBtn"><span class="ico">sync</span></button>
+        </div>
+        <div class="pad">
+          <div class="route-title">Rutas <span class="pf">API</span></div>
+          <div class="route-sub">Arma, optimiza y revisa recorridos sin acciones de inicio ni navegación.</div>
+
+          <div class="kpis">
+            <div class="kpi"><div class="k">Candidatos</div><div class="v" id="kCandidates">0</div></div>
+            <div class="kpi"><div class="k">Elegidos</div><div class="v" id="kSelected">0</div></div>
+            <div class="kpi"><div class="k">Abiertas</div><div class="v" id="kOpen">0</div></div>
+            <div class="kpi"><div class="k">Historial</div><div class="v" id="kHistory">0</div></div>
+          </div>
+
+          <div class="panel" id="configPanel">
+            <div class="field"><span>API Base URL</span><input id="apiBase" value="http://localhost:5080" /></div>
+            <div class="field"><span>Bearer token</span><textarea id="apiToken" placeholder="Pega aquí el token de sesión de la vendedora"></textarea></div>
+            <div class="field"><span>X-Business-Id opcional</span><input id="businessId" placeholder="Ej. 1" /></div>
+            <div class="btnrow">
+              <button class="btn primary" id="loadBtn"><span class="ico">cloud_sync</span>Cargar API</button>
+              <button class="btn soft" id="hideConfigBtn"><span class="ico">tune</span>Ocultar</button>
+            </div>
+          </div>
+
+          <div class="tabs">
+            <button class="on" data-view="builder"><span class="ico">add_road</span>Armar</button>
+            <button data-view="routes"><span class="ico">map</span>Rutas</button>
+            <button data-view="history"><span class="ico">history</span>Historial</button>
+          </div>
+
+          <section class="view on" id="builderView">
+            <div class="panel">
+              <div class="btnrow">
+                <button class="btn soft" id="previewBtn"><span class="ico">route</span>Previsualizar</button>
+                <button class="btn primary" id="createBtn"><span class="ico">save</span>Guardar ruta</button>
+              </div>
+              <div class="map" id="mapBox"><iframe id="mapFrame" title="Google Maps" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=Nuevo%20Laredo%2C%20Tamaulipas%2C%20Mexico&z=12&output=embed"></iframe></div>
+            </div>
+            <div class="list" id="candidateList"><div class="empty">Carga el API para ver pedidos y tandas disponibles.</div></div>
+          </section>
+
+          <section class="view" id="routesView"><div class="list" id="routesList"><div class="empty">Carga el API para ver rutas abiertas.</div></div></section>
+          <section class="view" id="historyView"><div class="list" id="historyList"><div class="empty">Carga el API para ver historial.</div></div></section>
+        </div>
+      </div>
+      <nav class="nav">
+        <a><span class="ib"><span class="ico">home</span></span><span>Inicio</span></a>
+        <a><span class="ib"><span class="ico">receipt_long</span></span><span>Pedidos</span></a>
+        <a><span class="ib"><span class="ico">groups</span></span><span>Tandas</span></a>
+        <a class="on"><span class="ib"><span class="ico">directions_car</span></span><span>Reparto</span></a>
+        <a><span class="ib"><span class="ico">person</span></span><span>Cuenta</span></a>
+      </nav>
+      <div class="toast" id="toast"></div>
+    </div>
+  </section>
+
+  <aside class="notes">
+    <div class="note-card">
+      <h2>Endpoints usados</h2>
+      <ul>
+        <li>`GET /api/routes` para rutas abiertas e historial.</li>
+        <li>`GET /api/orders` para candidatos de pedido, filtrando los que no pueden entrar a ruta.</li>
+        <li>`GET /api/routes/available-tandas` para tandas disponibles.</li>
+        <li>`POST /api/routes/preview` para calcular orden, distancia, tiempo y depot.</li>
+        <li>`POST /api/routes` para guardar la ruta. El backend optimiza de nuevo.</li>
+      </ul>
+    </div>
+    <div class="note-card">
+      <h2>Decisiones de flujo</h2>
+      <p>Esta pantalla es para la vendedora: preparación, revisión, optimización visual y administración de rutas con datos reales del negocio. El control operativo queda fuera de este módulo.</p>
+    </div>
+  </aside>
+</main>
+
+<script>
+const state = { routes: [], candidates: [], selected: new Set(), preview: null };
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
+const money = (n) => Number(n || 0).toLocaleString('es-MX', { style:'currency', currency:'MXN', maximumFractionDigits:0 });
+const apiBase = () => $('#apiBase').value.replace(/\/$/, '');
+const headers = () => {
+  const h = { 'Content-Type':'application/json' };
+  const token = $('#apiToken').value.trim();
+  const businessId = $('#businessId').value.trim();
+  if (token) h.Authorization = `Bearer ${token}`;
+  if (businessId) h['X-Business-Id'] = businessId;
+  return h;
+};
+function toast(msg){ const el=$('#toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(el.t); el.t=setTimeout(()=>el.classList.remove('show'),2400); }
+async function api(path, options={}){
+  const res = await fetch(`${apiBase()}${path}`, { ...options, headers:{...headers(), ...(options.headers||{})} });
+  if(!res.ok){ const text = await res.text(); throw new Error(text || `HTTP ${res.status}`); }
+  return res.json();
+}
+function eligibleOrder(o){
+  const status = String(o.status || '').toLowerCase();
+  const type = String(o.orderType || '').toLowerCase();
+  return status !== 'canceled' && status !== 'delivered' && type !== 'pickup' && o.deliveryRouteId == null;
+}
+function asCandidateFromOrder(o){
+  return { key:`order:${o.id}`, kind:'Pedido', orderId:o.id, name:o.clientName || 'Clienta', subtitle:`#${o.id} · ${o.itemsCount||0} artículos`, address:o.alternativeAddress || o.clientAddress, lat:o.clientLatitude, lng:o.clientLongitude, total:o.total || 0 };
+}
+function asCandidateFromTanda(t){
+  return { key:`tanda:${t.tandaParticipantId}`, kind:'Tanda', tandaParticipantId:t.tandaParticipantId, name:t.clientName || 'Clienta', subtitle:`${t.tandaName || 'Tanda'} · Semana ${t.week}/${t.totalWeeks}`, address:t.clientAddress, lat:t.clientLatitude, lng:t.clientLongitude, total:0 };
+}
+async function loadApi(){
+  try{
+    const [routes, orders, tandas] = await Promise.all([
+      api('/api/routes'), api('/api/orders'), api('/api/routes/available-tandas')
+    ]);
+    state.routes = routes || [];
+    state.candidates = [...(orders||[]).filter(eligibleOrder).map(asCandidateFromOrder), ...(tandas||[]).map(asCandidateFromTanda)];
+    state.selected.clear(); state.preview = null;
+    render(); toast('Datos cargados desde el API.');
+  }catch(e){ toast(`No se pudo cargar: ${e.message}`); }
+}
+async function previewRoute(){
+  const picked = selectedCandidates();
+  if(!picked.length) return toast('Selecciona entregas.');
+  try{
+    state.preview = await api('/api/routes/preview', { method:'POST', body: JSON.stringify({
+      orderIds: picked.filter(c=>c.orderId).map(c=>c.orderId),
+      tandaParticipantIds: picked.filter(c=>c.tandaParticipantId).map(c=>c.tandaParticipantId)
+    })});
+    render(); toast('Preview calculado por el API.');
+  }catch(e){ toast(`No se pudo calcular: ${e.message}`); }
+}
+async function createRoute(){
+  const picked = selectedCandidates();
+  if(!picked.length) return toast('Selecciona entregas.');
+  try{
+    await api('/api/routes', { method:'POST', body: JSON.stringify({
+      orderIds: picked.filter(c=>c.orderId).map(c=>c.orderId),
+      tandaParticipantIds: picked.filter(c=>c.tandaParticipantId).map(c=>c.tandaParticipantId),
+      preOptimized:false
+    })});
+    await loadApi();
+    toast('Ruta guardada desde el API.');
+  }catch(e){ toast(`No se pudo guardar: ${e.message}`); }
+}
+function selectedCandidates(){ return state.candidates.filter(c=>state.selected.has(c.key)); }
+function render(){
+  const open = state.routes.filter(r => ['Pending','Active'].includes(r.status));
+  const history = state.routes.filter(r => r.status === 'Completed');
+  $('#kCandidates').textContent = state.candidates.length;
+  $('#kSelected').textContent = state.selected.size;
+  $('#kOpen').textContent = open.length;
+  $('#kHistory').textContent = history.length;
+  renderCandidates(); renderRoutes(open, '#routesList'); renderRoutes(history, '#historyList'); renderMap();
+}
+function renderCandidates(){
+  const list = $('#candidateList');
+  if(!state.candidates.length){ list.innerHTML = '<div class="empty">No hay candidatos disponibles desde el API.</div>'; return; }
+  list.innerHTML = state.candidates.map(c => `
+    <article class="card" data-key="${c.key}">
+      <div class="top">
+        <div class="id"><div class="avatar">${(c.name||'?').trim()[0] || '?'}</div><div><div class="name">${c.name}</div><div class="sub">${c.subtitle || c.kind}<br>${c.address || 'Sin dirección registrada'}</div></div></div>
+        <button class="iconbtn pick" data-key="${c.key}"><span class="ico">${state.selected.has(c.key)?'check_circle':'add_circle'}</span></button>
+      </div>
+      <span class="chip pink">${c.kind}</span><span class="chip ${c.lat&&c.lng?'green':'warn'}">${c.lat&&c.lng?'Con ubicación':'Sin ubicación'}</span>${c.total?`<span class="chip blue">${money(c.total)}</span>`:''}
+    </article>`).join('');
+  $$('.pick').forEach(b => b.onclick = () => { const k=b.dataset.key; state.selected.has(k)?state.selected.delete(k):state.selected.add(k); state.preview=null; render(); });
+}
+function renderRoutes(routes, selector){
+  const list = $(selector);
+  if(!routes.length){ list.innerHTML = '<div class="empty">Sin datos para esta vista.</div>'; return; }
+  list.innerHTML = routes.map(r => {
+    const stops = r.deliveries || [];
+    const total = stops.reduce((s,d)=>s+Number(d.total||0),0);
+    const delivered = stops.filter(d=>d.status==='Delivered').length;
+    return `<article class="card"><div class="top"><div><div class="name">Ruta #${r.id}</div><div class="sub">${stops.length} paradas · ${delivered} entregadas · ${money(total)}</div></div><span class="chip ${r.status==='Completed'?'green':'blue'}">${r.status}</span></div>${stops.slice(0,4).map(d=>`<div class="sub">#${d.sortOrder} · ${d.clientName || 'Clienta'} · ${d.clientAddress || 'Sin dirección'}</div>`).join('')}</article>`;
+  }).join('');
+}
+function renderMap(){
+  const p = state.preview;
+  const stops = p?.stops?.filter(s=>s.latitude&&s.longitude) || selectedCandidates().filter(c=>c.lat&&c.lng).map(c=>({latitude:c.lat, longitude:c.lng}));
+  const first = stops[0];
+  const q = first ? `${first.latitude},${first.longitude}` : 'Nuevo Laredo, Tamaulipas, Mexico';
+  $('#mapFrame').src = `https://www.google.com/maps?q=${encodeURIComponent(q)}&z=${first?13:12}&output=embed`;
+}
+$$('.tabs button').forEach(b=>b.onclick=()=>{ $$('.tabs button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); $$('.view').forEach(v=>v.classList.remove('on')); $(`#${b.dataset.view}View`).classList.add('on'); });
+$('#loadBtn').onclick = loadApi; $('#refreshBtn').onclick = loadApi; $('#previewBtn').onclick = previewRoute; $('#createBtn').onclick = createRoute; $('#hideConfigBtn').onclick = () => $('#configPanel').style.display = 'none';
+render();
+</script>
+</body>
+</html>

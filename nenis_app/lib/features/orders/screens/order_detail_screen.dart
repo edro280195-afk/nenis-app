@@ -8,13 +8,15 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
-import '../data/seller_orders_data.dart';
+import '../data/seller_order_message.dart';
+import '../data/seller_orders_models.dart';
+import '../data/seller_orders_repository.dart';
 import '../widgets/seller_status_chip.dart';
 import 'seller_orders_screen.dart' show GradientText;
 
 class OrderDetailScreen extends ConsumerStatefulWidget {
   const OrderDetailScreen({super.key, required this.orderId});
-  final String orderId;
+  final int orderId;
 
   @override
   ConsumerState<OrderDetailScreen> createState() => _OrderDetailScreenState();
@@ -26,6 +28,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   final _newItemPrice = TextEditingController();
   final _newItemQty = TextEditingController(text: '1');
   bool _showAddItem = false;
+  bool _busy = false;
+
+  int get _id => widget.orderId;
 
   @override
   void dispose() {
@@ -36,34 +41,58 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     super.dispose();
   }
 
-  SellerOrdersNotifier get _notifier =>
-      ref.read(sellerOrdersProvider.notifier);
+  SellerOrdersRepository get _repo => ref.read(sellerOrdersRepositoryProvider);
+
+  void _invalidate() {
+    ref.invalidate(sellerOrderDetailProvider(_id));
+    ref.invalidate(sellerOrdersControllerProvider);
+    ref.invalidate(sellerDashboardProvider);
+  }
 
   void _snack(String msg, {Color? color}) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: color ?? AppColors.ink,
-        content:
-            Text(msg, style: AppTextStyles.body.copyWith(color: Colors.white)),
-      ));
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: color ?? AppColors.ink,
+          content: Text(
+            msg,
+            style: AppTextStyles.body.copyWith(color: Colors.white),
+          ),
+        ),
+      );
   }
 
-  void _addPayment(String orderId, String method) {
-    final amount = double.tryParse(_amountCtrl.text.trim()) ?? 0;
-    if (amount <= 0) {
-      _snack('Escribe un monto válido');
-      return;
+  Future<void> _run(Future<void> Function() action) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await action();
+      _invalidate();
+    } catch (e) {
+      _snack(e.toString(), color: const Color(0xFFE11D5B));
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
-    _notifier.addPayment(orderId, amount, method);
-    _amountCtrl.clear();
-    FocusScope.of(context).unfocus();
-    _snack('Cobro de ${money(amount)} · $method registrado 💕',
-        color: const Color(0xFF12A150));
   }
 
-  void _addItem(String orderId) {
+  Future<void> _setStatus(SellerOrderStatus s) =>
+      _run(() => _repo.updateStatus(_id, s));
+
+  Future<void> _setDelivery(SellerDeliveryType t) =>
+      _run(() => _repo.setOrderType(_id, t));
+
+  Future<void> _changeQty(SellerOrderItem it, int qty) => _run(() async {
+    if (qty < 1) {
+      await _repo.removeItem(_id, it.id);
+    } else {
+      await _repo.updateItem(_id, it.id, it.productName, qty, it.unitPrice);
+    }
+  });
+
+  Future<void> _addItem() async {
     final name = _newItemName.text.trim();
     final price = double.tryParse(_newItemPrice.text.trim()) ?? 0;
     final qty = int.tryParse(_newItemQty.text.trim()) ?? 1;
@@ -71,7 +100,17 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       _snack('Completa nombre, precio y cantidad');
       return;
     }
-    _notifier.addItem(orderId, name, qty, price);
+    await _run(() => _repo.addItem(_id, name, qty, price));
+    _newItemName.clear();
+    _newItemPrice.clear();
+    _newItemQty.text = '1';
+    if (mounted) {
+      setState(() => _showAddItem = false);
+      FocusScope.of(context).unfocus();
+    }
+  }
+
+  void _cancelAddItem() {
     _newItemName.clear();
     _newItemPrice.clear();
     _newItemQty.text = '1';
@@ -79,82 +118,126 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     FocusScope.of(context).unfocus();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final orders = ref.watch(sellerOrdersProvider);
-    SellerOrder? order;
-    for (final o in orders) {
-      if (o.id == widget.orderId) {
-        order = o;
-        break;
-      }
+  Future<void> _pay(String method) async {
+    final amount = double.tryParse(_amountCtrl.text.trim()) ?? 0;
+    if (amount <= 0) {
+      _snack('Escribe un monto válido');
+      return;
     }
-
-    if (order == null) {
-      return Scaffold(
-        backgroundColor: AppColors.surfaceCream,
-        body: NeniBackground(
-          child: SafeArea(
-            child: Column(
-              children: [
-                _TopBar(title: 'Pedido', onClose: () => context.pop()),
-                const Spacer(),
-                const Icon(Symbols.receipt_long,
-                    size: 46, color: AppColors.ink3),
-                const SizedBox(height: 12),
-                Text('Este pedido ya no existe',
-                    style: AppTextStyles.h2.copyWith(fontSize: 17)),
-                const Spacer(),
-              ],
-            ),
-          ),
-        ),
+    await _run(() => _repo.addPayment(_id, amount, method));
+    _amountCtrl.clear();
+    if (mounted) {
+      FocusScope.of(context).unfocus();
+      _snack(
+        'Cobro de ${money(amount)} · $method registrado 💕',
+        color: const Color(0xFF12A150),
       );
     }
+  }
 
-    final o = order;
+  Future<void> _copyClientMessage(SellerOrder o) async {
+    final link = o.link;
+    if (link == null || link.isEmpty) {
+      _snack('Este pedido no tiene enlace público todavía');
+      return;
+    }
+    await Clipboard.setData(ClipboardData(text: buildSellerOrderMessage(o)));
+    _snack('Mensaje para la clienta copiado', color: const Color(0xFF7C5AC9));
+
+    if (!o.isNotified) {
+      try {
+        await _repo.setNotified(o.id, true);
+        _invalidate();
+      } catch (_) {
+        // El mensaje ya quedo copiado; esta marca no debe bloquear el flujo.
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final async = ref.watch(sellerOrderDetailProvider(_id));
+
     return Scaffold(
       backgroundColor: AppColors.surfaceCream,
       body: NeniBackground(
         child: SafeArea(
           bottom: false,
-          child: Column(
-            children: [
-              _TopBar(
-                title: 'Detalle del pedido',
-                onClose: () => context.pop(),
-              ),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
-                  children: [
-                    _DetailHead(order: o),
-                    _PipelineSection(order: o),
-                    _DeliverySection(order: o),
-                    _ProductsSection(
-                      order: o,
-                      showAddItem: _showAddItem,
-                      newItemName: _newItemName,
-                      newItemPrice: _newItemPrice,
-                      newItemQty: _newItemQty,
-                      onToggleAdd: () =>
-                          setState(() => _showAddItem = !_showAddItem),
-                      onAddItem: () => _addItem(o.id),
-                    ),
-                    _PaymentsSection(
-                      order: o,
-                      amountCtrl: _amountCtrl,
-                      onPay: (method) => _addPayment(o.id, method),
-                    ),
-                    const _PointsSection(),
-                  ],
+          child: async.when(
+            loading: () => Column(
+              children: [
+                _TopBar(title: 'Pedido', onClose: () => context.pop()),
+                const Expanded(
+                  child: Center(
+                    child: CircularProgressIndicator(color: AppColors.neni),
+                  ),
                 ),
-              ),
-              _FooterBar(
-                order: o,
-                onAction: (label) => _snack('$label · disponible al conectar backend'),
-              ),
-            ],
+              ],
+            ),
+            error: (e, _) => Column(
+              children: [
+                _TopBar(title: 'Pedido', onClose: () => context.pop()),
+                Expanded(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 34),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Symbols.cloud_off,
+                            size: 44,
+                            color: AppColors.ink3,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            e.toString(),
+                            textAlign: TextAlign.center,
+                            style: AppTextStyles.subtitle,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            data: (o) => Column(
+              children: [
+                _TopBar(
+                  title: 'Detalle del pedido',
+                  onClose: () => context.pop(),
+                ),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
+                    children: [
+                      _DetailHead(order: o),
+                      _PipelineSection(order: o, onTap: _setStatus),
+                      _DeliverySection(order: o, onChange: _setDelivery),
+                      _ProductsSection(
+                        order: o,
+                        showAddItem: _showAddItem,
+                        newItemName: _newItemName,
+                        newItemPrice: _newItemPrice,
+                        newItemQty: _newItemQty,
+                        onToggleAdd: () =>
+                            setState(() => _showAddItem = !_showAddItem),
+                        onAddItem: _addItem,
+                        onCancelAddItem: _cancelAddItem,
+                        onChangeQty: _changeQty,
+                      ),
+                      _PaymentsSection(
+                        order: o,
+                        amountCtrl: _amountCtrl,
+                        onPay: _pay,
+                      ),
+                    ],
+                  ),
+                ),
+                _FooterBar(order: o, onCopyLink: () => _copyClientMessage(o)),
+              ],
+            ),
           ),
         ),
       ),
@@ -175,9 +258,11 @@ class _TopBar extends StatelessWidget {
         children: [
           _RoundButton(icon: Symbols.arrow_back_ios_new, onTap: onClose),
           Expanded(
-            child: Text(title,
-                textAlign: TextAlign.center,
-                style: AppTextStyles.h2.copyWith(fontSize: 15)),
+            child: Text(
+              title,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.h2.copyWith(fontSize: 15),
+            ),
           ),
           _RoundButton(icon: Symbols.close, onTap: onClose),
         ],
@@ -241,9 +326,13 @@ class _DetailHead extends StatelessWidget {
                 children: [
                   const Text('📦', style: TextStyle(fontSize: 19)),
                   const SizedBox(width: 8),
-                  Text('Pedido #${o.id}',
-                      style: AppTextStyles.h2
-                          .copyWith(fontSize: 18, fontWeight: FontWeight.w800)),
+                  Text(
+                    'Pedido #${o.id}',
+                    style: AppTextStyles.h2.copyWith(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ],
               ),
               SellerStatusChip(status: o.status),
@@ -271,34 +360,55 @@ class _DetailHead extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   alignment: Alignment.center,
-                  child: Text(o.initial,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15)),
+                  child: Text(
+                    o.initial,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 11),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(o.clientName,
-                          style: AppTextStyles.body
-                              .copyWith(fontWeight: FontWeight.w700)),
                       Text(
-                        '${o.clientPhone}${o.isFrequent ? ' · Frecuente' : ''}',
+                        o.clientName.isEmpty ? 'Sin nombre' : o.clientName,
+                        style: AppTextStyles.body.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        [
+                          if ((o.clientPhone ?? '').isNotEmpty) o.clientPhone!,
+                          if (o.isFrequent) 'Frecuente',
+                        ].join(' · '),
                         style: AppTextStyles.subtitle.copyWith(fontSize: 11),
                       ),
                     ],
                   ),
                 ),
-                const Icon(Symbols.edit, size: 15, color: AppColors.ink3),
-                const SizedBox(width: 3),
-                Text('Editar',
-                    style: AppTextStyles.subtitle.copyWith(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.ink3)),
+                if (o.clientPoints > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3EEFF),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '${o.clientPoints} pts',
+                      style: const TextStyle(
+                        color: Color(0xFF7C5AC9),
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -309,11 +419,14 @@ class _DetailHead extends StatelessWidget {
 }
 
 class _Section extends StatelessWidget {
-  const _Section({required this.icon, required this.title, required this.child, this.iconColor});
+  const _Section({
+    required this.icon,
+    required this.title,
+    required this.child,
+  });
   final IconData icon;
   final String title;
   final Widget child;
-  final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -331,14 +444,17 @@ class _Section extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, size: 16, color: iconColor ?? AppColors.neniDeep),
+              Icon(icon, size: 16, color: AppColors.neniDeep),
               const SizedBox(width: 6),
-              Text(title.toUpperCase(),
-                  style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.9,
-                      color: iconColor ?? AppColors.neniDeep)),
+              Text(
+                title.toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.9,
+                  color: AppColors.neniDeep,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -349,13 +465,20 @@ class _Section extends StatelessWidget {
   }
 }
 
-class _PipelineSection extends ConsumerWidget {
-  const _PipelineSection({required this.order});
+class _PipelineSection extends StatelessWidget {
+  const _PipelineSection({required this.order, required this.onTap});
   final SellerOrder order;
+  final ValueChanged<SellerOrderStatus> onTap;
+
+  static const _flow = [
+    SellerOrderStatus.pending,
+    SellerOrderStatus.confirmed,
+    SellerOrderStatus.inRoute,
+    SellerOrderStatus.delivered,
+  ];
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    const steps = SellerOrderStatus.values;
+  Widget build(BuildContext context) {
     return _Section(
       icon: Symbols.timeline,
       title: 'Estatus del pedido',
@@ -363,20 +486,14 @@ class _PipelineSection extends ConsumerWidget {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            for (var i = 0; i < steps.length; i++) ...[
+            for (var i = 0; i < _flow.length; i++) ...[
               _PipeStep(
-                status: steps[i],
-                active: order.status == steps[i],
-                onTap: () => ref
-                    .read(sellerOrdersProvider.notifier)
-                    .updateStatus(order.id, steps[i]),
+                status: _flow[i],
+                active: order.status == _flow[i],
+                onTap: () => onTap(_flow[i]),
               ),
-              if (i < steps.length - 1)
-                Container(
-                  width: 14,
-                  height: 2,
-                  color: const Color(0x33FB6F9C),
-                ),
+              if (i < _flow.length - 1)
+                Container(width: 14, height: 2, color: const Color(0x33FB6F9C)),
             ],
           ],
         ),
@@ -386,8 +503,11 @@ class _PipelineSection extends ConsumerWidget {
 }
 
 class _PipeStep extends StatelessWidget {
-  const _PipeStep(
-      {required this.status, required this.active, required this.onTap});
+  const _PipeStep({
+    required this.status,
+    required this.active,
+    required this.onTap,
+  });
   final SellerOrderStatus status;
   final bool active;
   final VoidCallback onTap;
@@ -403,7 +523,8 @@ class _PipeStep extends StatelessWidget {
           color: active ? status.bg : Colors.white,
           borderRadius: BorderRadius.circular(13),
           border: Border.all(
-              color: active ? Colors.transparent : AppColors.line),
+            color: active ? Colors.transparent : AppColors.line,
+          ),
         ),
         child: Text(
           status.label,
@@ -418,14 +539,14 @@ class _PipeStep extends StatelessWidget {
   }
 }
 
-class _DeliverySection extends ConsumerWidget {
-  const _DeliverySection({required this.order});
+class _DeliverySection extends StatelessWidget {
+  const _DeliverySection({required this.order, required this.onChange});
   final SellerOrder order;
+  final ValueChanged<SellerDeliveryType> onChange;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final o = order;
-    final notifier = ref.read(sellerOrdersProvider.notifier);
     return _Section(
       icon: Symbols.local_shipping,
       title: 'Entrega',
@@ -442,15 +563,13 @@ class _DeliverySection extends ConsumerWidget {
                 children: [
                   _ToggleBtn(
                     label: '🛵 Domicilio',
-                    active: o.deliveryType == SellerDeliveryType.delivery,
-                    onTap: () => notifier.setDeliveryType(
-                        o.id, SellerDeliveryType.delivery),
+                    active: o.orderType == SellerDeliveryType.delivery,
+                    onTap: () => onChange(SellerDeliveryType.delivery),
                   ),
                   _ToggleBtn(
                     label: '🛍️ Recoger',
-                    active: o.deliveryType == SellerDeliveryType.pickup,
-                    onTap: () => notifier.setDeliveryType(
-                        o.id, SellerDeliveryType.pickup),
+                    active: o.orderType == SellerDeliveryType.pickup,
+                    onTap: () => onChange(SellerDeliveryType.pickup),
                   ),
                 ],
               ),
@@ -466,11 +585,19 @@ class _DeliverySection extends ConsumerWidget {
             ),
             child: Row(
               children: [
-                const Icon(Symbols.event, size: 17, color: AppColors.neni),
+                const Icon(
+                  Symbols.local_shipping,
+                  size: 16,
+                  color: AppColors.neni,
+                ),
                 const SizedBox(width: 6),
-                Text('Envío ${money(o.shippingCost)}',
-                    style: AppTextStyles.body.copyWith(
-                        fontSize: 12.5, fontWeight: FontWeight.w600)),
+                Text(
+                  'Envío ${money(o.shippingCost)}',
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ),
@@ -481,8 +608,11 @@ class _DeliverySection extends ConsumerWidget {
 }
 
 class _ToggleBtn extends StatelessWidget {
-  const _ToggleBtn(
-      {required this.label, required this.active, required this.onTap});
+  const _ToggleBtn({
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
   final String label;
   final bool active;
   final VoidCallback onTap;
@@ -502,18 +632,21 @@ class _ToggleBtn extends StatelessWidget {
             borderRadius: BorderRadius.circular(11),
             boxShadow: active ? AppShadows.small : null,
           ),
-          child: Text(label,
-              style: AppTextStyles.body.copyWith(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: active ? AppColors.neniDeep : AppColors.ink2)),
+          child: Text(
+            label,
+            style: AppTextStyles.body.copyWith(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: active ? AppColors.neniDeep : AppColors.ink2,
+            ),
+          ),
         ),
       ),
     );
   }
 }
 
-class _ProductsSection extends ConsumerWidget {
+class _ProductsSection extends StatelessWidget {
   const _ProductsSection({
     required this.order,
     required this.showAddItem,
@@ -522,6 +655,8 @@ class _ProductsSection extends ConsumerWidget {
     required this.newItemQty,
     required this.onToggleAdd,
     required this.onAddItem,
+    required this.onCancelAddItem,
+    required this.onChangeQty,
   });
 
   final SellerOrder order;
@@ -531,11 +666,12 @@ class _ProductsSection extends ConsumerWidget {
   final TextEditingController newItemQty;
   final VoidCallback onToggleAdd;
   final VoidCallback onAddItem;
+  final VoidCallback onCancelAddItem;
+  final void Function(SellerOrderItem item, int qty) onChangeQty;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final o = order;
-    final notifier = ref.read(sellerOrdersProvider.notifier);
     return _Section(
       icon: Symbols.shopping_bag,
       title: 'Productos (${o.items.length})',
@@ -556,27 +692,31 @@ class _ProductsSection extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(13),
                     ),
                     alignment: Alignment.center,
-                    child: const Icon(Symbols.checkroom,
-                        size: 20, color: AppColors.neniDeep),
+                    child: const Icon(
+                      Symbols.checkroom,
+                      size: 20,
+                      color: AppColors.neniDeep,
+                    ),
                   ),
                   const SizedBox(width: 11),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(it.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.body.copyWith(
-                                fontSize: 13, fontWeight: FontWeight.w600)),
+                        Text(
+                          it.productName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.body.copyWith(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         const SizedBox(height: 4),
                         _Stepper(
-                          qty: it.qty,
-                          onMinus: () => it.qty > 1
-                              ? notifier.changeItemQty(o.id, it.id, it.qty - 1)
-                              : notifier.removeItem(o.id, it.id),
-                          onPlus: () =>
-                              notifier.changeItemQty(o.id, it.id, it.qty + 1),
+                          qty: it.quantity,
+                          onMinus: () => onChangeQty(it, it.quantity - 1),
+                          onPlus: () => onChangeQty(it, it.quantity + 1),
                         ),
                       ],
                     ),
@@ -585,13 +725,18 @@ class _ProductsSection extends ConsumerWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(money(it.lineTotal),
-                          style: AppTextStyles.body.copyWith(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.neniDeep)),
-                      Text('${money(it.unitPrice)} c/u',
-                          style: AppTextStyles.subtitle.copyWith(fontSize: 11)),
+                      Text(
+                        money(it.lineTotal),
+                        style: AppTextStyles.body.copyWith(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.neniDeep,
+                        ),
+                      ),
+                      Text(
+                        '${money(it.unitPrice)} c/u',
+                        style: AppTextStyles.subtitle.copyWith(fontSize: 11),
+                      ),
                     ],
                   ),
                 ],
@@ -603,6 +748,7 @@ class _ProductsSection extends ConsumerWidget {
               price: newItemPrice,
               qty: newItemQty,
               onAdd: onAddItem,
+              onCancel: onCancelAddItem,
             )
           else
             GestureDetector(
@@ -616,21 +762,27 @@ class _ProductsSection extends ConsumerWidget {
                   ),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                      color: const Color(0x4DE84E83),
-                      width: 1.5,
-                      style: BorderStyle.solid),
+                    color: const Color(0x4DE84E83),
+                    width: 1.5,
+                  ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Symbols.add_circle,
-                        size: 18, color: AppColors.neniDeep),
+                    const Icon(
+                      Symbols.add_circle,
+                      size: 18,
+                      color: AppColors.neniDeep,
+                    ),
                     const SizedBox(width: 6),
-                    Text('Agregar artículo',
-                        style: AppTextStyles.body.copyWith(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.neniDeep)),
+                    Text(
+                      'Agregar artículo',
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.neniDeep,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -642,8 +794,11 @@ class _ProductsSection extends ConsumerWidget {
 }
 
 class _Stepper extends StatelessWidget {
-  const _Stepper(
-      {required this.qty, required this.onMinus, required this.onPlus});
+  const _Stepper({
+    required this.qty,
+    required this.onMinus,
+    required this.onPlus,
+  });
   final int qty;
   final VoidCallback onMinus;
   final VoidCallback onPlus;
@@ -659,50 +814,52 @@ class _Stepper extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _StepBtn(icon: Symbols.remove, onTap: onMinus),
+          InkWell(
+            onTap: onMinus,
+            child: const SizedBox(
+              width: 26,
+              height: 26,
+              child: Icon(Symbols.remove, size: 16, color: AppColors.neniDeep),
+            ),
+          ),
           SizedBox(
             width: 26,
-            child: Text('$qty',
-                textAlign: TextAlign.center,
-                style: AppTextStyles.body.copyWith(
-                    fontSize: 12, fontWeight: FontWeight.w700)),
+            child: Text(
+              '$qty',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.body.copyWith(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
-          _StepBtn(icon: Symbols.add, onTap: onPlus),
+          InkWell(
+            onTap: onPlus,
+            child: const SizedBox(
+              width: 26,
+              height: 26,
+              child: Icon(Symbols.add, size: 16, color: AppColors.neniDeep),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _StepBtn extends StatelessWidget {
-  const _StepBtn({required this.icon, required this.onTap});
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(9),
-      child: SizedBox(
-        width: 26,
-        height: 26,
-        child: Icon(icon, size: 16, color: AppColors.neniDeep),
-      ),
-    );
-  }
-}
-
 class _AddItemForm extends StatelessWidget {
-  const _AddItemForm(
-      {required this.name,
-      required this.price,
-      required this.qty,
-      required this.onAdd});
+  const _AddItemForm({
+    required this.name,
+    required this.price,
+    required this.qty,
+    required this.onAdd,
+    required this.onCancel,
+  });
   final TextEditingController name;
   final TextEditingController price;
   final TextEditingController qty;
   final VoidCallback onAdd;
+  final VoidCallback onCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -717,24 +874,48 @@ class _AddItemForm extends StatelessWidget {
       ),
       child: Column(
         children: [
+          Row(
+            children: [
+              const Icon(
+                Symbols.add_circle,
+                size: 18,
+                color: AppColors.neniDeep,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Agregar artículo',
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.neniDeep,
+                  ),
+                ),
+              ),
+              _CancelMiniButton(onTap: onCancel),
+            ],
+          ),
+          const SizedBox(height: 9),
           _MiniField(controller: name, hint: 'Nombre del producto'),
           const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
                 child: _MiniField(
-                    controller: price,
-                    hint: '\$ Precio',
-                    keyboard: TextInputType.number),
+                  controller: price,
+                  hint: '\$ Precio',
+                  keyboard: TextInputType.number,
+                ),
               ),
               const SizedBox(width: 8),
               SizedBox(
                 width: 60,
                 child: _MiniField(
-                    controller: qty,
-                    hint: 'Cant.',
-                    center: true,
-                    keyboard: TextInputType.number),
+                  controller: qty,
+                  hint: 'Cant.',
+                  center: true,
+                  keyboard: TextInputType.number,
+                ),
               ),
               const SizedBox(width: 8),
               Material(
@@ -752,8 +933,10 @@ class _AddItemForm extends StatelessWidget {
                       borderRadius: BorderRadius.circular(11),
                     ),
                     child: Center(
-                      child: Text('OK',
-                          style: AppTextStyles.button.copyWith(fontSize: 12)),
+                      child: Text(
+                        'OK',
+                        style: AppTextStyles.button.copyWith(fontSize: 12),
+                      ),
                     ),
                   ),
                 ),
@@ -761,6 +944,47 @@ class _AddItemForm extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CancelMiniButton extends StatelessWidget {
+  const _CancelMiniButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Ink(
+          height: 32,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.9),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.line),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Symbols.close, size: 15, color: AppColors.ink2),
+              const SizedBox(width: 4),
+              Text(
+                'Cancelar',
+                style: AppTextStyles.body.copyWith(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink2,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -787,8 +1011,10 @@ class _MiniField extends StatelessWidget {
       style: AppTextStyles.body.copyWith(fontSize: 12.5),
       decoration: InputDecoration(
         isDense: true,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 11,
+        ),
         filled: true,
         fillColor: Colors.white,
         hintText: hint,
@@ -837,16 +1063,22 @@ class _PaymentsSection extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('RESTANTE ',
-                      style: TextStyle(
-                          fontSize: 8.5,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFFE11D5B).withValues(alpha: 0.8))),
-                  Text(money(o.balanceDue),
-                      style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFFE11D5B))),
+                  Text(
+                    'RESTANTE ',
+                    style: TextStyle(
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFFE11D5B).withValues(alpha: 0.8),
+                    ),
+                  ),
+                  Text(
+                    money(o.balanceDue),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFFE11D5B),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -861,27 +1093,33 @@ class _PaymentsSection extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Text('\$',
-                    style: TextStyle(
-                        color: AppColors.neniDeep,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800)),
+                const Text(
+                  '\$',
+                  style: TextStyle(
+                    color: AppColors.neniDeep,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: amountCtrl,
                     keyboardType: TextInputType.number,
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                     ],
                     style: AppTextStyles.body.copyWith(
-                        fontSize: 14, fontWeight: FontWeight.w700),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
                     decoration: InputDecoration(
                       isCollapsed: true,
                       contentPadding: const EdgeInsets.symmetric(vertical: 12),
                       hintText: 'Monto a cobrar',
-                      hintStyle:
-                          AppTextStyles.fieldPlaceholder.copyWith(fontSize: 13),
+                      hintStyle: AppTextStyles.fieldPlaceholder.copyWith(
+                        fontSize: 13,
+                      ),
                       border: InputBorder.none,
                     ),
                   ),
@@ -892,23 +1130,38 @@ class _PaymentsSection extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              _MethodButton(emoji: '💵', label: 'Efectivo', onTap: () => onPay('Efectivo')),
+              _MethodButton(
+                emoji: '💵',
+                label: 'Efectivo',
+                onTap: () => onPay('Efectivo'),
+              ),
               const SizedBox(width: 9),
-              _MethodButton(emoji: '🏦', label: 'Transf.', onTap: () => onPay('Transferencia')),
+              _MethodButton(
+                emoji: '🏦',
+                label: 'Transf.',
+                onTap: () => onPay('Transferencia'),
+              ),
               const SizedBox(width: 9),
-              _MethodButton(emoji: '💳', label: 'Tarjeta', onTap: () => onPay('Tarjeta')),
+              _MethodButton(
+                emoji: '💳',
+                label: 'Tarjeta',
+                onTap: () => onPay('Tarjeta'),
+              ),
             ],
           ),
           if (o.payments.isNotEmpty) ...[
             const SizedBox(height: 12),
             const Divider(height: 1, color: AppColors.line),
             const SizedBox(height: 10),
-            Text('HISTORIAL DE PAGOS',
-                style: TextStyle(
-                    fontSize: 8.5,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.6,
-                    color: AppColors.ink3)),
+            Text(
+              'HISTORIAL DE PAGOS',
+              style: TextStyle(
+                fontSize: 8.5,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.6,
+                color: AppColors.ink3,
+              ),
+            ),
             const SizedBox(height: 6),
             for (final p in o.payments)
               Padding(
@@ -916,12 +1169,20 @@ class _PaymentsSection extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(p.method,
-                        style: AppTextStyles.body.copyWith(
-                            fontSize: 12, color: AppColors.ink2)),
-                    Text(money(p.amount),
-                        style: AppTextStyles.body.copyWith(
-                            fontSize: 12.5, fontWeight: FontWeight.w800)),
+                    Text(
+                      p.method,
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 12,
+                        color: AppColors.ink2,
+                      ),
+                    ),
+                    Text(
+                      money(p.amount),
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -933,8 +1194,11 @@ class _PaymentsSection extends StatelessWidget {
 }
 
 class _MethodButton extends StatelessWidget {
-  const _MethodButton(
-      {required this.emoji, required this.label, required this.onTap});
+  const _MethodButton({
+    required this.emoji,
+    required this.label,
+    required this.onTap,
+  });
   final String emoji;
   final String label;
   final VoidCallback onTap;
@@ -958,11 +1222,14 @@ class _MethodButton extends StatelessWidget {
               children: [
                 Text(emoji, style: const TextStyle(fontSize: 19)),
                 const SizedBox(height: 4),
-                Text(label,
-                    style: AppTextStyles.body.copyWith(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.ink2)),
+                Text(
+                  label,
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink2,
+                  ),
+                ),
               ],
             ),
           ),
@@ -972,70 +1239,20 @@ class _MethodButton extends StatelessWidget {
   }
 }
 
-class _PointsSection extends StatelessWidget {
-  const _PointsSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return _Section(
-      icon: Symbols.diamond,
-      title: 'Canjear puntos',
-      iconColor: AppColors.lavender,
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF3EEFF),
-              borderRadius: BorderRadius.circular(13),
-            ),
-            alignment: Alignment.center,
-            child: const Text('🎁', style: TextStyle(fontSize: 19)),
-          ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Envío gratis',
-                    style: AppTextStyles.body
-                        .copyWith(fontSize: 13, fontWeight: FontWeight.w600)),
-                Text('Descuento de \$60 · saldo 340 pts',
-                    style: AppTextStyles.subtitle.copyWith(fontSize: 11)),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.lavender, AppColors.neniDeep],
-              ),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: const Text('200 pts',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _FooterBar extends StatelessWidget {
-  const _FooterBar({required this.order, required this.onAction});
+  const _FooterBar({required this.order, required this.onCopyLink});
   final SellerOrder order;
-  final ValueChanged<String> onAction;
+  final VoidCallback onCopyLink;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.fromLTRB(
-          18, 12, 18, 12 + MediaQuery.of(context).padding.bottom),
+        18,
+        12,
+        18,
+        12 + MediaQuery.of(context).padding.bottom,
+      ),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.9),
         border: const Border(top: BorderSide(color: AppColors.line)),
@@ -1047,73 +1264,55 @@ class _FooterBar extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('TOTAL',
-                  style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.6,
-                      color: AppColors.ink3)),
+              Text(
+                'TOTAL',
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.6,
+                  color: AppColors.ink3,
+                ),
+              ),
               GradientText(money(order.total), fontSize: 20),
             ],
           ),
-          Row(
-            children: [
-              _FooterAction(
-                  icon: Symbols.link,
-                  fg: const Color(0xFF7C5AC9),
-                  bg: const Color(0xFFF1E9FF),
-                  onTap: () => onAction('Copiar enlace')),
-              const SizedBox(width: 8),
-              _FooterAction(
-                  icon: Symbols.chat,
-                  fg: const Color(0xFF12A150),
-                  bg: const Color(0xFFE9F9EE),
-                  onTap: () => onAction('WhatsApp')),
-              const SizedBox(width: 8),
-              _FooterAction(
-                  icon: Symbols.directions_car,
-                  fg: const Color(0xFF2E6BD6),
-                  bg: const Color(0xFFE4ECFF),
-                  onTap: () => onAction('En camino')),
-              const SizedBox(width: 8),
-              _FooterAction(
-                  icon: Symbols.request_quote,
-                  fg: const Color(0xFFE11D5B),
-                  bg: const Color(0xFFFFF1F4),
-                  onTap: () => onAction('Cobrar')),
-            ],
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onCopyLink,
+              borderRadius: BorderRadius.circular(14),
+              child: Ink(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1E9FF),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Symbols.link,
+                      size: 19,
+                      color: Color(0xFF7C5AC9),
+                    ),
+                    const SizedBox(width: 7),
+                    Text(
+                      'Copiar mensaje',
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF7C5AC9),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _FooterAction extends StatelessWidget {
-  const _FooterAction(
-      {required this.icon,
-      required this.fg,
-      required this.bg,
-      required this.onTap});
-  final IconData icon;
-  final Color fg;
-  final Color bg;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(13),
-        child: Ink(
-          width: 42,
-          height: 42,
-          decoration:
-              BoxDecoration(color: bg, borderRadius: BorderRadius.circular(13)),
-          child: Icon(icon, size: 19, color: fg),
-        ),
       ),
     );
   }

@@ -1,16 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/glass_bottom_nav.dart';
 import '../../../shared/widgets/segmented.dart';
-import '../data/seller_orders_data.dart';
+import '../data/seller_orders_models.dart';
+import '../data/seller_orders_repository.dart';
 import '../widgets/seller_status_chip.dart';
 
 class SellerOrdersScreen extends ConsumerStatefulWidget {
@@ -22,47 +24,29 @@ class SellerOrdersScreen extends ConsumerStatefulWidget {
 
 class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen> {
   int _filter = 0;
-  String _search = '';
   final _searchCtrl = TextEditingController();
+  Timer? _debounce;
 
-  static const _filters = ['Todos', 'Pendientes', 'En ruta', 'Entregados'];
+  static const _labels = ['Todos', 'Pendientes', 'En ruta', 'Entregados'];
+  static const _statuses = ['', 'Pending', 'InRoute', 'Delivered'];
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchCtrl.dispose();
     super.dispose();
   }
 
-  bool _matchesFilter(SellerOrder o) {
-    switch (_filter) {
-      case 1:
-        return o.status == SellerOrderStatus.pending ||
-            o.status == SellerOrderStatus.confirmed;
-      case 2:
-        return o.status == SellerOrderStatus.route;
-      case 3:
-        return o.status == SellerOrderStatus.delivered;
-      default:
-        return true;
-    }
-  }
-
-  bool _matchesSearch(SellerOrder o) {
-    final q = _search.trim().toLowerCase();
-    if (q.isEmpty) return true;
-    if (o.clientName.toLowerCase().contains(q)) return true;
-    if (o.id.contains(q)) return true;
-    return o.items.any((i) => i.name.toLowerCase().contains(q));
+  void _onSearch(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 350), () {
+      ref.read(sellerOrdersControllerProvider.notifier).setSearch(value);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final orders = ref.watch(sellerOrdersProvider);
-    final visible =
-        orders.where(_matchesFilter).where(_matchesSearch).toList();
-    final byCollect = orders
-        .where((o) => !o.isPaid)
-        .fold<double>(0, (s, o) => s + o.balanceDue);
+    final async = ref.watch(sellerOrdersControllerProvider);
 
     return Scaffold(
       backgroundColor: AppColors.surfaceCream,
@@ -97,63 +81,88 @@ class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen> {
                           ),
                         ),
                         const SizedBox(height: 2),
-                        Text(
-                          'Gestiona entregas y cobros de tu negocio.',
-                          style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
-                        ),
+                        Text('Gestiona entregas y cobros de tu negocio.',
+                            style:
+                                AppTextStyles.subtitle.copyWith(fontSize: 12.5)),
                       ],
                     ),
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(22, 14, 22, 0),
                     child: _SearchField(
-                      controller: _searchCtrl,
-                      onChanged: (v) => setState(() => _search = v),
-                    ),
+                        controller: _searchCtrl, onChanged: _onSearch),
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(22, 12, 22, 0),
                     child: SegmentedControl(
-                      items: _filters
+                      items: _labels
                           .map((l) => SegmentedItem(label: l))
                           .toList(),
                       selectedIndex: _filter,
-                      onChanged: (i) => setState(() => _filter = i),
+                      onChanged: (i) {
+                        setState(() => _filter = i);
+                        ref
+                            .read(sellerOrdersControllerProvider.notifier)
+                            .setStatus(_statuses[i]);
+                      },
                     ),
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(24, 14, 24, 12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Mostrando ${visible.length} de ${orders.length} pedidos',
-                          style: AppTextStyles.subtitle
-                              .copyWith(fontSize: 11.5, color: AppColors.ink3),
-                        ),
-                        if (byCollect > 0)
-                          Text(
-                            '${money(byCollect)} por cobrar 💕',
-                            style: AppTextStyles.body.copyWith(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.neniDeep,
-                            ),
-                          ),
-                      ],
+                    child: Text(
+                      async.maybeWhen(
+                        data: (p) =>
+                            'Mostrando ${p.items.length} de ${p.totalCount} pedidos',
+                        orElse: () => 'Cargando pedidos…',
+                      ),
+                      style: AppTextStyles.subtitle
+                          .copyWith(fontSize: 11.5, color: AppColors.ink3),
                     ),
                   ),
                   Expanded(
-                    child: visible.isEmpty
-                        ? const _EmptyOrders()
-                        : ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(22, 0, 22, 120),
-                            itemCount: visible.length,
-                            itemBuilder: (context, i) => Padding(
-                              padding: const EdgeInsets.only(bottom: 14),
-                              child: _OrderCard(order: visible[i]),
-                            ),
-                          ),
+                    child: async.when(
+                      loading: () => const Center(
+                          child:
+                              CircularProgressIndicator(color: AppColors.neni)),
+                      error: (e, _) => _ErrorState(
+                        message: e.toString(),
+                        onRetry: () => ref
+                            .read(sellerOrdersControllerProvider.notifier)
+                            .reload(),
+                      ),
+                      data: (page) => RefreshIndicator(
+                        color: AppColors.neniDeep,
+                        onRefresh: () => ref
+                            .read(sellerOrdersControllerProvider.notifier)
+                            .reload(),
+                        child: page.isEmpty
+                            ? ListView(
+                                physics:
+                                    const AlwaysScrollableScrollPhysics(),
+                                children: const [
+                                  SizedBox(height: 60),
+                                  _EmptyOrders(),
+                                ],
+                              )
+                            : ListView.builder(
+                                physics:
+                                    const AlwaysScrollableScrollPhysics(),
+                                padding:
+                                    const EdgeInsets.fromLTRB(22, 0, 22, 120),
+                                itemCount: page.items.length + 1,
+                                itemBuilder: (context, i) {
+                                  if (i == page.items.length) {
+                                    return _Pager(page: page);
+                                  }
+                                  return Padding(
+                                    padding:
+                                        const EdgeInsets.only(bottom: 14),
+                                    child: _OrderCard(order: page.items[i]),
+                                  );
+                                },
+                              ),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -161,8 +170,7 @@ class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen> {
                 right: 22,
                 bottom: 104,
                 child: _NewOrderFab(
-                  onTap: () => context.push('/orders/new'),
-                ),
+                    onTap: () => context.push('/orders/new')),
               ),
               Positioned(
                 left: 0,
@@ -202,7 +210,8 @@ class _SearchField extends StatelessWidget {
         decoration: InputDecoration(
           isCollapsed: true,
           contentPadding: const EdgeInsets.symmetric(vertical: 14),
-          prefixIcon: const Icon(Symbols.search, size: 20, color: AppColors.ink3),
+          prefixIcon:
+              const Icon(Symbols.search, size: 20, color: AppColors.ink3),
           hintText: 'Buscar clienta, artículo o #folio…',
           hintStyle: AppTextStyles.fieldPlaceholder.copyWith(fontSize: 13.5),
           border: InputBorder.none,
@@ -222,7 +231,7 @@ class _NewOrderFab extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: AppRadii.pillRadius,
+        borderRadius: BorderRadius.circular(999),
         child: Ink(
           height: 52,
           padding: const EdgeInsets.fromLTRB(16, 0, 20, 0),
@@ -232,7 +241,7 @@ class _NewOrderFab extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: AppRadii.pillRadius,
+            borderRadius: BorderRadius.circular(999),
             boxShadow: AppShadows.brandPrimary(AppColors.neniDeep),
           ),
           child: Row(
@@ -240,10 +249,7 @@ class _NewOrderFab extends StatelessWidget {
             children: [
               const Icon(Symbols.add, size: 24, color: Colors.white),
               const SizedBox(width: 8),
-              Text(
-                'Nuevo',
-                style: AppTextStyles.button.copyWith(fontSize: 14),
-              ),
+              Text('Nuevo', style: AppTextStyles.button.copyWith(fontSize: 14)),
             ],
           ),
         ),
@@ -259,9 +265,10 @@ class _OrderCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final o = order;
-    final itemsText =
-        '${o.itemsCount} ${o.itemsCount == 1 ? 'artículo' : 'artículos'} · '
-        '${o.items.map((e) => e.name).join(', ')}';
+    final names = o.items.map((e) => e.productName).where((n) => n.isNotEmpty);
+    final itemsText = names.isEmpty
+        ? '${o.itemsCount} ${o.itemsCount == 1 ? 'artículo' : 'artículos'}'
+        : '${o.itemsCount} ${o.itemsCount == 1 ? 'artículo' : 'artículos'} · ${names.join(', ')}';
 
     return GestureDetector(
       onTap: () => context.push('/orders/detail/${o.id}'),
@@ -301,7 +308,9 @@ class _OrderCard extends ConsumerWidget {
                               children: [
                                 Flexible(
                                   child: Text(
-                                    o.clientName,
+                                    o.clientName.isEmpty
+                                        ? 'Sin nombre'
+                                        : o.clientName,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: AppTextStyles.body.copyWith(
@@ -320,13 +329,11 @@ class _OrderCard extends ConsumerWidget {
                               ],
                             ),
                             const SizedBox(height: 1),
-                            Text(
-                              'Pedido #${o.id}',
-                              style: AppTextStyles.subtitle.copyWith(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.ink3),
-                            ),
+                            Text('Pedido #${o.id}',
+                                style: AppTextStyles.subtitle.copyWith(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.ink3)),
                           ],
                         ),
                       ),
@@ -336,13 +343,15 @@ class _OrderCard extends ConsumerWidget {
                   ),
                   const SizedBox(height: 11),
                   _MetaLine(icon: Symbols.shopping_bag, text: itemsText),
-                  const SizedBox(height: 5),
-                  _MetaLine(
-                    icon: o.deliveryType == SellerDeliveryType.pickup
-                        ? Symbols.storefront
-                        : Symbols.location_on,
-                    text: o.address,
-                  ),
+                  if ((o.clientAddress ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 5),
+                    _MetaLine(
+                      icon: o.orderType == SellerDeliveryType.pickup
+                          ? Symbols.storefront
+                          : Symbols.location_on,
+                      text: o.clientAddress!,
+                    ),
+                  ],
                   const SizedBox(height: 13),
                   _FinancialPanel(order: o),
                   const SizedBox(height: 13),
@@ -354,8 +363,7 @@ class _OrderCard extends ConsumerWidget {
               top: -9,
               right: -9,
               child: _TrashButton(
-                onTap: () => _confirmDelete(context, ref, o),
-              ),
+                  onTap: () => _confirmDelete(context, ref, o)),
             ),
           ],
         ),
@@ -366,14 +374,14 @@ class _OrderCard extends ConsumerWidget {
 
 Future<void> _confirmDelete(
     BuildContext context, WidgetRef ref, SellerOrder o) async {
+  final messenger = ScaffoldMessenger.of(context);
   await showDialog<void>(
     context: context,
     barrierColor: const Color(0x523A2233),
     builder: (ctx) => Dialog(
       backgroundColor: Colors.white,
       insetPadding: const EdgeInsets.symmetric(horizontal: 40),
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(22, 24, 22, 22),
         child: Column(
@@ -432,20 +440,23 @@ Future<void> _confirmDelete(
                     label: 'Eliminar',
                     gradient: const [Color(0xFFFB6F8E), Color(0xFFE11D5B)],
                     fg: Colors.white,
-                    onTap: () {
-                      ref
-                          .read(sellerOrdersProvider.notifier)
-                          .removeOrder(o.id);
+                    onTap: () async {
                       Navigator.of(ctx).pop();
-                      ScaffoldMessenger.of(context)
-                        ..hideCurrentSnackBar()
-                        ..showSnackBar(SnackBar(
-                          behavior: SnackBarBehavior.floating,
-                          backgroundColor: AppColors.ink,
-                          content: Text('Pedido #${o.id} eliminado',
-                              style: AppTextStyles.body
-                                  .copyWith(color: Colors.white)),
-                        ));
+                      try {
+                        await ref
+                            .read(sellerOrdersRepositoryProvider)
+                            .deleteOrder(o.id);
+                        ref.invalidate(sellerOrdersControllerProvider);
+                        ref.invalidate(sellerDashboardProvider);
+                        messenger
+                          ..hideCurrentSnackBar()
+                          ..showSnackBar(_snack('Pedido #${o.id} eliminado'));
+                      } catch (e) {
+                        messenger
+                          ..hideCurrentSnackBar()
+                          ..showSnackBar(_snack(e.toString(),
+                              color: const Color(0xFFE11D5B)));
+                      }
                     },
                   ),
                 ),
@@ -457,6 +468,13 @@ Future<void> _confirmDelete(
     ),
   );
 }
+
+SnackBar _snack(String msg, {Color? color}) => SnackBar(
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: color ?? AppColors.ink,
+      content:
+          Text(msg, style: AppTextStyles.body.copyWith(color: Colors.white)),
+    );
 
 class _DialogButton extends StatelessWidget {
   const _DialogButton({
@@ -483,18 +501,15 @@ class _DialogButton extends StatelessWidget {
           height: 48,
           decoration: BoxDecoration(
             color: bg,
-            gradient: gradient != null
-                ? LinearGradient(colors: gradient!)
-                : null,
+            gradient: gradient != null ? LinearGradient(colors: gradient!) : null,
             borderRadius: BorderRadius.circular(14),
             boxShadow: gradient != null
                 ? const [
                     BoxShadow(
-                      color: Color(0x66E11D5B),
-                      offset: Offset(0, 10),
-                      blurRadius: 20,
-                      spreadRadius: -8,
-                    )
+                        color: Color(0x66E11D5B),
+                        offset: Offset(0, 10),
+                        blurRadius: 20,
+                        spreadRadius: -8)
                   ]
                 : null,
           ),
@@ -517,7 +532,9 @@ class _Avatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = switch (status) {
-      SellerOrderStatus.route => const [Color(0xFFB79BF0), Color(0xFF9B7BE0)],
+      SellerOrderStatus.inRoute ||
+      SellerOrderStatus.shipped =>
+        const [Color(0xFFB79BF0), Color(0xFF9B7BE0)],
       SellerOrderStatus.delivered => const [Color(0xFF7FB0F2), Color(0xFF4E82D6)],
       _ => const [AppColors.neni, AppColors.neniDeep],
     };
@@ -560,14 +577,12 @@ class _MiniTag extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration:
           BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
-      child: Text(
-        label.toUpperCase(),
-        style: TextStyle(
-            color: fg,
-            fontSize: 8.5,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.3),
-      ),
+      child: Text(label.toUpperCase(),
+          style: TextStyle(
+              color: fg,
+              fontSize: 8.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.3)),
     );
   }
 }
@@ -585,13 +600,11 @@ class _MetaLine extends StatelessWidget {
         Icon(icon, size: 15, color: AppColors.neni),
         const SizedBox(width: 6),
         Expanded(
-          child: Text(
-            text,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.subtitle
-                .copyWith(fontSize: 11.5, color: AppColors.ink2),
-          ),
+          child: Text(text,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.subtitle
+                  .copyWith(fontSize: 11.5, color: AppColors.ink2)),
         ),
       ],
     );
@@ -625,14 +638,12 @@ class _FinancialPanel extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'TOTAL (${o.itemsCount} ARTS)',
-                      style: const TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.6,
-                          color: AppColors.ink3),
-                    ),
+                    Text('TOTAL (${o.itemsCount} ARTS)',
+                        style: const TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.6,
+                            color: AppColors.ink3)),
                     const SizedBox(height: 3),
                     GradientText(money(o.total), fontSize: 23),
                   ],
@@ -643,9 +654,14 @@ class _FinancialPanel extends StatelessWidget {
                     label: '✅ Pagado',
                     fg: Color(0xFF1F9A6A),
                     bg: Color(0xFFD9F3E6))
-              else
+              else if (o.amountPaid > 0)
                 _StatusPill(
                     label: 'Resta ${money(o.balanceDue)}',
+                    fg: const Color(0xFFE11D5B),
+                    bg: const Color(0xFFFFE4E9))
+              else
+                _StatusPill(
+                    label: 'Por cobrar',
                     fg: const Color(0xFFE11D5B),
                     bg: const Color(0xFFFFE4E9)),
             ],
@@ -722,36 +738,40 @@ class _OrderActions extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final o = order;
-    final notifier = ref.read(sellerOrdersProvider.notifier);
 
-    void nextStatus() {
-      final next = switch (o.status) {
-        SellerOrderStatus.pending => SellerOrderStatus.confirmed,
-        SellerOrderStatus.confirmed => SellerOrderStatus.route,
-        SellerOrderStatus.route => SellerOrderStatus.delivered,
-        SellerOrderStatus.delivered => SellerOrderStatus.delivered,
-      };
-      notifier.updateStatus(o.id, next);
-    }
-
-    void whatsapp() {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: const Color(0xFF12A150),
-          content: Text('Abriendo WhatsApp con ${o.clientName}…',
-              style: AppTextStyles.body.copyWith(color: Colors.white)),
-        ));
-    }
-
-    final (String? secondaryLabel, IconData secondaryIcon) =
+    final (SellerOrderStatus? next, String? label, IconData icon) =
         switch (o.status) {
-      SellerOrderStatus.pending => ('Confirmar', Symbols.favorite),
-      SellerOrderStatus.confirmed => ('A ruta', Symbols.local_shipping),
-      SellerOrderStatus.route => ('Entregado', Symbols.check_circle),
-      SellerOrderStatus.delivered => (null, Symbols.check_circle),
+      SellerOrderStatus.pending => (
+          SellerOrderStatus.confirmed,
+          'Confirmar',
+          Symbols.favorite
+        ),
+      SellerOrderStatus.confirmed => (
+          SellerOrderStatus.inRoute,
+          'Poner en ruta',
+          Symbols.local_shipping
+        ),
+      SellerOrderStatus.inRoute => (
+          SellerOrderStatus.delivered,
+          'Marcar entregado',
+          Symbols.check_circle
+        ),
+      _ => (null, null, Symbols.check_circle),
     };
+
+    Future<void> advance() async {
+      if (next == null) return;
+      final messenger = ScaffoldMessenger.of(context);
+      try {
+        await ref.read(sellerOrdersRepositoryProvider).updateStatus(o.id, next);
+        ref.invalidate(sellerOrdersControllerProvider);
+        ref.invalidate(sellerDashboardProvider);
+      } catch (e) {
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(_snack(e.toString(), color: const Color(0xFFE11D5B)));
+      }
+    }
 
     return Column(
       children: [
@@ -759,28 +779,9 @@ class _OrderActions extends ConsumerWidget {
           label: 'Gestionar pedido',
           onTap: () => context.push('/orders/detail/${o.id}'),
         ),
-        if (secondaryLabel != null) ...[
+        if (label != null) ...[
           const SizedBox(height: 9),
-          Row(
-            children: [
-              Expanded(
-                child: _SoftButton(
-                  label: secondaryLabel,
-                  icon: secondaryIcon,
-                  onTap: nextStatus,
-                ),
-              ),
-              const SizedBox(width: 9),
-              Expanded(
-                child: _WaButton(
-                  label: o.status == SellerOrderStatus.route
-                      ? 'En camino'
-                      : 'WhatsApp',
-                  onTap: whatsapp,
-                ),
-              ),
-            ],
-          ),
+          _SoftButton(label: label, icon: icon, onTap: advance),
         ],
       ],
     );
@@ -815,8 +816,7 @@ class _PrimaryButton extends StatelessWidget {
             children: [
               const Icon(Symbols.bolt, size: 18, color: Colors.white),
               const SizedBox(width: 7),
-              Text(label,
-                  style: AppTextStyles.button.copyWith(fontSize: 13.5)),
+              Text(label, style: AppTextStyles.button.copyWith(fontSize: 13.5)),
             ],
           ),
         ),
@@ -830,7 +830,7 @@ class _SoftButton extends StatelessWidget {
       {required this.label, required this.icon, required this.onTap});
   final String label;
   final IconData icon;
-  final VoidCallback onTap;
+  final Future<void> Function() onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -864,43 +864,6 @@ class _SoftButton extends StatelessWidget {
   }
 }
 
-class _WaButton extends StatelessWidget {
-  const _WaButton({required this.label, required this.onTap});
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(15),
-        child: Ink(
-          height: 42,
-          decoration: BoxDecoration(
-            color: const Color(0xFFE9F9EE),
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: const Color(0x2E1F9A6A)),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Symbols.chat, size: 16, color: Color(0xFF12A150)),
-              const SizedBox(width: 6),
-              Text(label,
-                  style: AppTextStyles.body.copyWith(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF12A150))),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _TrashButton extends StatelessWidget {
   const _TrashButton({required this.onTap});
   final VoidCallback onTap;
@@ -922,15 +885,99 @@ class _TrashButton extends StatelessWidget {
             border: Border.all(color: const Color(0x2EE84E83)),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x40D6336C),
-                offset: Offset(0, 6),
-                blurRadius: 14,
-                spreadRadius: -6,
-              )
+                  color: Color(0x40D6336C),
+                  offset: Offset(0, 6),
+                  blurRadius: 14,
+                  spreadRadius: -6)
             ],
           ),
           alignment: Alignment.center,
           child: const Icon(Symbols.delete, size: 17, color: AppColors.neni),
+        ),
+      ),
+    );
+  }
+}
+
+class _Pager extends ConsumerWidget {
+  const _Pager({required this.page});
+  final SellerOrdersPage page;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (page.totalPages <= 1) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Center(
+          child: Text('${page.totalCount} pedidos',
+              style: AppTextStyles.subtitle.copyWith(fontSize: 12)),
+        ),
+      );
+    }
+    final notifier = ref.read(sellerOrdersControllerProvider.notifier);
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _PagerBtn(
+              icon: Symbols.chevron_left,
+              label: 'Anterior',
+              onTap: page.hasPrev ? notifier.prevPage : null),
+          const SizedBox(width: 12),
+          Text('Página ${page.currentPage} de ${page.totalPages}',
+              style: AppTextStyles.subtitle.copyWith(fontSize: 12.5)),
+          const SizedBox(width: 12),
+          _PagerBtn(
+              icon: Symbols.chevron_right,
+              label: 'Siguiente',
+              trailing: true,
+              onTap: page.hasNext ? notifier.nextPage : null),
+        ],
+      ),
+    );
+  }
+}
+
+class _PagerBtn extends StatelessWidget {
+  const _PagerBtn(
+      {required this.icon,
+      required this.label,
+      required this.onTap,
+      this.trailing = false});
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+  final bool trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final disabled = onTap == null;
+    final fg = disabled ? AppColors.ink3 : AppColors.ink;
+    return Opacity(
+      opacity: disabled ? 0.5 : 1,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(999),
+            boxShadow: AppShadows.small,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (!trailing) Icon(icon, size: 16, color: fg),
+              if (!trailing) const SizedBox(width: 4),
+              Text(label,
+                  style: AppTextStyles.body.copyWith(
+                      fontSize: 13, fontWeight: FontWeight.w600, color: fg)),
+              if (trailing) const SizedBox(width: 4),
+              if (trailing) Icon(icon, size: 16, color: fg),
+            ],
+          ),
         ),
       ),
     );
@@ -967,6 +1014,62 @@ class _EmptyOrders extends StatelessWidget {
               'Ajusta los filtros o crea un pedido nuevo con el botón rosa.',
               textAlign: TextAlign.center,
               style: AppTextStyles.subtitle.copyWith(fontSize: 13),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  const _ErrorState({required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 34),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Symbols.cloud_off, size: 46, color: AppColors.ink3),
+            const SizedBox(height: 14),
+            Text('No pudimos cargar los pedidos',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.h2.copyWith(fontSize: 17)),
+            const SizedBox(height: 6),
+            Text(message,
+                textAlign: TextAlign.center,
+                style: AppTextStyles.subtitle.copyWith(fontSize: 12.5)),
+            const SizedBox(height: 18),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onRetry,
+                borderRadius: BorderRadius.circular(999),
+                child: Ink(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                        colors: [AppColors.neni, AppColors.neniDeep]),
+                    borderRadius: BorderRadius.circular(999),
+                    boxShadow: AppShadows.brandSmall(AppColors.neniDeep),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Symbols.refresh, size: 18, color: Colors.white),
+                      const SizedBox(width: 7),
+                      Text('Reintentar',
+                          style: AppTextStyles.button.copyWith(fontSize: 14)),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ],
         ),

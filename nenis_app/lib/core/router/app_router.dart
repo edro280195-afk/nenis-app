@@ -133,8 +133,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/orders/detail/:id',
-        builder: (context, state) =>
-            OrderDetailScreen(orderId: state.pathParameters['id']!),
+        builder: (context, state) => OrderDetailScreen(
+          orderId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+        ),
       ),
       GoRoute(
         path: '/tracking/:orderId',

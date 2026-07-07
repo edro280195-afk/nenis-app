@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Neni's App · Vendedora · Módulo Pedidos — Mockup de inspiración</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,500;1,600&family=Playfair+Display:ital,wght@1,500;1,600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+<style>
+:root{
+  /* ---- Tokens espejo de AppColors (Flutter) ---- */
+  --cream:#FDF4F7; --surface:#FFFCFD;
+  --ink:#3A2233; --ink2:#8A6F82; --ink3:#B6A4B1;
+  --line:rgba(58,34,51,.09); --line-soft:rgba(58,34,51,.05);
+  --neni:#FB6F9C; --neni-deep:#E84E83; --lavender:#9B7BE0; --gold:#F3B341;
+  --regi:#FF0072;
+  --pend-bg:#FCECD2; --pend-fg:#B5730A;
+  --conf-bg:#FFE1EC; --conf-fg:#E84E83;
+  --route-bg:#E4ECFF; --route-fg:#2E6BD6;
+  --deliv-bg:#D9F3E6; --deliv-fg:#1F9A6A;
+  --glass:rgba(255,255,255,.72); --glass-brd:rgba(255,255,255,.72);
+  /* ---- Sombras espejo de AppShadows ---- */
+  --sh-card:0 18px 40px -12px rgba(214,51,108,.24), 0 6px 16px -8px rgba(58,34,51,.10);
+  --sh-sm:0 10px 22px -12px rgba(214,51,108,.28);
+  --sh-nav:0 22px 44px -18px rgba(124,31,74,.42);
+  --grad-rosa:linear-gradient(135deg,#FB6F9C 0%,#E84E83 100%);
+  --grad-rosa-soft:linear-gradient(135deg,#FFF0F5 0%,#F5EBFF 100%);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{
+  font-family:'Poppins',system-ui,sans-serif;
+  color:var(--ink);
+  min-height:100vh;
+  background:
+    radial-gradient(120% 80% at 12% 0%, #FFE1EE 0%, rgba(255,225,238,0) 46%),
+    radial-gradient(120% 80% at 92% 4%, #E9DEFB 0%, rgba(233,222,251,0) 44%),
+    radial-gradient(120% 90% at 84% 100%, #FFE7D8 0%, rgba(255,231,216,0) 50%),
+    var(--cream);
+  padding:44px 20px 90px;
+  overflow-x:auto;
+}
+.material-symbols-rounded{font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24;line-height:1}
+.ico{font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24;line-height:1;display:inline-flex;vertical-align:middle;-webkit-font-smoothing:antialiased}
+.ico.ln{font-variation-settings:'FILL' 0,'wght' 500}
+.pf{font-family:'Playfair Display',serif;font-style:italic}
+
+/* Floating decorative blobs */
+.blob{position:fixed;border-radius:50%;filter:blur(70px);opacity:.55;z-index:0;pointer-events:none;animation:drift 18s ease-in-out infinite}
+.blob.b1{width:340px;height:340px;background:#FFC6DD;top:-60px;left:-40px}
+.blob.b2{width:300px;height:300px;background:#DCC8FB;top:40px;right:-60px;animation-delay:-6s}
+.blob.b3{width:320px;height:320px;background:#FFD9C2;bottom:-80px;left:40%;animation-delay:-11s}
+@keyframes drift{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(18px,-22px) scale(1.06)}}
+
+/* Page header */
+.page-head{position:relative;z-index:2;text-align:center;max-width:760px;margin:0 auto 40px}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:2.2px;color:var(--neni-deep);text-transform:uppercase}
+.page-head h1{font-size:38px;font-weight:800;letter-spacing:-1px;margin:12px 0 6px;line-height:1.05}
+.page-head h1 .pf{font-weight:600;color:var(--neni-deep)}
+.page-head p{font-size:14.5px;color:var(--ink2);font-weight:500;margin:0 auto;max-width:560px;line-height:1.55}
+.swatches{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin-top:22px}
+.sw{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.66);border:1px solid var(--line);padding:7px 13px 7px 8px;border-radius:999px;font-size:11.5px;font-weight:600;color:var(--ink2);backdrop-filter:blur(8px)}
+.sw i{width:16px;height:16px;border-radius:50%;display:block}
+
+/* Gallery */
+.gallery{position:relative;z-index:2;display:flex;gap:44px;justify-content:center;align-items:flex-start;flex-wrap:wrap;max-width:824px;margin:0 auto}
+.frame{width:372px;display:flex;flex-direction:column;align-items:center;gap:16px;opacity:0;transform:translateY(26px);animation:rise .8s cubic-bezier(.22,1,.36,1) forwards}
+.frame:nth-child(1){animation-delay:.05s}.frame:nth-child(2){animation-delay:.16s}
+.frame:nth-child(3){animation-delay:.27s}.frame:nth-child(4){animation-delay:.38s}
+@keyframes rise{to{opacity:1;transform:none}}
+.frame .caption{text-align:center}
+.frame .caption .n{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--grad-rosa);color:#fff;font-weight:700;font-size:13px;margin-right:8px;box-shadow:var(--sh-sm)}
+.frame .caption h3{display:inline;font-size:17px;font-weight:700;color:var(--ink);letter-spacing:-.2px}
+.frame .caption p{font-size:12.5px;color:var(--ink2);margin:6px 0 0;font-weight:500}
+
+/* Device */
+.device{
+  width:372px;height:806px;border-radius:54px;background:#fff;padding:9px;
+  box-shadow:0 50px 90px -30px rgba(214,51,108,.42), 0 12px 30px -12px rgba(58,34,51,.18), inset 0 0 0 1px rgba(255,255,255,.9);
+  position:relative;transition:transform .5s cubic-bezier(.22,1,.36,1)
+}
+.device:hover{transform:translateY(-8px)}
+.screen{
+  position:relative;width:100%;height:100%;border-radius:46px;overflow:hidden;
+  background:
+    radial-gradient(90% 55% at 8% 0%, #FFE1EE 0%, rgba(255,225,238,0) 42%),
+    radial-gradient(85% 50% at 96% 3%, #E9DEFB 0%, rgba(233,222,251,0) 42%),
+    radial-gradient(90% 45% at 90% 100%, #FFE7D8 0%, rgba(255,231,216,0) 48%),
+    var(--cream);
+}
+.scroll{position:absolute;inset:0;overflow-y:auto;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.pad{padding:0 18px}
+
+/* Status bar */
+.statusbar{height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:relative;z-index:5}
+.statusbar .t{font-size:13px;font-weight:700;color:var(--ink)}
+.statusbar .r{display:flex;gap:6px;align-items:center;color:var(--ink)}
+.statusbar .r .ico{font-size:16px}
+.island{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:104px;height:26px;background:#1a1020;border-radius:999px}
+
+/* App header */
+.appbar{display:flex;align-items:center;justify-content:space-between;padding:6px 18px 2px}
+.appbar .brand{display:flex;align-items:center;gap:11px}
+.logo{width:42px;height:42px;border-radius:14px;background:var(--grad-rosa);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:19px;box-shadow:0 8px 18px -6px rgba(232,78,131,.6);position:relative;overflow:hidden}
+.logo::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,.45) 50%,transparent 70%);animation:sheen 3.4s ease-in-out infinite}
+@keyframes sheen{0%,60%{transform:translateX(-120%)}80%,100%{transform:translateX(120%)}}
+.brand .bt{font-size:14px;font-weight:800;color:var(--ink);letter-spacing:.1px;display:flex;align-items:center;gap:5px}
+.brand .bt .pf{font-size:11px;color:var(--neni-deep);font-weight:600}
+.brand .bs{font-size:8.5px;font-weight:700;letter-spacing:1.3px;color:var(--lavender);text-transform:uppercase;margin-top:1px}
+.iconbtn{width:38px;height:38px;border-radius:13px;background:rgba(255,255,255,.8);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--ink);position:relative;transition:.25s}
+.iconbtn:hover{color:var(--neni-deep);border-color:rgba(232,78,131,.35);transform:translateY(-1px)}
+.iconbtn .ico{font-size:20px}
+.dot{position:absolute;top:9px;right:9px;width:8px;height:8px;border-radius:50%;background:var(--neni)}
+.dot::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--neni);animation:ping 1.8s cubic-bezier(0,0,.2,1) infinite}
+@keyframes ping{75%,100%{transform:scale(2.4);opacity:0}}
+
+/* Titles */
+.h-title{font-size:27px;font-weight:800;letter-spacing:-.7px;color:var(--ink);line-height:1.05}
+.h-title .pf{color:var(--neni-deep);font-weight:600}
+.h-sub{font-size:12.5px;color:var(--ink2);font-weight:500;margin-top:3px}
+
+/* Search */
+.search{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 15px;box-shadow:var(--sh-sm);margin-top:14px}
+.search .ico{font-size:20px;color:var(--ink3)}
+.search input,.search .ph{border:0;outline:0;background:transparent;font-family:inherit;font-size:13.5px;font-weight:500;color:var(--ink3);width:100%}
+
+/* Segmented */
+.seg{display:flex;gap:4px;background:var(--line-soft);border-radius:16px;padding:5px;margin-top:12px}
+.seg button{flex:1;border:0;background:transparent;font-family:inherit;font-size:12px;font-weight:600;color:var(--ink2);padding:10px 0;border-radius:12px;cursor:pointer;transition:.2s}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:var(--sh-sm)}
+
+.list-meta{display:flex;align-items:center;justify-content:space-between;margin:14px 2px 12px}
+.list-meta .c{font-size:11.5px;color:var(--ink3);font-weight:600}
+.list-meta .a{font-size:11.5px;color:var(--neni-deep);font-weight:700;display:flex;align-items:center;gap:4px}
+
+/* Order card */
+.ocard{position:relative;border-radius:25px;padding:1.4px;background:linear-gradient(140deg,rgba(251,111,156,.34),rgba(255,255,255,.5) 46%,rgba(155,123,224,.30));box-shadow:var(--sh-card);margin-bottom:14px;transition:transform .4s cubic-bezier(.22,1,.36,1),box-shadow .4s}
+.ocard:hover{transform:translateY(-3px);box-shadow:0 26px 50px -16px rgba(214,51,108,.34)}
+.ocard:hover .trash{opacity:1;transform:scale(1)}
+.ocard__in{background:var(--surface);border-radius:23.6px;padding:15px}
+.trash{position:absolute;top:-9px;right:-9px;width:32px;height:32px;border-radius:50%;background:#fff;border:1px solid rgba(232,78,131,.18);color:var(--neni);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 18px -8px rgba(214,51,108,.4);opacity:0;transform:scale(.6);transition:.3s;cursor:pointer;z-index:3}
+.trash:hover{color:#E11D48;background:#FFF1F4}
+.trash .ico{font-size:17px}
+.oc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.avatar{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:17px;flex-shrink:0;box-shadow:0 8px 16px -8px rgba(214,51,108,.5)}
+.av-rosa{background:var(--grad-rosa)}
+.av-lav{background:linear-gradient(135deg,#B79BF0,#9B7BE0)}
+.av-blue{background:linear-gradient(135deg,#7FB0F2,#4E82D6)}
+.oc-id{display:flex;gap:11px;align-items:center;min-width:0}
+.oc-name{font-size:15px;font-weight:700;color:var(--ink);line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.oc-folio{font-size:11px;font-weight:600;color:var(--ink3);margin-top:1px}
+.tag{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;margin-left:6px;text-transform:uppercase;letter-spacing:.3px}
+.tag.freq{background:#F1E9FF;color:#7C5AC9}
+.tag.new{background:#E4ECFF;color:#2E6BD6}
+/* status chip */
+.chip{display:inline-flex;align-items:center;gap:4px;height:27px;padding:0 11px;border-radius:999px;font-size:11.5px;font-weight:600;flex-shrink:0}
+.chip .ico{font-size:15px}
+.chip.pend{background:var(--pend-bg);color:var(--pend-fg)}
+.chip.conf{background:var(--conf-bg);color:var(--conf-fg)}
+.chip.route{background:var(--route-bg);color:var(--route-fg)}
+.chip.deliv{background:var(--deliv-bg);color:var(--deliv-fg)}
+.oc-meta{margin-top:11px;display:flex;flex-direction:column;gap:5px}
+.oc-line{font-size:11.5px;color:var(--ink2);font-weight:500;display:flex;align-items:flex-start;gap:6px}
+.oc-line .ico{font-size:15px;color:var(--neni);flex-shrink:0}
+/* financial panel */
+.fin{margin-top:13px;background:var(--grad-rosa-soft);border:1px solid rgba(251,111,156,.14);border-radius:18px;padding:13px}
+.fin-top{display:flex;justify-content:space-between;align-items:flex-end}
+.fin .lbl{font-size:9px;font-weight:700;letter-spacing:.6px;color:var(--ink3);text-transform:uppercase}
+.fin .lbl b{color:var(--neni);font-weight:700}
+.fin .total{font-size:23px;font-weight:800;letter-spacing:-.5px;background:linear-gradient(90deg,#E84E83,#B15AD8);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1;margin-top:3px}
+.pill-sm{font-size:10px;font-weight:700;padding:5px 9px;border-radius:999px;display:inline-block}
+.pill-due{background:#FFE4E9;color:#E11D5B}
+.pill-paid{background:#D9F3E6;color:#1F9A6A}
+.bar{height:7px;border-radius:999px;background:rgba(251,111,156,.16);overflow:hidden;margin-top:11px}
+.bar>i{display:block;height:100%;border-radius:999px;width:0;background:linear-gradient(90deg,#FB6F9C,#E84E83);transition:width 1.3s cubic-bezier(.22,1,.36,1)}
+.bar.done>i{background:linear-gradient(90deg,#4ADE9E,#1F9A6A)}
+/* actions */
+.oc-actions{margin-top:13px;display:flex;flex-direction:column;gap:9px}
+.btn{border:0;font-family:inherit;font-weight:700;border-radius:15px;cursor:pointer;transition:.25s;display:flex;align-items:center;justify-content:center;gap:7px}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--grad-rosa);color:#fff;padding:13px;font-size:13.5px;box-shadow:0 12px 22px -10px rgba(232,78,131,.7)}
+.btn-primary:hover{box-shadow:0 16px 28px -10px rgba(232,78,131,.85)}
+.btn-primary .ico{font-size:18px}
+.oc-mini{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.btn-soft{background:#fff;border:1px solid rgba(232,78,131,.18);color:var(--neni-deep);padding:10px;font-size:12px}
+.btn-soft:hover{background:#FFF4F8}
+.btn-soft .ico{font-size:16px}
+.btn-wa{background:#E9F9EE;border:1px solid rgba(31,154,106,.18);color:#12A150;padding:10px;font-size:12px;border-radius:15px;display:flex;align-items:center;justify-content:center;gap:6px;font-weight:700}
+.btn-wa .ico{font-size:16px}
+
+/* FAB */
+.fab{position:absolute;bottom:104px;right:18px;height:52px;border-radius:999px;background:var(--grad-rosa);color:#fff;display:flex;align-items:center;gap:8px;padding:0 20px 0 16px;font-weight:700;font-size:13.5px;box-shadow:0 16px 30px -10px rgba(232,78,131,.75);z-index:8;cursor:pointer;transition:.3s;animation:floaty 3.4s ease-in-out infinite}
+.fab:hover{transform:translateY(-3px) scale(1.03)}
+.fab .ico{font-size:24px}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+
+/* Bottom nav */
+.nav{position:absolute;left:16px;right:16px;bottom:16px;height:70px;border-radius:26px;background:var(--glass);border:1px solid var(--glass-brd);backdrop-filter:blur(18px);box-shadow:var(--sh-nav);display:flex;align-items:center;justify-content:space-around;z-index:7}
+.nav a{display:flex;flex-direction:column;align-items:center;gap:3px;text-decoration:none;color:var(--ink3);flex:1}
+.nav a .ib{padding:5px 14px;border-radius:14px;display:flex}
+.nav a .ico{font-size:24px}
+.nav a span{font-size:10px;font-weight:600}
+.nav a.on{color:var(--neni-deep)}
+.nav a.on .ib{background:linear-gradient(135deg,#FFE1EC,#FFD0E2)}
+
+/* ===== Detail / Nuevo shared ===== */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:4px 4px 0}
+.round{width:38px;height:38px;border-radius:13px;background:rgba(255,255,255,.85);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--ink);cursor:pointer;transition:.25s}
+.round:hover{color:var(--neni-deep);transform:translateY(-1px)}
+.round .ico{font-size:21px}
+.detail-head{background:linear-gradient(135deg,#FFEAF1,#F3EBFF);border:1px solid rgba(232,78,131,.12);border-radius:24px;padding:15px;margin-top:12px}
+.dh-row{display:flex;align-items:center;justify-content:space-between}
+.dh-title{font-size:18px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px}
+.dh-title .em{font-size:19px}
+.client-chip{margin-top:12px;display:flex;align-items:center;gap:11px;background:rgba(255,255,255,.7);border:1px solid rgba(232,78,131,.12);border-radius:16px;padding:10px 12px}
+.client-chip .nm{font-size:14px;font-weight:700;color:var(--ink)}
+.client-chip .ph{font-size:11px;color:var(--ink2);font-weight:500;margin-top:1px}
+.client-chip .edit{margin-left:auto;color:var(--ink3);font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px}
+.client-chip .edit .ico{font-size:15px}
+
+.section{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:14px;margin-top:13px;box-shadow:var(--sh-sm)}
+.sec-h{font-size:10px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--neni-deep);display:flex;align-items:center;gap:6px;margin-bottom:12px}
+.sec-h .ico{font-size:16px}
+
+/* Pipeline */
+.pipe{display:flex;align-items:center;gap:0;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.pipe::-webkit-scrollbar{display:none}
+.pstep{white-space:nowrap;font-size:11px;font-weight:700;padding:8px 12px;border-radius:13px;border:1px solid var(--line);color:var(--ink3);background:#fff;flex-shrink:0}
+.pstep.on-pend{background:var(--pend-bg);color:var(--pend-fg);border-color:transparent}
+.pstep.on-route{background:var(--route-bg);color:var(--route-fg);border-color:transparent}
+.pconn{width:14px;height:2px;background:linear-gradient(90deg,rgba(251,111,156,.5),rgba(251,111,156,.2));flex-shrink:0}
+
+/* Toggle */
+.toggle{display:flex;background:var(--line-soft);border-radius:14px;padding:4px;gap:4px}
+.toggle button{flex:1;border:0;background:transparent;font-family:inherit;font-size:12px;font-weight:600;color:var(--ink2);padding:9px 0;border-radius:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;transition:.2s}
+.toggle button.on{background:#fff;color:var(--neni-deep);box-shadow:var(--sh-sm)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.field-lbl{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--ink3);margin-bottom:7px;display:block}
+.date{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:600;color:var(--ink);background:#fff}
+.date .ico{font-size:17px;color:var(--neni)}
+
+/* Product row */
+.prow{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line-soft)}
+.prow:last-of-type{border-bottom:0}
+.pthumb{width:42px;height:42px;border-radius:13px;background:linear-gradient(135deg,#FFF0F5,#F3EBFF);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+.pname{font-size:13px;font-weight:600;color:var(--ink);line-height:1.2}
+.pprice{font-size:11px;color:var(--ink2);font-weight:500;margin-top:2px}
+.pline{margin-left:auto;text-align:right}
+.pline .lt{font-size:14px;font-weight:800;color:var(--neni-deep)}
+.stepper{display:inline-flex;align-items:center;background:#fff;border:1px solid var(--line);border-radius:11px;margin-top:5px;overflow:hidden}
+.stepper button{width:26px;height:26px;border:0;background:transparent;color:var(--neni-deep);font-size:16px;font-weight:700;cursor:pointer}
+.stepper button:hover{background:#FFF0F5}
+.stepper .q{width:26px;text-align:center;font-size:12px;font-weight:700;color:var(--ink)}
+.add-row{margin-top:12px;border:1.5px dashed rgba(232,78,131,.3);border-radius:16px;padding:12px;background:linear-gradient(135deg,rgba(255,240,245,.6),rgba(243,235,255,.4))}
+.add-row .t{font-size:12px;font-weight:700;color:var(--neni-deep);display:flex;align-items:center;gap:6px;margin-bottom:9px}
+.inp{border:1px solid var(--line);border-radius:11px;padding:10px 12px;font-family:inherit;font-size:12.5px;font-weight:500;color:var(--ink);background:#fff;width:100%;outline:0}
+.inp::placeholder{color:var(--ink3)}
+.add-grid{display:grid;grid-template-columns:1fr 74px 56px;gap:8px;margin-top:8px}
+.btn-ok{background:var(--grad-rosa);color:#fff;border:0;border-radius:11px;font-weight:700;font-family:inherit;font-size:12px;cursor:pointer}
+
+/* Resumen */
+.sumline{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;font-weight:500;color:var(--ink2);padding:5px 0}
+.sumline b{color:var(--ink);font-weight:600}
+.sumtotal{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:11px;border-top:1px dashed var(--line)}
+.sumtotal .l{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3)}
+.sumtotal .v{font-size:24px;font-weight:800;background:linear-gradient(90deg,#E84E83,#B15AD8);-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:-.5px}
+
+/* Cobros */
+.cobros-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.due-box{text-align:right;background:#FFF1F4;border:1px solid rgba(225,29,91,.14);border-radius:13px;padding:6px 11px}
+.due-box .l{font-size:8.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#E11D5B}
+.due-box .v{font-size:15px;font-weight:800;color:#E11D5B}
+.amount{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:13px;padding:11px 13px;background:#fff}
+.amount .s{color:var(--neni-deep);font-weight:800;font-size:16px}
+.amount input{border:0;outline:0;font-family:inherit;font-size:14px;font-weight:700;color:var(--ink);width:100%;background:transparent}
+.methods{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-top:10px}
+.method{border:1px solid var(--line);background:#fff;border-radius:14px;padding:11px 4px;display:flex;flex-direction:column;align-items:center;gap:5px;font-size:10px;font-weight:700;color:var(--ink2);cursor:pointer;transition:.2s}
+.method .em{font-size:19px}
+.method:hover{border-color:rgba(232,78,131,.35);color:var(--neni-deep);transform:translateY(-2px)}
+.method.on{background:#E9F9EE;border-color:rgba(31,154,106,.3);color:#1F9A6A}
+
+/* Sticky footer bar (detail) */
+.footbar{position:absolute;left:0;right:0;bottom:0;background:rgba(255,255,255,.86);backdrop-filter:blur(16px);border-top:1px solid var(--line);padding:13px 18px;display:flex;align-items:center;justify-content:space-between;z-index:8}
+.footbar .tl{font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--ink3)}
+.footbar .tv{font-size:20px;font-weight:800;background:linear-gradient(90deg,#E84E83,#B15AD8);-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:-.5px}
+.footacts{display:flex;gap:8px}
+.fbtn{width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.25s;border:1px solid transparent}
+.fbtn:hover{transform:translateY(-2px)}
+.fbtn .ico{font-size:19px}
+.fb-link{background:#F1E9FF;color:#7C5AC9}
+.fb-wa{background:#E9F9EE;color:#12A150}
+.fb-route{background:#E4ECFF;color:#2E6BD6}
+.fb-pay{background:#FFF1F4;color:#E11D5B}
+
+/* Nuevo pedido suggestion */
+.suggest{margin-top:8px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh-card);overflow:hidden}
+.sg-item{display:flex;align-items:center;gap:11px;padding:12px 13px;cursor:pointer;transition:.2s;border-bottom:1px solid var(--line-soft)}
+.sg-item:hover{background:#FFF6FA}
+.sg-item:last-child{border-bottom:0}
+.sg-new{color:var(--neni-deep);font-weight:700}
+.sg-new .pthumb{background:var(--grad-rosa);color:#fff}
+.big-cta{margin:16px 0 4px;background:var(--grad-rosa);color:#fff;border:0;border-radius:18px;padding:16px;width:100%;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 18px 34px -12px rgba(232,78,131,.8);display:flex;align-items:center;justify-content:center;gap:8px;transition:.25s}
+.big-cta:hover{transform:translateY(-2px);box-shadow:0 22px 40px -12px rgba(232,78,131,.9)}
+.big-cta .ico{font-size:21px}
+
+/* Delete modal */
+.dim{position:absolute;inset:0;background:rgba(58,34,51,.32);backdrop-filter:blur(3px);z-index:10;display:flex;align-items:center;justify-content:center;padding:26px}
+.modal{background:#fff;border-radius:28px;padding:24px 22px;text-align:center;box-shadow:0 40px 70px -20px rgba(214,51,108,.5);width:100%;animation:pop .5s cubic-bezier(.34,1.56,.64,1)}
+@keyframes pop{from{opacity:0;transform:scale(.85) translateY(10px)}to{opacity:1;transform:none}}
+.modal .warn{width:66px;height:66px;border-radius:22px;background:#FFF1F4;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+.modal .warn .ico{font-size:34px;color:#E11D5B}
+.modal h4{font-size:18px;font-weight:800;color:var(--ink);margin:0 0 8px}
+.modal p{font-size:12.5px;color:var(--ink2);font-weight:500;line-height:1.5;margin:0 0 20px}
+.modal p b{color:var(--ink);font-weight:700}
+.modal-btns{display:flex;gap:10px}
+.btn-cancel{flex:1;background:#F3EEF1;color:var(--ink2);border:0;border-radius:14px;padding:13px;font-family:inherit;font-weight:700;font-size:13.5px;cursor:pointer}
+.btn-del{flex:1;background:linear-gradient(135deg,#FB6F8E,#E11D5B);color:#fff;border:0;border-radius:14px;padding:13px;font-family:inherit;font-weight:700;font-size:13.5px;cursor:pointer;box-shadow:0 12px 22px -10px rgba(225,29,91,.7)}
+.blurred{filter:blur(1px);opacity:.6}
+
+/* Legend */
+.legend{position:relative;z-index:2;max-width:1000px;margin:70px auto 0;background:rgba(255,255,255,.7);border:1px solid var(--line);border-radius:28px;padding:30px 34px;backdrop-filter:blur(10px);box-shadow:var(--sh-card)}
+.legend h2{font-size:20px;font-weight:800;margin:0 0 4px;letter-spacing:-.3px}
+.legend h2 .pf{color:var(--neni-deep)}
+.legend .sub{font-size:13px;color:var(--ink2);font-weight:500;margin:0 0 22px}
+.leg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
+.leg-card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px}
+.leg-card .lt{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--neni-deep);margin-bottom:10px}
+.leg-card .li{font-size:12.5px;color:var(--ink2);font-weight:500;line-height:1.7}
+.leg-card .li b{color:var(--ink);font-weight:600}
+.leg-card code{background:#FBEAF1;color:#B4306A;padding:1px 6px;border-radius:6px;font-size:11px;font-weight:600}
+</style>
+</head>
+<body>
+<div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+
+<header class="page-head">
+  <div class="eyebrow">Neni's App · Frente Vendedora</div>
+  <h1>Módulo de <span class="pf">Pedidos</span></h1>
+  <p>Mockup de inspiración — misma estética clara/crema girly que la clienta. Lista, generación, detalle, edición y eliminación. Tokens espejo de Flutter: Poppins, rosa <b style="color:#E84E83">neni</b>, sombras rosadas suaves, glass nav y bento cards redondeadas.</p>
+  <div class="swatches">
+    <div class="sw"><i style="background:#FB6F9C"></i>neni #FB6F9C</div>
+    <div class="sw"><i style="background:#E84E83"></i>neniDeep #E84E83</div>
+    <div class="sw"><i style="background:#9B7BE0"></i>lavender #9B7BE0</div>
+    <div class="sw"><i style="background:#F3B341"></i>gold #F3B341</div>
+    <div class="sw"><i style="background:#FDF4F7;border:1px solid #ead" ></i>cream #FDF4F7</div>
+  </div>
+</header>
+
+<div class="gallery">
+
+  <!-- ============ FRAME 1: LISTA ============ -->
+  <div class="frame">
+    <div class="device">
+      <div class="screen">
+        <div class="statusbar"><span class="t">9:41</span><div class="island"></div><div class="r"><span class="ico">signal_cellular_alt</span><span class="ico">wifi</span><span class="ico">battery_full</span></div></div>
+        <div class="scroll" style="padding-bottom:150px">
+          <div class="appbar">
+            <div class="brand">
+              <div class="logo">R</div>
+              <div><div class="bt">Regi Bazar <span class="pf">Premium</span></div><div class="bs">Socio Elite 💎</div></div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <div class="iconbtn"><span class="ico ln">tune</span></div>
+              <div class="iconbtn"><span class="ico">notifications</span><span class="dot"></span></div>
+            </div>
+          </div>
+          <div class="pad" style="margin-top:12px">
+            <div class="h-title">Pedidos <span class="pf">recibidos</span></div>
+            <div class="h-sub">Gestiona entregas y cobros de tu negocio.</div>
+            <div class="search"><span class="ico">search</span><span class="ph">Buscar clienta, artículo o #folio…</span></div>
+            <div class="seg">
+              <button class="on">Todos</button><button>Pendientes</button><button>En ruta</button><button>Entregados</button>
+            </div>
+            <div class="list-meta"><span class="c">Mostrando 8 de 24 pedidos</span><span class="a">$8,450 por cobrar 💕</span></div>
+
+            <!-- card pendiente -->
+            <div class="ocard">
+              <div class="trash"><span class="ico">delete</span></div>
+              <div class="ocard__in">
+                <div class="oc-top">
+                  <div class="oc-id">
+                    <div class="avatar av-rosa">K</div>
+                    <div style="min-width:0">
+                      <div class="oc-name">Karla Gómez <span class="tag freq">Frecuente</span></div>
+                      <div class="oc-folio">Pedido #10049</div>
+                    </div>
+                  </div>
+                  <div class="chip pend"><span class="ico">schedule</span>Pendiente</div>
+                </div>
+                <div class="oc-meta">
+                  <div class="oc-line"><span class="ico">shopping_bag</span>2 artículos · Vestido Rosa, Top Encaje</div>
+                  <div class="oc-line"><span class="ico">location_on</span>Av. de las Flores 128, Col. Jardines</div>
+                </div>
+                <div class="fin">
+                  <div class="fin-top">
+                    <div><div class="lbl">Total <b>(2 arts)</b></div><div class="total">$650</div></div>
+                    <span class="pill-sm pill-due">Resta $650</span>
+                  </div>
+                  <div class="bar"><i data-w="4"></i></div>
+                </div>
+                <div class="oc-actions">
+                  <button class="btn btn-primary"><span class="ico">bolt</span>Gestionar pedido</button>
+                  <div class="oc-mini">
+                    <button class="btn btn-soft"><span class="ico">favorite</span>Confirmar</button>
+                    <button class="btn-wa"><span class="ico">chat</span>WhatsApp</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- card en ruta -->
+            <div class="ocard">
+              <div class="trash"><span class="ico">delete</span></div>
+              <div class="ocard__in">
+                <div class="oc-top">
+                  <div class="oc-id">
+                    <div class="avatar av-lav">V</div>
+                    <div style="min-width:0">
+                      <div class="oc-name">Valeria Martínez</div>
+                      <div class="oc-folio">Pedido #10044</div>
+                    </div>
+                  </div>
+                  <div class="chip route"><span class="ico">local_shipping</span>En ruta</div>
+                </div>
+                <div class="oc-meta">
+                  <div class="oc-line"><span class="ico">shopping_bag</span>3 artículos · Blusa Blanca, Falda Midi</div>
+                  <div class="oc-line"><span class="ico">local_shipping</span>Entrega hoy · Ruta Norte · Eduardo</div>
+                </div>
+                <div class="fin">
+                  <div class="fin-top">
+                    <div><div class="lbl">Total <b>(3 arts)</b></div><div class="total">$920</div></div>
+                    <span class="pill-sm pill-due">Resta $300</span>
+                  </div>
+                  <div class="bar"><i data-w="67"></i></div>
+                </div>
+                <div class="oc-actions">
+                  <button class="btn btn-primary"><span class="ico">bolt</span>Gestionar pedido</button>
+                  <div class="oc-mini">
+                    <button class="btn btn-soft"><span class="ico">near_me</span>Ver ruta</button>
+                    <button class="btn-wa"><span class="ico">directions_car</span>En camino</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- card entregado -->
+            <div class="ocard">
+              <div class="trash"><span class="ico">delete</span></div>
+              <div class="ocard__in">
+                <div class="oc-top">
+                  <div class="oc-id">
+                    <div class="avatar av-blue">A</div>
+                    <div style="min-width:0">
+                      <div class="oc-name">Ana Lucía <span class="tag freq">Frecuente</span></div>
+                      <div class="oc-folio">Pedido #10041</div>
+                    </div>
+                  </div>
+                  <div class="chip deliv"><span class="ico">check_circle</span>Entregado</div>
+                </div>
+                <div class="oc-meta">
+                  <div class="oc-line"><span class="ico">groups</span>Tanda #4 · Set de Sábanas King</div>
+                  <div class="oc-line"><span class="ico">storefront</span>Recogió en tienda · Ayer 6:30 PM</div>
+                </div>
+                <div class="fin">
+                  <div class="fin-top">
+                    <div><div class="lbl">Total <b>(1 art)</b></div><div class="total">$1,200</div></div>
+                    <span class="pill-sm pill-paid">✅ Pagado</span>
+                  </div>
+                  <div class="bar done"><i data-w="100"></i></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="fab"><span class="ico">add</span>Nuevo</div>
+        <nav class="nav">
+          <a><span class="ib"><span class="ico">home</span></span><span>Inicio</span></a>
+          <a class="on"><span class="ib"><span class="ico">receipt_long</span></span><span>Pedidos</span></a>
+          <a><span class="ib"><span class="ico">groups</span></span><span>Tandas</span></a>
+          <a><span class="ib"><span class="ico">directions_car</span></span><span>Reparto</span></a>
+          <a><span class="ib"><span class="ico">person</span></span><span>Cuenta</span></a>
+        </nav>
+      </div>
+    </div>
+    <div class="caption"><span class="n">1</span><h3>Lista de pedidos</h3><p>Búsqueda, filtros por estatus, tarjetas con progreso de cobro y FAB para crear.</p></div>
+  </div>
+
+  <!-- ============ FRAME 2: NUEVO PEDIDO ============ -->
+  <div class="frame">
+    <div class="device">
+      <div class="screen">
+        <div class="statusbar"><span class="t">9:41</span><div class="island"></div><div class="r"><span class="ico">signal_cellular_alt</span><span class="ico">wifi</span><span class="ico">battery_full</span></div></div>
+        <div class="scroll" style="padding-bottom:30px">
+          <div class="pad" style="padding-top:6px">
+            <div class="topbar">
+              <div class="round"><span class="ico">arrow_back_ios_new</span></div>
+              <div style="text-align:center"><div style="font-size:16px;font-weight:800">Nuevo <span class="pf" style="color:var(--neni-deep)">pedido</span></div></div>
+              <div class="round"><span class="ico ln">save</span></div>
+            </div>
+
+            <!-- clienta -->
+            <div class="section">
+              <div class="sec-h"><span class="ico">person_search</span>Clienta</div>
+              <div class="search" style="margin-top:0"><span class="ico">search</span><span class="ph" style="color:var(--ink)">Karla</span><span class="ico" style="color:var(--neni);margin-left:auto">keyboard_arrow_down</span></div>
+              <div class="suggest">
+                <div class="sg-item">
+                  <div class="pthumb" style="background:var(--grad-rosa);color:#fff;font-size:15px;font-weight:800">K</div>
+                  <div style="flex:1"><div style="font-size:13px;font-weight:700;color:var(--ink)">Karla Gómez <span class="tag freq">Frecuente</span></div><div style="font-size:11px;color:var(--ink2)">55 1234 5678 · 12 pedidos</div></div>
+                  <span class="ico" style="color:var(--neni-deep)">check_circle</span>
+                </div>
+                <div class="sg-item sg-new">
+                  <div class="pthumb"><span class="ico">add</span></div>
+                  <div>Crear nueva clienta</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- productos -->
+            <div class="section">
+              <div class="sec-h"><span class="ico">shopping_bag</span>Artículos</div>
+              <div class="prow">
+                <div class="pthumb">👗</div>
+                <div><div class="pname">Vestido Rosa Palo</div><div class="pprice">$320 c/u</div>
+                  <div class="stepper"><button>−</button><span class="q">1</span><button>+</button></div>
+                </div>
+                <div class="pline"><div class="lt">$320</div></div>
+              </div>
+              <div class="prow">
+                <div class="pthumb">🧥</div>
+                <div><div class="pname">Top de Encaje</div><div class="pprice">$135 c/u</div>
+                  <div class="stepper"><button>−</button><span class="q">2</span><button>+</button></div>
+                </div>
+                <div class="pline"><div class="lt">$270</div></div>
+              </div>
+              <div class="add-row">
+                <div class="t"><span class="ico">add_circle</span>Agregar artículo</div>
+                <input class="inp" placeholder="Nombre del producto" value="" />
+                <div class="add-grid">
+                  <input class="inp" placeholder="$ Precio" />
+                  <input class="inp" placeholder="Cant." style="text-align:center" />
+                  <button class="btn-ok">OK</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- entrega -->
+            <div class="section">
+              <div class="sec-h"><span class="ico">local_shipping</span>Entrega</div>
+              <div class="toggle">
+                <button class="on"><span class="em">🛵</span>A domicilio</button>
+                <button><span class="em">🛍️</span>Recoger</button>
+              </div>
+              <div class="grid2" style="margin-top:12px">
+                <div><span class="field-lbl">Fecha</span><div class="date"><span class="ico">calendar_today</span>8 Jul 2026</div></div>
+                <div><span class="field-lbl">Envío</span><div class="date"><span class="s" style="color:var(--neni-deep);font-weight:800">$</span>60.00</div></div>
+              </div>
+            </div>
+
+            <!-- resumen -->
+            <div class="section">
+              <div class="sec-h"><span class="ico">receipt</span>Resumen</div>
+              <div class="sumline">Subtotal <b>$590</b></div>
+              <div class="sumline">Envío <b>$60</b></div>
+              <div class="sumtotal"><span class="l">Total</span><span class="v">$650</span></div>
+            </div>
+
+            <button class="big-cta"><span class="ico">auto_awesome</span>Crear pedido</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="caption"><span class="n">2</span><h3>Nuevo pedido (generación)</h3><p>Autocompletado de clienta, artículos con stepper, tipo de entrega y total en vivo.</p></div>
+  </div>
+
+  <!-- ============ FRAME 3: DETALLE / EDICIÓN ============ -->
+  <div class="frame">
+    <div class="device">
+      <div class="screen">
+        <div class="statusbar"><span class="t">9:41</span><div class="island"></div><div class="r"><span class="ico">signal_cellular_alt</span><span class="ico">wifi</span><span class="ico">battery_full</span></div></div>
+        <div class="scroll" style="padding-bottom:80px">
+          <div class="pad" style="padding-top:6px">
+            <div class="topbar">
+              <div class="round"><span class="ico">arrow_back_ios_new</span></div>
+              <div style="font-size:15px;font-weight:800">Detalle del pedido</div>
+              <div class="round"><span class="ico">close</span></div>
+            </div>
+
+            <div class="detail-head">
+              <div class="dh-row">
+                <div class="dh-title"><span class="em">📦</span>Pedido #10049</div>
+                <div class="chip pend"><span class="ico">schedule</span>Pendiente</div>
+              </div>
+              <div class="client-chip">
+                <div class="avatar av-rosa" style="width:38px;height:38px;border-radius:12px;font-size:15px">K</div>
+                <div><div class="nm">Karla Gómez</div><div class="ph">55 1234 5678 · Frecuente</div></div>
+                <div class="edit"><span class="ico">edit</span>Editar</div>
+              </div>
+            </div>
+
+            <!-- pipeline -->
+            <div class="section">
+              <div class="sec-h"><span class="ico">timeline</span>Estatus del pedido</div>
+              <div class="pipe">
+                <div class="pstep on-pend">Pendiente</div><div class="pconn"></div>
+                <div class="pstep">Confirmado</div><div class="pconn"></div>
+                <div class="pstep">En ruta</div><div class="pconn"></div>
+                <div class="pstep">Entregado</div>
+              </div>
+            </div>
+
+            <!-- entrega -->
+            <div class="section">
+              <div class="grid2">
+                <div><span class="field-lbl">Tipo de entrega</span>
+                  <div class="toggle"><button class="on">🛵</button><button>🛍️</button></div>
+                </div>
+                <div><span class="field-lbl">Fecha entrega</span><div class="date"><span class="ico">event</span>8 Jul</div></div>
+              </div>
+            </div>
+
+            <!-- productos editables -->
+            <div class="section">
+              <div class="sec-h"><span class="ico">shopping_bag</span>Productos (2)</div>
+              <div class="prow">
+                <div class="pthumb">👗</div>
+                <div><div class="pname">Vestido Rosa Palo</div>
+                  <div class="stepper"><button>−</button><span class="q">1</span><button>+</button></div>
+                </div>
+                <div class="pline"><div class="lt">$320</div><div class="pprice">$320 c/u</div></div>
+              </div>
+              <div class="prow">
+                <div class="pthumb">🧥</div>
+                <div><div class="pname">Top de Encaje</div>
+                  <div class="stepper"><button>−</button><span class="q">2</span><button>+</button></div>
+                </div>
+                <div class="pline"><div class="lt">$270</div><div class="pprice">$135 c/u</div></div>
+              </div>
+              <div class="add-row" style="padding:10px 12px">
+                <div class="t" style="margin:0"><span class="ico">add_circle</span>Agregar artículo</div>
+              </div>
+            </div>
+
+            <!-- cobros express -->
+            <div class="section">
+              <div class="cobros-top">
+                <div class="sec-h" style="margin:0"><span class="ico">payments</span>Cobros express</div>
+                <div class="due-box"><div class="l">Restante</div><div class="v">$650</div></div>
+              </div>
+              <div class="amount"><span class="s">$</span><input value="650" /><span style="font-size:11px;color:var(--ink3);font-weight:600;white-space:nowrap">8 Jul</span></div>
+              <div class="methods">
+                <div class="method"><span class="em">💵</span>Efectivo</div>
+                <div class="method"><span class="em">🏦</span>Transf.</div>
+                <div class="method"><span class="em">💳</span>Tarjeta</div>
+              </div>
+            </div>
+
+            <!-- puntos -->
+            <div class="section" style="border-color:rgba(155,123,224,.25)">
+              <div class="cobros-top">
+                <div class="sec-h" style="margin:0;color:var(--lavender)"><span class="ico">diamond</span>Canjear puntos</div>
+                <div class="due-box" style="background:#F3EEFF;border-color:rgba(155,123,224,.22)"><div class="l" style="color:#8B5CF6">Saldo</div><div class="v" style="color:#8B5CF6">340 pts</div></div>
+              </div>
+              <div class="prow" style="border:0;padding:8px 0 0">
+                <div class="pthumb" style="background:#F3EEFF">🎁</div>
+                <div><div class="pname">Envío gratis</div><div class="pprice">Descuento de $60</div></div>
+                <div class="pline"><span class="pill-sm" style="background:linear-gradient(90deg,#9B7BE0,#E84E83);color:#fff">200 pts</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- sticky footer -->
+        <div class="footbar">
+          <div><div class="tl">Total</div><div class="tv">$650</div></div>
+          <div class="footacts">
+            <div class="fbtn fb-link"><span class="ico">link</span></div>
+            <div class="fbtn fb-wa"><span class="ico">chat</span></div>
+            <div class="fbtn fb-route"><span class="ico">directions_car</span></div>
+            <div class="fbtn fb-pay"><span class="ico">request_quote</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="caption"><span class="n">3</span><h3>Detalle &amp; edición</h3><p>Pipeline de estatus, productos editables, cobros express, puntos y barra de acciones.</p></div>
+  </div>
+
+  <!-- ============ FRAME 4: ELIMINAR ============ -->
+  <div class="frame">
+    <div class="device">
+      <div class="screen">
+        <div class="statusbar"><span class="t">9:41</span><div class="island"></div><div class="r"><span class="ico">signal_cellular_alt</span><span class="ico">wifi</span><span class="ico">battery_full</span></div></div>
+        <div class="scroll blurred" style="padding-bottom:30px">
+          <div class="pad" style="padding-top:12px">
+            <div class="h-title">Pedidos <span class="pf">recibidos</span></div>
+            <div class="h-sub">Gestiona entregas y cobros de tu negocio.</div>
+            <div class="seg" style="margin-top:16px"><button class="on">Todos</button><button>Pendientes</button><button>En ruta</button><button>Entregados</button></div>
+            <div class="ocard" style="margin-top:16px"><div class="ocard__in">
+              <div class="oc-top"><div class="oc-id"><div class="avatar av-rosa">K</div><div><div class="oc-name">Karla Gómez</div><div class="oc-folio">Pedido #10049</div></div></div><div class="chip pend"><span class="ico">schedule</span>Pendiente</div></div>
+              <div class="fin"><div class="fin-top"><div><div class="lbl">Total</div><div class="total">$650</div></div><span class="pill-sm pill-due">Resta $650</span></div></div>
+            </div></div>
+            <div class="ocard"><div class="ocard__in">
+              <div class="oc-top"><div class="oc-id"><div class="avatar av-lav">V</div><div><div class="oc-name">Valeria Martínez</div><div class="oc-folio">Pedido #10044</div></div></div><div class="chip route"><span class="ico">local_shipping</span>En ruta</div></div>
+            </div></div>
+          </div>
+        </div>
+        <!-- delete modal -->
+        <div class="dim">
+          <div class="modal">
+            <div class="warn"><span class="ico">delete</span></div>
+            <h4>¿Eliminar este pedido?</h4>
+            <p>Se quitará el pedido <b>#10049</b> de <b>Karla Gómez</b>.<br>Esta acción no se puede deshacer.</p>
+            <div class="modal-btns">
+              <button class="btn-cancel">Cancelar</button>
+              <button class="btn-del">Eliminar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="caption"><span class="n">4</span><h3>Eliminación</h3><p>Deslizar la tarjeta o el ícono revela el diálogo de confirmación, claro y seguro.</p></div>
+  </div>
+
+</div>
+
+<!-- Legend / paridad Flutter -->
+<section class="legend">
+  <h2>Cómo se conecta con <span class="pf">Flutter</span></h2>
+  <p class="sub">Cada pieza de este mockup mapea 1:1 a widgets y tokens que ya existen en <code>nenis_app</code>.</p>
+  <div class="leg-grid">
+    <div class="leg-card">
+      <div class="lt">Tokens reutilizados</div>
+      <div class="li">
+        <b>AppColors</b> · neni, neniDeep, lavender, gold, status*<br>
+        <b>AppShadows</b> · card / small / nav<br>
+        <b>AppRadii</b> · card 28, soft 20, pill 999<br>
+        <b>NeniBackground</b> · 3 radiales rosa/lavanda/durazno
+      </div>
+    </div>
+    <div class="leg-card">
+      <div class="lt">Widgets compartidos</div>
+      <div class="li">
+        <b>SegmentedControl</b> → filtros de estatus<br>
+        <b>StatusChip</b> → Pendiente / En ruta / Entregado<br>
+        <b>GlassBottomNav</b> → <code>buildSellerNavItems()</code><br>
+        <b>PillButton</b> → Gestionar / Crear pedido
+      </div>
+    </div>
+    <div class="leg-card">
+      <div class="lt">Pantallas a crear/ajustar</div>
+      <div class="li">
+        <b>seller_orders_screen</b> · lista (existe, se enriquece)<br>
+        <b>order_detail_screen</b> · detalle + edición <span style="color:var(--neni-deep);font-weight:700">nuevo</span><br>
+        <b>order_create_screen</b> · captura <span style="color:var(--neni-deep);font-weight:700">nuevo</span><br>
+        Diálogo de borrado reutilizable
+      </div>
+    </div>
+    <div class="leg-card">
+      <div class="lt">Inspiración origen</div>
+      <div class="li">
+        <b>regibazar-web</b> · orders.component<br>
+        Smart Order Drawer → detalle<br>
+        capture-order → nuevo pedido<br>
+        Cobros express, puntos y logística
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  // Animate progress bars on load
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      document.querySelectorAll('.bar > i').forEach(el => {
+        el.style.width = (el.dataset.w || 0) + '%';
+      });
+    }, 350);
+  });
+  // Segmented micro-interaction
+  document.querySelectorAll('.seg').forEach(seg => {
+    seg.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        seg.querySelectorAll('button').forEach(b => b.classList.remove('on'));
+        btn.classList.add('on');
+      });
+    });
+  });
+  // Payment method select
+  document.querySelectorAll('.methods').forEach(m => {
+    m.querySelectorAll('.method').forEach(btn => {
+      btn.addEventListener('click', () => {
+        m.querySelectorAll('.method').forEach(b => b.classList.remove('on'));
+        btn.classList.add('on');
+      });
+    });
+  });
+</script>
+</body>
+</html>
