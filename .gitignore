@@ -6,7 +6,6 @@
 build/
 .flutter-plugins
 .flutter-plugins-dependencies
-pubspec.lock
 
 # Android
 android/.gradle/
@@ -46,6 +45,7 @@ Thumbs.db
 # Misc
 *.log
 *.lock
+!pubspec.lock
 .env
 .env.*
 !.env.example
