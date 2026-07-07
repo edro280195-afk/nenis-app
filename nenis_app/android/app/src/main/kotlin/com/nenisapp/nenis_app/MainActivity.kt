@@ -14,7 +14,7 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, googleMapsChannel)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
-                    "hasAndroidApiKey" -> result.success(hasGoogleMapsApiKey())
+                    "hasApiKey" -> result.success(hasGoogleMapsApiKey())
                     else -> result.notImplemented()
                 }
             }

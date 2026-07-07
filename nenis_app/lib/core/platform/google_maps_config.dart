@@ -8,10 +8,14 @@ class GoogleMapsConfig {
   static const _channel = MethodChannel('nenis_app/google_maps');
 
   static Future<bool> isConfigured() async {
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return true;
+    if (kIsWeb) return true;
+    if (defaultTargetPlatform != TargetPlatform.android &&
+        defaultTargetPlatform != TargetPlatform.iOS) {
+      return true;
+    }
 
     try {
-      return await _channel.invokeMethod<bool>('hasAndroidApiKey') ?? false;
+      return await _channel.invokeMethod<bool>('hasApiKey') ?? false;
     } on MissingPluginException {
       return false;
     } on PlatformException {
