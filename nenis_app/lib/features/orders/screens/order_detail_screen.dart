@@ -154,6 +154,14 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     }
   }
 
+  void _goBack() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/orders');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(sellerOrderDetailProvider(_id));
@@ -166,7 +174,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           child: async.when(
             loading: () => Column(
               children: [
-                _TopBar(title: 'Pedido', onClose: () => context.pop()),
+                _TopBar(title: 'Pedido', onBack: _goBack),
                 const Expanded(
                   child: Center(
                     child: CircularProgressIndicator(color: AppColors.neni),
@@ -176,7 +184,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             ),
             error: (e, _) => Column(
               children: [
-                _TopBar(title: 'Pedido', onClose: () => context.pop()),
+                _TopBar(title: 'Pedido', onBack: _goBack),
                 Expanded(
                   child: Center(
                     child: Padding(
@@ -204,10 +212,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             ),
             data: (o) => Column(
               children: [
-                _TopBar(
-                  title: 'Detalle del pedido',
-                  onClose: () => context.pop(),
-                ),
+                _TopBar(title: 'Detalle del pedido', onBack: _goBack),
                 Expanded(
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
@@ -246,9 +251,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.title, required this.onClose});
+  const _TopBar({required this.title, required this.onBack});
   final String title;
-  final VoidCallback onClose;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -256,7 +261,11 @@ class _TopBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
       child: Row(
         children: [
-          _RoundButton(icon: Symbols.arrow_back_ios_new, onTap: onClose),
+          _RoundButton(
+            icon: Icons.adaptive.arrow_back,
+            tooltip: 'Volver',
+            onTap: onBack,
+          ),
           Expanded(
             child: Text(
               title,
@@ -264,7 +273,7 @@ class _TopBar extends StatelessWidget {
               style: AppTextStyles.h2.copyWith(fontSize: 15),
             ),
           ),
-          _RoundButton(icon: Symbols.close, onTap: onClose),
+          const SizedBox(width: 38, height: 38),
         ],
       ),
     );
@@ -272,26 +281,35 @@ class _TopBar extends StatelessWidget {
 }
 
 class _RoundButton extends StatelessWidget {
-  const _RoundButton({required this.icon, required this.onTap});
+  const _RoundButton({
+    required this.icon,
+    required this.onTap,
+    required this.tooltip,
+  });
+
   final IconData icon;
   final VoidCallback onTap;
+  final String tooltip;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(13),
-        child: Ink(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.85),
-            borderRadius: BorderRadius.circular(13),
-            border: Border.all(color: AppColors.line),
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(13),
+          child: Ink(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(color: AppColors.line),
+            ),
+            child: Icon(icon, size: 20, color: AppColors.ink),
           ),
-          child: Icon(icon, size: 20, color: AppColors.ink),
         ),
       ),
     );

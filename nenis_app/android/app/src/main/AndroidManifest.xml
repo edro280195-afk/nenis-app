@@ -49,8 +49,8 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="sellgeneral.app" android:pathPrefix="/o/" />
-                <data android:scheme="https" android:host="sellgeneral.app" android:pathPrefix="/pedido/" />
+                <data android:scheme="https" android:host="app.nenisapp.com" android:pathPrefix="/o/" />
+                <data android:scheme="https" android:host="app.nenisapp.com" android:pathPrefix="/pedido/" />
             </intent-filter>
 
             <!-- Fallback por scheme propio (no verificado): nenis://o/{token}. -->

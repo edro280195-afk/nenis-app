@@ -35,19 +35,20 @@ class PaymentsScreen extends ConsumerWidget {
               onRetry: () => ref.invalidate(paymentsFeedProvider),
             ),
             data: (payments) {
-              final totalPaid =
-                  payments.fold<double>(0, (sum, p) => sum + p.amount);
+              final totalPaid = payments.fold<double>(
+                0,
+                (sum, p) => sum + p.amount,
+              );
               return ListView(
                 padding: const EdgeInsets.only(bottom: 24),
                 children: [
-                  _Header(onBack: () => context.canPop()
-                      ? context.pop()
-                      : context.go('/account')),
-                  const SizedBox(height: 12),
-                  _SummaryRow(
-                    total: totalPaid,
-                    count: payments.length,
+                  _Header(
+                    onBack: () => context.canPop()
+                        ? context.pop()
+                        : context.go('/account'),
                   ),
+                  const SizedBox(height: 12),
+                  _SummaryRow(total: totalPaid, count: payments.length),
                   if (payments.isEmpty)
                     const _EmptyPayments()
                   else
@@ -79,11 +80,14 @@ class _Header extends StatelessWidget {
             child: InkWell(
               customBorder: const CircleBorder(),
               onTap: onBack,
-              child: const SizedBox(
+              child: SizedBox(
                 width: 40,
                 height: 40,
-                child: Icon(Symbols.arrow_back,
-                    size: 20, color: AppColors.ink),
+                child: Icon(
+                  Icons.adaptive.arrow_back,
+                  size: 20,
+                  color: AppColors.ink,
+                ),
               ),
             ),
           ),
@@ -93,9 +97,13 @@ class _Header extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text('Mis pagos', style: AppTextStyles.h1.copyWith(fontSize: 24)),
-              Text('Tu historial de pagos con todas tus tiendas.',
-                  style: AppTextStyles.subtitle
-                      .copyWith(fontSize: 12.5, color: AppColors.ink2)),
+              Text(
+                'Tu historial de pagos con todas tus tiendas.',
+                style: AppTextStyles.subtitle.copyWith(
+                  fontSize: 12.5,
+                  color: AppColors.ink2,
+                ),
+              ),
             ],
           ),
         ],
@@ -138,20 +146,31 @@ class _SummaryRow extends StatelessWidget {
                 color: const Color(0xFFFFF2D4),
                 borderRadius: BorderRadius.circular(13),
               ),
-              child: const Icon(Symbols.payments,
-                  color: AppColors.gold, size: 22),
+              child: const Icon(
+                Symbols.payments,
+                color: AppColors.gold,
+                size: 22,
+              ),
             ),
             const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Total pagado',
-                    style: AppTextStyles.subtitle
-                        .copyWith(fontSize: 11.5, color: AppColors.ink3)),
-                Text(money.format(total),
-                    style: AppTextStyles.h2
-                        .copyWith(fontSize: 22, fontWeight: FontWeight.w700)),
+                Text(
+                  'Total pagado',
+                  style: AppTextStyles.subtitle.copyWith(
+                    fontSize: 11.5,
+                    color: AppColors.ink3,
+                  ),
+                ),
+                Text(
+                  money.format(total),
+                  style: AppTextStyles.h2.copyWith(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ],
             ),
             const Spacer(),
@@ -174,11 +193,13 @@ class _SummaryPill extends StatelessWidget {
         color: const Color(0xFFFFF2D4),
         borderRadius: AppRadii.pillRadius,
       ),
-      child: Text(label,
-          style: AppTextStyles.chip.copyWith(
-            color: const Color(0xFF8A5A0E),
-            fontWeight: FontWeight.w700,
-          )),
+      child: Text(
+        label,
+        style: AppTextStyles.chip.copyWith(
+          color: const Color(0xFF8A5A0E),
+          fontWeight: FontWeight.w700,
+        ),
+      ),
     );
   }
 }
@@ -232,16 +253,22 @@ class _PaymentRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Pago #${payment.paymentId}',
-                    style: AppTextStyles.body.copyWith(
-                        fontSize: 14, fontWeight: FontWeight.w600)),
+                Text(
+                  'Pago #${payment.paymentId}',
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 1),
                 Text(
                   '${payment.businessName} · ${_formatDate(payment.date)}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.subtitle
-                      .copyWith(fontSize: 11.5, color: AppColors.ink2),
+                  style: AppTextStyles.subtitle.copyWith(
+                    fontSize: 11.5,
+                    color: AppColors.ink2,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 _MethodChip(method: payment.method),
@@ -249,9 +276,13 @@ class _PaymentRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Text(money.format(payment.amount),
-              style: AppTextStyles.h2.copyWith(
-                  fontSize: 17, color: AppColors.ink)),
+          Text(
+            money.format(payment.amount),
+            style: AppTextStyles.h2.copyWith(
+              fontSize: 17,
+              color: AppColors.ink,
+            ),
+          ),
         ],
       ),
     );
@@ -285,20 +316,19 @@ class _MethodChip extends StatelessWidget {
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: AppRadii.pillRadius,
-      ),
+      decoration: BoxDecoration(color: bg, borderRadius: AppRadii.pillRadius),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 12, color: fg),
           const SizedBox(width: 4),
-          Text(method,
-              style: AppTextStyles.chip.copyWith(
-                color: fg,
-                fontWeight: FontWeight.w700,
-              )),
+          Text(
+            method,
+            style: AppTextStyles.chip.copyWith(
+              color: fg,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
@@ -320,13 +350,18 @@ class _EmptyPayments extends StatelessWidget {
               color: Color(0xFFFFF2D4),
               borderRadius: BorderRadius.all(Radius.circular(28)),
             ),
-            child: const Icon(Symbols.payments,
-                color: AppColors.gold, size: 40),
+            child: const Icon(
+              Symbols.payments,
+              color: AppColors.gold,
+              size: 40,
+            ),
           ),
           const SizedBox(height: 18),
-          Text('Aún no tienes pagos registrados',
-              textAlign: TextAlign.center,
-              style: AppTextStyles.h2.copyWith(fontSize: 18)),
+          Text(
+            'Aún no tienes pagos registrados',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.h2.copyWith(fontSize: 18),
+          ),
           const SizedBox(height: 8),
           Text(
             'Cuando liquides un pedido en tienda o con tarjeta desde el link, aparecerá aquí.',
@@ -351,16 +386,23 @@ class _PaymentsError extends StatelessWidget {
         children: [
           const Icon(Symbols.cloud_off, size: 46, color: AppColors.ink3),
           const SizedBox(height: 14),
-          Text('No pudimos cargar tus pagos',
-              textAlign: TextAlign.center, style: AppTextStyles.h2),
+          Text(
+            'No pudimos cargar tus pagos',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.h2,
+          ),
           const SizedBox(height: 8),
-          Text('Revisa tu conexión e intenta de nuevo.',
-              textAlign: TextAlign.center, style: AppTextStyles.subtitle),
+          Text(
+            'Revisa tu conexión e intenta de nuevo.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.subtitle,
+          ),
           const SizedBox(height: 22),
           PillButton(
-              label: 'Reintentar',
-              icon: Symbols.refresh,
-              onPressed: onRetry),
+            label: 'Reintentar',
+            icon: Symbols.refresh,
+            onPressed: onRetry,
+          ),
         ],
       ),
     );

@@ -21,18 +21,25 @@ class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
-  ConsumerState<NotificationsScreen> createState() => _NotificationsScreenState();
+  ConsumerState<NotificationsScreen> createState() =>
+      _NotificationsScreenState();
 }
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   NotificationsFilter _filter = NotificationsFilter.all;
 
   void _onTap(BuyerNotification n) async {
-    // Marca como leída localmente y en el backend.
+    // Marca como leída en backend y rehidrata el feed al confirmar.
     if (n.isUnread) {
-      ref.invalidate(notificationsFeedProvider);
-      ref.invalidate(unreadNotificationsCountProvider);
-      unawaited(ref.read(notificationsRepositoryProvider).markAsRead(n.id));
+      unawaited(
+        ref.read(notificationsRepositoryProvider).markAsRead(n.id).whenComplete(
+          () {
+            if (!mounted) return;
+            ref.invalidate(notificationsFeedProvider);
+            ref.invalidate(unreadNotificationsCountProvider);
+          },
+        ),
+      );
     }
     // Deep link: si la URL es interna (`/tracking/...`, `/store/...`),
     // navegamos. Si es externa, la ignoramos por ahora.
@@ -66,9 +73,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               return Column(
                 children: [
                   _Header(
-                    onBack: () => context.canPop()
-                        ? context.pop()
-                        : context.go('/home'),
+                    onBack: () =>
+                        context.canPop() ? context.pop() : context.go('/home'),
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(22, 12, 22, 12),
@@ -76,9 +82,12 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                       items: NotificationsFilter.values
                           .map((f) => SegmentedItem(label: f.label))
                           .toList(),
-                      selectedIndex: NotificationsFilter.values.indexOf(_filter),
-                      onChanged: (i) =>
-                          setState(() => _filter = NotificationsFilter.values[i]),
+                      selectedIndex: NotificationsFilter.values.indexOf(
+                        _filter,
+                      ),
+                      onChanged: (i) => setState(
+                        () => _filter = NotificationsFilter.values[i],
+                      ),
                     ),
                   ),
                   if (list.isEmpty)
@@ -90,8 +99,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                         onRefresh: () async =>
                             ref.invalidate(notificationsFeedProvider),
                         child: ListView.builder(
-                          padding:
-                              const EdgeInsets.fromLTRB(22, 0, 22, 24),
+                          padding: const EdgeInsets.fromLTRB(22, 0, 22, 24),
                           itemCount: list.length + (unreadCount > 0 ? 1 : 0),
                           itemBuilder: (context, i) {
                             if (i == 0 && unreadCount > 0) {
@@ -99,19 +107,24 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                 padding: const EdgeInsets.only(bottom: 8),
                                 child: _MarkAllBar(
                                   onMarkAll: () async {
-                                    final n =
-                                        await ref.read(notificationsRepositoryProvider)
-                                            .markAllAsRead();
+                                    final n = await ref
+                                        .read(notificationsRepositoryProvider)
+                                        .markAllAsRead();
                                     if (!mounted) return;
                                     ref.invalidate(notificationsFeedProvider);
                                     ref.invalidate(
-                                        unreadNotificationsCountProvider);
+                                      unreadNotificationsCountProvider,
+                                    );
                                     if (!context.mounted) return;
                                     ScaffoldMessenger.of(context)
                                       ..hideCurrentSnackBar()
-                                      ..showSnackBar(SnackBar(
+                                      ..showSnackBar(
+                                        SnackBar(
                                           content: Text(
-                                              '$n notificaciones marcadas como leídas')));
+                                            '$n notificaciones marcadas como leídas',
+                                          ),
+                                        ),
+                                      );
                                   },
                                 ),
                               );
@@ -155,10 +168,14 @@ class _Header extends StatelessWidget {
             child: InkWell(
               customBorder: const CircleBorder(),
               onTap: onBack,
-              child: const SizedBox(
+              child: SizedBox(
                 width: 40,
                 height: 40,
-                child: Icon(Symbols.arrow_back, size: 20, color: AppColors.ink),
+                child: Icon(
+                  Icons.adaptive.arrow_back,
+                  size: 20,
+                  color: AppColors.ink,
+                ),
               ),
             ),
           ),
@@ -167,11 +184,17 @@ class _Header extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Notificaciones',
-                  style: AppTextStyles.h1.copyWith(fontSize: 24)),
-              Text('Avisos de pedidos, entregas y mensajes.',
-                  style: AppTextStyles.subtitle
-                      .copyWith(fontSize: 12.5, color: AppColors.ink2)),
+              Text(
+                'Notificaciones',
+                style: AppTextStyles.h1.copyWith(fontSize: 24),
+              ),
+              Text(
+                'Avisos de pedidos, entregas y mensajes.',
+                style: AppTextStyles.subtitle.copyWith(
+                  fontSize: 12.5,
+                  color: AppColors.ink2,
+                ),
+              ),
             ],
           ),
         ],
@@ -198,11 +221,13 @@ class _MarkAllBar extends StatelessWidget {
           children: [
             const Icon(Symbols.done_all, size: 14, color: AppColors.gold),
             const SizedBox(width: 6),
-            Text('Marcar todas como leídas',
-                style: AppTextStyles.chip.copyWith(
-                  color: const Color(0xFF8A5A0E),
-                  fontWeight: FontWeight.w700,
-                )),
+            Text(
+              'Marcar todas como leídas',
+              style: AppTextStyles.chip.copyWith(
+                color: const Color(0xFF8A5A0E),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
         ),
       ),
@@ -238,9 +263,7 @@ class _NotificationRow extends StatelessWidget {
               height: 42,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: isUnread
-                    ? const Color(0xFFFFE1EC)
-                    : AppColors.segTrack,
+                color: isUnread ? const Color(0xFFFFE1EC) : AppColors.segTrack,
                 borderRadius: BorderRadius.circular(13),
               ),
               child: Icon(
@@ -264,9 +287,7 @@ class _NotificationRow extends StatelessWidget {
                             fontWeight: isUnread
                                 ? FontWeight.w700
                                 : FontWeight.w600,
-                            color: isUnread
-                                ? AppColors.ink
-                                : AppColors.ink2,
+                            color: isUnread ? AppColors.ink : AppColors.ink2,
                           ),
                         ),
                       ),
@@ -283,12 +304,14 @@ class _NotificationRow extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 2),
-                  Text(notification.message,
-                      style: AppTextStyles.subtitle.copyWith(
-                        fontSize: 12.5,
-                        color: AppColors.ink2,
-                        height: 1.3,
-                      )),
+                  Text(
+                    notification.message,
+                    style: AppTextStyles.subtitle.copyWith(
+                      fontSize: 12.5,
+                      color: AppColors.ink2,
+                      height: 1.3,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     '${notification.businessName} · ${_formatTime(notification.createdAt)}',
@@ -345,13 +368,17 @@ class _EmptyNotifications extends StatelessWidget {
                 child: Icon(icon, color: color, size: 40),
               ),
               const SizedBox(height: 18),
-              Text(title,
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.h2.copyWith(fontSize: 18)),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: AppTextStyles.h2.copyWith(fontSize: 18),
+              ),
               const SizedBox(height: 8),
-              Text(body,
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.subtitle.copyWith(fontSize: 13)),
+              Text(
+                body,
+                textAlign: TextAlign.center,
+                style: AppTextStyles.subtitle.copyWith(fontSize: 13),
+              ),
             ],
           ),
         ),
@@ -372,16 +399,23 @@ class _NotificationsError extends StatelessWidget {
         children: [
           const Icon(Symbols.cloud_off, size: 46, color: AppColors.ink3),
           const SizedBox(height: 14),
-          Text('No pudimos cargar tus notificaciones',
-              textAlign: TextAlign.center, style: AppTextStyles.h2),
+          Text(
+            'No pudimos cargar tus notificaciones',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.h2,
+          ),
           const SizedBox(height: 8),
-          Text('Revisa tu conexión e intenta de nuevo.',
-              textAlign: TextAlign.center, style: AppTextStyles.subtitle),
+          Text(
+            'Revisa tu conexión e intenta de nuevo.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.subtitle,
+          ),
           const SizedBox(height: 22),
           PillButton(
-              label: 'Reintentar',
-              icon: Symbols.refresh,
-              onPressed: onRetry),
+            label: 'Reintentar',
+            icon: Symbols.refresh,
+            onPressed: onRetry,
+          ),
         ],
       ),
     );

@@ -1,8 +1,6 @@
 import 'dart:async';
 
-import 'package:android_play_install_referrer/android_play_install_referrer.dart';
 import 'package:app_links/app_links.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'pending_claim_store.dart';
@@ -49,9 +47,13 @@ String? extractOrderToken(Uri uri) {
 
 /// Orquesta la captura de deep links hacia un pedido:
 ///  - link inicial (cold start) y stream (warm) vía [AppLinks];
-///  - Install Referrer de Google Play (deferred deep link en Android);
 ///  - re-siembra desde [PendingClaimStore] al arrancar (sobrevive la muerte de
 ///    proceso durante el OTP y la reinstalación).
+///
+/// Nota: el deep link diferido de Android por Google Play Install Referrer se
+/// dejó fuera por ahora (el plugin obliga a subir compileSdk y las apps aún no
+/// están publicadas). El rescate por match de teléfono cubre ese caso. Se puede
+/// re-agregar al publicar.
 ///
 /// No navega directamente: sólo alimenta [pendingDeepLinkProvider] + el store,
 /// y el router reacciona. Así el token sobrevive el "bounce" al splash mientras
@@ -87,9 +89,6 @@ class DeepLinkService {
       _handleUri,
       onError: (_) {},
     );
-
-    // 4) Deferred deep link por Install Referrer (Android, tras instalar).
-    unawaited(_readInstallReferrer());
   }
 
   Future<void> _handleUri(Uri uri) async {
@@ -103,30 +102,6 @@ class DeepLinkService {
       await _ref.read(pendingClaimStoreProvider).write(token);
     } catch (_) {}
     _ref.read(pendingDeepLinkProvider.notifier).set(token);
-  }
-
-  /// Lee el Install Referrer una sola vez en la vida de la instalación. El muro
-  /// de descarga adjunta `&referrer=token%3D{token}` a la URL de Play, que Play
-  /// entrega aquí como query string (p. ej. `token=abc&utm_source=wa`).
-  Future<void> _readInstallReferrer() async {
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
-
-    final store = _ref.read(pendingClaimStoreProvider);
-    try {
-      if (await store.isReferrerConsumed()) return;
-      // Si ya tenemos un token (por link directo), no hace falta el referrer.
-      if (_ref.read(pendingDeepLinkProvider) == null) {
-        final details = await AndroidPlayInstallReferrer.installReferrer;
-        final raw = details.installReferrer;
-        if (raw != null && raw.isNotEmpty) {
-          final token = Uri.splitQueryString(raw)['token']?.trim();
-          if (token != null && token.isNotEmpty) {
-            await _persistAndSet(token);
-          }
-        }
-      }
-      await store.markReferrerConsumed();
-    } catch (_) {}
   }
 
   void dispose() {

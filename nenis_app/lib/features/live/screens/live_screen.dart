@@ -27,11 +27,16 @@ class LiveScreen extends StatelessWidget {
                 shadowColor: Colors.black26,
                 child: InkWell(
                   customBorder: const CircleBorder(),
-                  onTap: () => context.canPop() ? context.pop() : context.go('/home'),
-                  child: const SizedBox(
+                  onTap: () =>
+                      context.canPop() ? context.pop() : context.go('/home'),
+                  child: SizedBox(
                     width: 40,
                     height: 40,
-                    child: Icon(Symbols.arrow_back, size: 20, color: AppColors.ink),
+                    child: Icon(
+                      Icons.adaptive.arrow_back,
+                      size: 20,
+                      color: AppColors.ink,
+                    ),
                   ),
                 ),
               ),
@@ -48,18 +53,25 @@ class LiveScreen extends StatelessWidget {
                         ),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Symbols.sensors,
-                          color: Colors.white, size: 48),
+                      child: const Icon(
+                        Symbols.sensors,
+                        color: Colors.white,
+                        size: 48,
+                      ),
                     ),
                     const SizedBox(height: 20),
-                    Text('Live #$sessionId',
-                        style: AppTextStyles.h1.copyWith(fontSize: 22)),
+                    Text(
+                      'Live #$sessionId',
+                      style: AppTextStyles.h1.copyWith(fontSize: 22),
+                    ),
                     const SizedBox(height: 8),
                     Text(
                       'La experiencia de live shopping está en construcción. Tu tienda te avisará cuando empiece un live nuevo.',
                       textAlign: TextAlign.center,
-                      style: AppTextStyles.subtitle
-                          .copyWith(fontSize: 13, color: AppColors.ink2),
+                      style: AppTextStyles.subtitle.copyWith(
+                        fontSize: 13,
+                        color: AppColors.ink2,
+                      ),
                     ),
                     const SizedBox(height: 24),
                     PillButton(

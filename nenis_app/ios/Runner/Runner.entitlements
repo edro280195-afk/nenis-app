@@ -3,14 +3,14 @@
 <plist version="1.0">
 <dict>
 	<!-- Universal Links del enlace del pedido. Requiere el archivo
-	     /.well-known/apple-app-site-association en https://sellgeneral.app.
+	     /.well-known/apple-app-site-association en https://app.nenisapp.com.
 	     PENDIENTE (paso manual en Xcode desde una Mac): añadir este archivo al
 	     target Runner en "Signing & Capabilities" → "Associated Domains"
 	     (o poner CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements en el
 	     project.pbxproj para las 3 configuraciones). -->
 	<key>com.apple.developer.associated-domains</key>
 	<array>
-		<string>applinks:sellgeneral.app</string>
+		<string>applinks:app.nenisapp.com</string>
 	</array>
 </dict>
 </plist>

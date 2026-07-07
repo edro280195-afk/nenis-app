@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:material_symbols_icons/symbols.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radii.dart';
@@ -77,9 +76,9 @@ class PillButton extends StatelessWidget {
         ],
         Text(
           label,
-          style: AppTextStyles.button.copyWith(color: fg).copyWith(
-            fontSize: 16,
-          ),
+          style: AppTextStyles.button
+              .copyWith(color: fg)
+              .copyWith(fontSize: 16),
         ),
       ],
     );
@@ -104,11 +103,8 @@ class PillButton extends StatelessWidget {
                       colors: isPrimary
                           ? const [AppColors.neni, AppColors.neniDeep]
                           : isBrand
-                              ? [brand.gradientStart, brand.gradientEnd]
-                              : const [
-                                  Color(0xFF2190F8),
-                                  AppColors.facebook,
-                                ],
+                          ? [brand.gradientStart, brand.gradientEnd]
+                          : const [Color(0xFF2190F8), AppColors.facebook],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     )
@@ -167,7 +163,7 @@ class BackIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PillIconButton(
-      icon: Symbols.arrow_back,
+      icon: Icons.adaptive.arrow_back,
       onPressed: onPressed,
     );
   }

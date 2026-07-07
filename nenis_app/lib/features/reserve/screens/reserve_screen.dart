@@ -50,7 +50,9 @@ class _ReserveScreenState extends ConsumerState<ReserveScreen> {
   Future<void> _confirm(BuyerProduct product) async {
     setState(() => _submitting = true);
     try {
-      final result = await ref.read(reserveRepositoryProvider).reserve(
+      final result = await ref
+          .read(reserveRepositoryProvider)
+          .reserve(
             ReserveRequest(
               businessId: int.parse(widget.businessId),
               productId: product.id,
@@ -169,7 +171,11 @@ class _ReserveError extends StatelessWidget {
           const SizedBox(height: 14),
           Text(message, textAlign: TextAlign.center, style: AppTextStyles.h2),
           const SizedBox(height: 22),
-          PillButton(label: 'Volver', icon: Symbols.arrow_back, onPressed: onBack),
+          PillButton(
+            label: 'Volver',
+            icon: Symbols.arrow_back,
+            onPressed: onBack,
+          ),
         ],
       ),
     );
@@ -204,10 +210,11 @@ class _ReserveContent extends StatelessWidget {
       decimalDigits: 0,
     );
     final subtotal = product.price * quantity;
-    final canConfirm = product.inStock
-        && quantity >= 1
-        && quantity <= product.stock
-        && !submitting;
+    final canConfirm =
+        product.inStock &&
+        quantity >= 1 &&
+        quantity <= product.stock &&
+        !submitting;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(22, 8, 22, 24),
@@ -222,23 +229,31 @@ class _ReserveContent extends StatelessWidget {
               child: InkWell(
                 customBorder: const CircleBorder(),
                 onTap: onBack,
-                child: const SizedBox(
+                child: SizedBox(
                   width: 40,
                   height: 40,
-                  child: Icon(Symbols.arrow_back,
-                      size: 20, color: AppColors.ink),
+                  child: Icon(
+                    Icons.adaptive.arrow_back,
+                    size: 20,
+                    color: AppColors.ink,
+                  ),
                 ),
               ),
             ),
             const SizedBox(width: 12),
-            Text('Apartar producto', style: AppTextStyles.h1.copyWith(fontSize: 22)),
+            Text(
+              'Apartar producto',
+              style: AppTextStyles.h1.copyWith(fontSize: 22),
+            ),
           ],
         ),
         const SizedBox(height: 8),
         Text(
           'Tu tienda lo guarda para ti hasta que confirmes la entrega.',
-          style: AppTextStyles.subtitle
-              .copyWith(fontSize: 13, color: AppColors.ink2),
+          style: AppTextStyles.subtitle.copyWith(
+            fontSize: 13,
+            color: AppColors.ink2,
+          ),
         ),
         const SizedBox(height: 22),
         _ProductCard(product: product, brand: brand),
@@ -255,9 +270,13 @@ class _ReserveContent extends StatelessWidget {
           brand: brand,
         ),
         const SizedBox(height: 6),
-        Text('Lo pagas al recoger o recibir.',
-            style: AppTextStyles.subtitle
-                .copyWith(fontSize: 12, color: AppColors.ink3)),
+        Text(
+          'Lo pagas al recoger o recibir.',
+          style: AppTextStyles.subtitle.copyWith(
+            fontSize: 12,
+            color: AppColors.ink3,
+          ),
+        ),
         const SizedBox(height: 28),
         PillButton(
           label: submitting ? 'Apartando…' : 'Confirmar apartado',
@@ -304,33 +323,49 @@ class _ProductCard extends StatelessWidget {
               ),
             ),
             alignment: Alignment.center,
-            child: Icon(Symbols.image,
-                size: 48, color: Colors.white.withValues(alpha: 0.85)),
+            child: Icon(
+              Symbols.image,
+              size: 48,
+              color: Colors.white.withValues(alpha: 0.85),
+            ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(product.name,
-                    style: AppTextStyles.body.copyWith(
-                        fontSize: 16, fontWeight: FontWeight.w700)),
+                Text(
+                  product.name,
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(height: 6),
-                Text('\$${product.price.toStringAsFixed(0)}',
-                    style: AppTextStyles.body.copyWith(
-                        fontSize: 18, fontWeight: FontWeight.w700)),
+                Text(
+                  '\$${product.price.toStringAsFixed(0)}',
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    const Icon(Symbols.inventory_2,
-                        size: 13, color: AppColors.ink3),
+                    const Icon(
+                      Symbols.inventory_2,
+                      size: 13,
+                      color: AppColors.ink3,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       product.stock > 0
                           ? '${product.stock} disponibles'
                           : 'Sin stock',
-                      style: AppTextStyles.subtitle
-                          .copyWith(fontSize: 11.5, color: AppColors.ink3),
+                      style: AppTextStyles.subtitle.copyWith(
+                        fontSize: 11.5,
+                        color: AppColors.ink3,
+                      ),
                     ),
                   ],
                 ),
@@ -367,12 +402,20 @@ class _QuantityStepper extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Cantidad',
-                    style: AppTextStyles.body
-                        .copyWith(fontSize: 14, fontWeight: FontWeight.w600)),
-                Text('Máximo $max disponibles',
-                    style: AppTextStyles.subtitle
-                        .copyWith(fontSize: 11.5, color: AppColors.ink3)),
+                Text(
+                  'Cantidad',
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  'Máximo $max disponibles',
+                  style: AppTextStyles.subtitle.copyWith(
+                    fontSize: 11.5,
+                    color: AppColors.ink3,
+                  ),
+                ),
               ],
             ),
           ),
@@ -383,8 +426,10 @@ class _QuantityStepper extends StatelessWidget {
           SizedBox(
             width: 36,
             child: Center(
-              child: Text('$value',
-                  style: AppTextStyles.h2.copyWith(fontSize: 18)),
+              child: Text(
+                '$value',
+                style: AppTextStyles.h2.copyWith(fontSize: 18),
+              ),
             ),
           ),
           _StepperButton(
@@ -442,13 +487,21 @@ class _SummaryRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text(label,
-              style: AppTextStyles.body
-                  .copyWith(fontSize: 14, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: AppTextStyles.body.copyWith(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const Spacer(),
-          Text(value,
-              style: AppTextStyles.h2.copyWith(
-                  fontSize: 18, color: AppColors.ink)),
+          Text(
+            value,
+            style: AppTextStyles.h2.copyWith(
+              fontSize: 18,
+              color: AppColors.ink,
+            ),
+          ),
         ],
       ),
     );
@@ -461,8 +514,7 @@ class _SuccessDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(22, 28, 22, 22),
         child: Column(
@@ -475,12 +527,14 @@ class _SuccessDialog extends StatelessWidget {
                 color: AppColors.statusDeliveredBg,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Symbols.check_circle,
-                  color: AppColors.statusDeliveredFg, size: 44),
+              child: const Icon(
+                Symbols.check_circle,
+                color: AppColors.statusDeliveredFg,
+                size: 44,
+              ),
             ),
             const SizedBox(height: 14),
-            Text('¡Apartado!',
-                style: AppTextStyles.h1.copyWith(fontSize: 22)),
+            Text('¡Apartado!', style: AppTextStyles.h1.copyWith(fontSize: 22)),
             const SizedBox(height: 6),
             Text(
               '${order.businessName} ya está guardando tu pedido. Te avisamos cuando esté listo.',
@@ -488,9 +542,13 @@ class _SuccessDialog extends StatelessWidget {
               style: AppTextStyles.subtitle.copyWith(fontSize: 13),
             ),
             const SizedBox(height: 8),
-            Text('Pedido #${order.orderId}',
-                style: AppTextStyles.subtitle.copyWith(
-                    fontSize: 12, color: AppColors.ink3)),
+            Text(
+              'Pedido #${order.orderId}',
+              style: AppTextStyles.subtitle.copyWith(
+                fontSize: 12,
+                color: AppColors.ink3,
+              ),
+            ),
             const SizedBox(height: 22),
             PillButton(
               label: 'Ver mi pedido',

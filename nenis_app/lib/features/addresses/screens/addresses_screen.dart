@@ -36,24 +36,27 @@ class AddressesScreen extends ConsumerWidget {
             data: (addresses) {
               if (addresses.isEmpty) {
                 return _EmptyAddresses(
-                  onBack: () => context.canPop()
-                      ? context.pop()
-                      : context.go('/account'),
+                  onBack: () =>
+                      context.canPop() ? context.pop() : context.go('/account'),
                 );
               }
               return ListView(
                 padding: const EdgeInsets.only(bottom: 24),
                 children: [
-                  _Header(onBack: () => context.canPop()
-                      ? context.pop()
-                      : context.go('/account')),
+                  _Header(
+                    onBack: () => context.canPop()
+                        ? context.pop()
+                        : context.go('/account'),
+                  ),
                   const SizedBox(height: 4),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(22, 0, 22, 12),
                     child: Text(
                       'Edita la dirección de cada tienda. Cuando hagas un pedido, te preguntaremos cuál usar.',
-                      style: AppTextStyles.subtitle
-                          .copyWith(fontSize: 12.5, color: AppColors.ink2),
+                      style: AppTextStyles.subtitle.copyWith(
+                        fontSize: 12.5,
+                        color: AppColors.ink2,
+                      ),
                     ),
                   ),
                   for (final a in addresses) ...[
@@ -87,11 +90,14 @@ class _Header extends StatelessWidget {
             child: InkWell(
               customBorder: const CircleBorder(),
               onTap: onBack,
-              child: const SizedBox(
+              child: SizedBox(
                 width: 40,
                 height: 40,
-                child: Icon(Symbols.arrow_back,
-                    size: 20, color: AppColors.ink),
+                child: Icon(
+                  Icons.adaptive.arrow_back,
+                  size: 20,
+                  color: AppColors.ink,
+                ),
               ),
             ),
           ),
@@ -100,11 +106,17 @@ class _Header extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Mis direcciones',
-                  style: AppTextStyles.h1.copyWith(fontSize: 24)),
-              Text('Las direcciones que tus tiendas tienen guardadas.',
-                  style: AppTextStyles.subtitle
-                      .copyWith(fontSize: 12.5, color: AppColors.ink2)),
+              Text(
+                'Mis direcciones',
+                style: AppTextStyles.h1.copyWith(fontSize: 24),
+              ),
+              Text(
+                'Las direcciones que tus tiendas tienen guardadas.',
+                style: AppTextStyles.subtitle.copyWith(
+                  fontSize: 12.5,
+                  color: AppColors.ink2,
+                ),
+              ),
             ],
           ),
         ],
@@ -140,17 +152,22 @@ class _AddressRow extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(address.businessName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.body.copyWith(
-                          fontSize: 15, fontWeight: FontWeight.w600)),
+                  child: Text(
+                    address.businessName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.body.copyWith(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
                 PillButton(
                   label: 'Editar',
                   icon: Symbols.edit,
                   expand: false,
-                  onPressed: () => context.push('/addresses/${address.clientId}'),
+                  onPressed: () =>
+                      context.push('/addresses/${address.clientId}'),
                 ),
               ],
             ),
@@ -181,7 +198,11 @@ class _AddressRow extends StatelessWidget {
 }
 
 class _AddressLine extends StatelessWidget {
-  const _AddressLine({required this.icon, required this.text, this.empty = false});
+  const _AddressLine({
+    required this.icon,
+    required this.text,
+    this.empty = false,
+  });
   final IconData icon;
   final String text;
   final bool empty;
@@ -226,10 +247,14 @@ class _EmptyAddresses extends StatelessWidget {
           child: InkWell(
             customBorder: const CircleBorder(),
             onTap: onBack,
-            child: const SizedBox(
+            child: SizedBox(
               width: 40,
               height: 40,
-              child: Icon(Symbols.arrow_back, size: 20, color: AppColors.ink),
+              child: Icon(
+                Icons.adaptive.arrow_back,
+                size: 20,
+                color: AppColors.ink,
+              ),
             ),
           ),
         ),
@@ -244,13 +269,18 @@ class _EmptyAddresses extends StatelessWidget {
                   color: Color(0xFFFFE1EC),
                   borderRadius: BorderRadius.all(Radius.circular(28)),
                 ),
-                child: const Icon(Symbols.location_on,
-                    color: AppColors.neniDeep, size: 40),
+                child: const Icon(
+                  Symbols.location_on,
+                  color: AppColors.neniDeep,
+                  size: 40,
+                ),
               ),
               const SizedBox(height: 18),
-              Text('Aún no tienes tiendas con dirección',
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.h2.copyWith(fontSize: 18)),
+              Text(
+                'Aún no tienes tiendas con dirección',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.h2.copyWith(fontSize: 18),
+              ),
               const SizedBox(height: 8),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -280,16 +310,23 @@ class _AddressesError extends StatelessWidget {
         children: [
           const Icon(Symbols.cloud_off, size: 46, color: AppColors.ink3),
           const SizedBox(height: 14),
-          Text('No pudimos cargar tus direcciones',
-              textAlign: TextAlign.center, style: AppTextStyles.h2),
+          Text(
+            'No pudimos cargar tus direcciones',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.h2,
+          ),
           const SizedBox(height: 8),
-          Text('Revisa tu conexión e intenta de nuevo.',
-              textAlign: TextAlign.center, style: AppTextStyles.subtitle),
+          Text(
+            'Revisa tu conexión e intenta de nuevo.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.subtitle,
+          ),
           const SizedBox(height: 22),
           PillButton(
-              label: 'Reintentar',
-              icon: Symbols.refresh,
-              onPressed: onRetry),
+            label: 'Reintentar',
+            icon: Symbols.refresh,
+            onPressed: onRetry,
+          ),
         ],
       ),
     );

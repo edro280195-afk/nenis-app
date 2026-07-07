@@ -154,7 +154,7 @@ class _StoreHeader extends StatelessWidget {
               top: 8,
               left: 14,
               child: _HeaderIcon(
-                icon: Symbols.arrow_back,
+                icon: Icons.adaptive.arrow_back,
                 onPressed: () =>
                     context.canPop() ? context.pop() : context.go('/home'),
               ),

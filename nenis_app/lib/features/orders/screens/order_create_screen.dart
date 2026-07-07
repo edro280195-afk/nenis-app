@@ -157,7 +157,7 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
           bottom: false,
           child: Column(
             children: [
-              _TopBar(onBack: () => context.pop()),
+              _TopBar(onBack: _goBack),
               Expanded(
                 child: workspaceAsync.when(
                   loading: () => const _CaptureLoading(),
@@ -816,6 +816,14 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
     if (value % 1 == 0) return value.toInt().toString();
     return value.toStringAsFixed(2);
   }
+
+  void _goBack() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/orders');
+    }
+  }
 }
 
 class _TopBar extends StatelessWidget {
@@ -828,7 +836,11 @@ class _TopBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
       child: Row(
         children: [
-          _RoundButton(icon: Symbols.arrow_back_ios_new, onTap: onBack),
+          _RoundButton(
+            icon: Icons.adaptive.arrow_back,
+            tooltip: 'Volver',
+            onTap: onBack,
+          ),
           Expanded(
             child: Center(
               child: RichText(
@@ -850,7 +862,7 @@ class _TopBar extends StatelessWidget {
               ),
             ),
           ),
-          _RoundButton(icon: Symbols.close, onTap: onBack),
+          const SizedBox(width: 38, height: 38),
         ],
       ),
     );
@@ -858,26 +870,35 @@ class _TopBar extends StatelessWidget {
 }
 
 class _RoundButton extends StatelessWidget {
-  const _RoundButton({required this.icon, required this.onTap});
+  const _RoundButton({
+    required this.icon,
+    required this.onTap,
+    required this.tooltip,
+  });
+
   final IconData icon;
   final VoidCallback onTap;
+  final String tooltip;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(13),
-        child: Ink(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.85),
-            borderRadius: BorderRadius.circular(13),
-            border: Border.all(color: AppColors.line),
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(13),
+          child: Ink(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(color: AppColors.line),
+            ),
+            child: Icon(icon, size: 20, color: AppColors.ink),
           ),
-          child: Icon(icon, size: 20, color: AppColors.ink),
         ),
       ),
     );

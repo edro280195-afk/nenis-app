@@ -12,7 +12,6 @@ class PendingClaimStore {
 
   final FlutterSecureStorage _storage;
   static const _key = 'neni_pending_order_token';
-  static const _referrerKey = 'neni_install_referrer_consumed';
 
   Future<String?> read() async {
     final raw = await _storage.read(key: _key);
@@ -24,15 +23,6 @@ class PendingClaimStore {
       _storage.write(key: _key, value: token.trim());
 
   Future<void> clear() => _storage.delete(key: _key);
-
-  /// El Install Referrer de Google Play sólo importa la primera vez que se
-  /// abre la app tras instalar. Se marca como consumido para no re-procesar un
-  /// referrer viejo (Play lo conserva) y re-abrir un pedido ya atendido.
-  Future<bool> isReferrerConsumed() async =>
-      (await _storage.read(key: _referrerKey)) == '1';
-
-  Future<void> markReferrerConsumed() =>
-      _storage.write(key: _referrerKey, value: '1');
 }
 
 final pendingClaimStoreProvider = Provider<PendingClaimStore>((ref) {

@@ -22,6 +22,7 @@ import '../../features/points/screens/points_screen.dart';
 import '../../features/tandas/screens/tandas_screen.dart';
 import '../../features/raffles/screens/raffles_screen.dart';
 import '../../features/account/screens/account_screen.dart';
+import '../../features/account/screens/seller_settings_screens.dart';
 import '../../features/addresses/screens/address_edit_screen.dart';
 import '../../features/addresses/screens/addresses_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
@@ -222,6 +223,26 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/payments',
         builder: (context, state) => const PaymentsScreen(),
+      ),
+      GoRoute(
+        path: '/seller/settings',
+        builder: (context, state) => const SellerSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/seller/settings/profile',
+        builder: (context, state) => const SellerStoreProfileSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/seller/settings/payments',
+        builder: (context, state) => const SellerPaymentSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/seller/settings/team',
+        builder: (context, state) => const SellerTeamSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/seller/settings/preferences',
+        builder: (context, state) => const SellerPreferencesSettingsScreen(),
       ),
       GoRoute(
         path: '/addresses',
