@@ -94,6 +94,105 @@ class SellerTandasRepository {
     }
   }
 
+  Future<SellerTandaProduct> createProduct({
+    required String name,
+    double basePrice = 0,
+  }) async {
+    try {
+      final res = await _dio.post(
+        '/api/tanda/products',
+        data: {'name': name.trim(), 'basePrice': basePrice},
+      );
+      return SellerTandaProduct.fromJson(res.data as Map<String, dynamic>);
+    } catch (error) {
+      throw SellerTandasException(
+        _friendly(error, 'No pudimos crear el producto de tanda.'),
+      );
+    }
+  }
+
+  Future<SellerTanda> updateTanda(UpdateTandaRequest request) async {
+    try {
+      final res = await _dio.put(
+        '/api/tanda/${request.id}',
+        data: request.toJson(),
+      );
+      return SellerTanda.fromJson(res.data as Map<String, dynamic>);
+    } catch (error) {
+      throw SellerTandasException(
+        _friendly(error, 'No pudimos actualizar la tanda.'),
+      );
+    }
+  }
+
+  Future<void> addParticipant(AddTandaParticipantRequest request) async {
+    try {
+      await _dio.post('/api/tanda/participants', data: request.toJson());
+    } catch (error) {
+      throw SellerTandasException(
+        _friendly(error, 'No pudimos inscribir a la clienta.'),
+      );
+    }
+  }
+
+  Future<void> updateParticipantTurn({
+    required String participantId,
+    required int newTurn,
+  }) async {
+    try {
+      await _dio.patch(
+        '/api/tanda/participants/$participantId/turn',
+        data: {'newTurn': newTurn},
+      );
+    } catch (error) {
+      throw SellerTandasException(
+        _friendly(error, 'No pudimos cambiar el turno.'),
+      );
+    }
+  }
+
+  Future<void> updateParticipantVariant({
+    required String participantId,
+    required String? variant,
+  }) async {
+    try {
+      await _dio.patch(
+        '/api/tanda/participants/$participantId/variant',
+        data: {'variant': variant?.trim()},
+      );
+    } catch (error) {
+      throw SellerTandasException(
+        _friendly(error, 'No pudimos actualizar la variante.'),
+      );
+    }
+  }
+
+  Future<void> removeParticipant(String participantId) async {
+    try {
+      await _dio.delete('/api/tanda/participants/$participantId');
+    } catch (error) {
+      throw SellerTandasException(
+        _friendly(error, 'No pudimos retirar a la participante.'),
+      );
+    }
+  }
+
+  Future<void> reorderParticipants({
+    required String tandaId,
+    required List<String> participantIds,
+  }) async {
+    try {
+      await _dio.post(
+        '/api/tanda/$tandaId/reorder',
+        data: {'participantIds': participantIds},
+      );
+    } catch (error) {
+      throw SellerTandasException(
+        _friendly(error, 'No pudimos guardar el nuevo orden.'),
+      );
+    }
+  }
+
   Future<void> registerPayment({
     required String participantId,
     required int weekNumber,
@@ -225,6 +324,72 @@ class SellerTandasController extends AsyncNotifier<SellerTandasWorkspace> {
     state = await AsyncValue.guard(
       () => _loadWorkspace(selectedId: created.id),
     );
+  }
+
+  Future<void> createProduct({
+    required String name,
+    double basePrice = 0,
+  }) async {
+    final repo = ref.read(sellerTandasRepositoryProvider);
+    await repo.createProduct(name: name, basePrice: basePrice);
+    await reload();
+  }
+
+  Future<void> updateTanda(UpdateTandaRequest request) async {
+    final repo = ref.read(sellerTandasRepositoryProvider);
+    await repo.updateTanda(request);
+    await reloadSelected(request.id);
+  }
+
+  Future<void> addParticipant(AddTandaParticipantRequest request) async {
+    final repo = ref.read(sellerTandasRepositoryProvider);
+    await repo.addParticipant(request);
+    await reloadSelected(request.tandaId);
+  }
+
+  Future<void> updateParticipantTurn({
+    required SellerTanda tanda,
+    required SellerTandaParticipant participant,
+    required int newTurn,
+  }) async {
+    await ref
+        .read(sellerTandasRepositoryProvider)
+        .updateParticipantTurn(participantId: participant.id, newTurn: newTurn);
+    await reloadSelected(tanda.id);
+  }
+
+  Future<void> updateParticipantVariant({
+    required SellerTanda tanda,
+    required SellerTandaParticipant participant,
+    required String? variant,
+  }) async {
+    await ref
+        .read(sellerTandasRepositoryProvider)
+        .updateParticipantVariant(
+          participantId: participant.id,
+          variant: variant,
+        );
+    await reloadSelected(tanda.id);
+  }
+
+  Future<void> removeParticipant({
+    required SellerTanda tanda,
+    required SellerTandaParticipant participant,
+  }) async {
+    await ref
+        .read(sellerTandasRepositoryProvider)
+        .removeParticipant(participant.id);
+    await reloadSelected(tanda.id);
+  }
+
+  Future<void> reorderParticipants({
+    required SellerTanda tanda,
+    required List<String> participantIds,
+  }) async {
+    await ref
+        .read(sellerTandasRepositoryProvider)
+        .reorderParticipants(tandaId: tanda.id, participantIds: participantIds);
+    await reloadSelected(tanda.id);
   }
 
   Future<void> registerPayment({

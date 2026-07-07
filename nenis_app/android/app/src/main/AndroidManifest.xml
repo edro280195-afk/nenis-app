@@ -43,7 +43,7 @@
             </intent-filter>
 
             <!-- App Link verificado del enlace del pedido:
-                 https://sellgeneral.app/o/{token} y /pedido/{token}.
+                 https://app.nenisapp.com/o/{token} y /pedido/{token}.
                  Requiere /.well-known/assetlinks.json en el dominio. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />

@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cuentas de Cobro — Vendedora (Carrusel de Tarjetas)</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --cream:#FDF4F7;--surface:#FFFCFD;
+  --ink:#3A2233;--ink2:#8A6F82;--ink3:#B6A4B1;
+  --line:rgba(58,34,51,.09);
+  --neni:#FB6F9C;--neni-deep:#E84E83;
+  --sh-card:0 18px 40px -12px rgba(214,51,108,.24),0 6px 16px -8px rgba(58,34,51,.10);
+  --sh-sm:0 10px 22px -12px rgba(214,51,108,.28);
+}
+
+body{
+  font-family:'Poppins',sans-serif;
+  background:linear-gradient(135deg,#1a0a12 0%,#2d1b28 40%,#1a1025 100%);
+  display:flex;align-items:center;justify-content:center;
+  min-height:100vh;padding:40px 20px;
+  user-select:none;
+}
+
+.phone{
+  width:390px;height:844px;background:var(--cream);
+  border-radius:44px;overflow:hidden;position:relative;
+  box-shadow:0 0 0 3px #1a1a1a,0 0 0 6px #2a2a2a,0 0 0 8px #1a1a1a,0 20px 60px rgba(0,0,0,.5);
+}
+.notch{
+  position:absolute;top:12px;left:50%;transform:translateX(-50%);
+  width:120px;height:28px;background:#1a1a1a;border-radius:20px;z-index:999;
+}
+
+.scroll{
+  height:100%;overflow-y:auto;overflow-x:hidden;
+  padding-top:52px;padding-bottom:28px;
+  scroll-behavior:smooth;position:relative;z-index:1;
+}
+.scroll::-webkit-scrollbar{width:0}
+
+.title-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 26px;position:absolute;top:52px;left:0;right:0;z-index:50;
+}
+.title-bar .time{font-size:13px;font-weight:600;color:var(--ink)}
+.title-bar .icons{display:flex;gap:6px;align-items:center}
+.title-bar .icons svg{width:15px;height:15px;color:var(--ink)}
+
+/* ── Header ── */
+.header{
+  padding:8px 22px 0;
+  display:flex;align-items:flex-start;gap:12px;
+}
+.back-btn{
+  width:40px;height:40px;min-width:40px;background:var(--surface);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 12px rgba(0,0,0,.08);cursor:pointer;transition:transform .15s;
+}
+.back-btn:active{transform:scale(.92)}
+.back-btn svg{width:18px;height:18px;color:var(--ink)}
+.header-text h1{font-size:24px;font-weight:700;color:var(--ink);line-height:1.1}
+.header-text p{font-size:12px;font-weight:400;color:var(--ink2);margin-top:2px}
+
+/* ── Bank Colors DB ── */
+/* These are defined as CSS custom properties per bank via JS */
+
+/* ═══════════════ CARD CAROUSEL ═══════════════ */
+.carousel-wrapper{
+  position:relative;margin:14px 0 0;padding:0 0 8px;
+}
+.carousel{
+  display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;
+  padding:18px 22px 22px;scroll-behavior:smooth;
+  scrollbar-width:none;
+}
+.carousel::-webkit-scrollbar{display:none}
+.carousel.hide-overflow{overflow-x:hidden}
+
+/* ── The Card ── */
+.card-3d{
+  min-width:280px;height:176px;scroll-snap-align:center;
+  perspective:1000px;cursor:pointer;
+  flex-shrink:0;position:relative;
+}
+.card-3d.active{z-index:10}
+
+.card-inner{
+  width:100%;height:100%;position:relative;
+  transform-style:preserve-3d;
+  transition:transform .6s cubic-bezier(.4,0,.2,1);
+}
+.card-3d.flipped .card-inner{transform:rotateY(180deg)}
+
+.card-face{
+  position:absolute;inset:0;backface-visibility:hidden;
+  border-radius:18px;padding:20px;
+  display:flex;flex-direction:column;
+  justify-content:space-between;
+  box-shadow:0 16px 36px -14px rgba(0,0,0,.25);
+  overflow:hidden;
+  color:#fff;
+}
+.card-face::after{
+  content:'';position:absolute;inset:0;border-radius:18px;
+  background:linear-gradient(135deg,rgba(255,255,255,.15) 0%,rgba(255,255,255,0) 60%);
+  pointer-events:none;
+}
+.card-front{z-index:2}
+.card-back{
+  z-index:1;transform:rotateY(180deg);
+  background:#1a1a2e;
+}
+.card-back .magnetic-stripe{
+  position:absolute;top:40px;left:0;right:0;height:32px;
+  background:linear-gradient(180deg,#2a2a3e 0%,#111 50%,#2a2a3e 100%);
+}
+.card-back .cvv-section{
+  margin-top:88px;padding:0 28px 0 8px;display:flex;align-items:center;justify-content:space-between;
+}
+.card-back .cvv-label{
+  font-size:10px;font-weight:500;opacity:.7;text-transform:uppercase;letter-spacing:1px;
+}
+.card-back .cvv-strip{
+  background:#fff;border-radius:4px;padding:4px 18px;
+  font-family:'Space Mono',monospace;font-size:14px;color:#111;
+  font-weight:700;letter-spacing:3px;
+}
+.card-back .back-footer{
+  font-size:9px;opacity:.5;padding:0 20px;
+}
+
+/* Card content */
+.card-bank-logo{
+  font-size:11px;font-weight:700;text-transform:uppercase;
+  letter-spacing:2px;opacity:.85;
+}
+.card-chip{
+  width:38px;height:30px;border-radius:6px;
+  background:linear-gradient(135deg,#FFD700 0%,#D4A017 50%,#C4950A 100%);
+  opacity:.9;position:relative;
+}
+.card-chip::after{
+  content:'';position:absolute;top:4px;left:8px;right:8px;bottom:4px;
+  border:1px solid rgba(255,255,255,.3);border-radius:3px;
+  background:linear-gradient(180deg,transparent 30%,rgba(255,255,255,.15) 50%,transparent 70%);
+}
+.card-top-row{
+  display:flex;justify-content:space-between;align-items:flex-start;
+}
+.card-number{
+  font-family:'Space Mono',monospace;font-size:18px;font-weight:500;
+  letter-spacing:3px;margin-top:8px;
+  min-height:27px;transition:all .2s;
+}
+.card-number.empty{opacity:.4;letter-spacing:6px}
+.card-details{
+  display:flex;justify-content:space-between;align-items:flex-end;
+}
+.card-holder-label{
+  font-size:8px;font-weight:500;opacity:.6;text-transform:uppercase;letter-spacing:1.5px;
+}
+.card-holder-name{
+  font-size:13px;font-weight:600;max-width:170px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  min-height:20px;transition:all .2s;
+}
+.card-holder-name.empty{opacity:.4}
+.card-type-label{
+  font-size:8px;font-weight:500;opacity:.6;text-transform:uppercase;letter-spacing:1.5px;text-align:right;
+}
+.card-type-value{
+  font-size:11px;font-weight:600;text-align:right;min-height:16px;
+}
+.card-type-value.debit{opacity:.8}
+
+/* Add empty card */
+.card-add{
+  min-width:280px;height:176px;scroll-snap-align:center;
+  border-radius:18px;border:2.5px dashed rgba(58,34,51,.12);
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:10px;
+  cursor:pointer;transition:all .2s;flex-shrink:0;
+  background:rgba(255,255,255,.4);
+}
+.card-add:active{transform:scale(.96);border-color:var(--neni)}
+.card-add svg{width:28px;height:28px;color:var(--ink3)}
+.card-add span{font-size:13px;font-weight:600;color:var(--ink3)}
+
+/* ── Card indicators ── */
+.carousel-dots{
+  display:flex;justify-content:center;gap:6px;margin:0 0 8px;
+}
+.dot{
+  width:7px;height:7px;border-radius:50%;background:var(--ink3);opacity:.3;
+  transition:all .3s;cursor:pointer;
+}
+.dot.active{opacity:.9;background:var(--neni);width:18px;border-radius:12px}
+
+/* ── Empty State ── */
+.empty-cards{
+  margin:14px 22px;padding:40px 20px;text-align:center;
+  border-radius:24px;border:2px dashed rgba(58,34,51,.08);
+  display:none;
+}
+.empty-cards.show{display:block}
+.empty-cards .icon-wrap{
+  width:72px;height:72px;margin:0 auto 16px;border-radius:22px;
+  background:linear-gradient(135deg,rgba(251,111,156,.08),rgba(155,123,224,.08));
+  display:flex;align-items:center;justify-content:center;
+}
+.empty-cards .icon-wrap svg{width:32px;height:32px;color:var(--ink3)}
+.empty-cards h4{font-size:16px;font-weight:700;color:var(--ink);margin-bottom:4px}
+.empty-cards p{font-size:12px;color:var(--ink2);line-height:1.5}
+
+/* ═══════════════ FORM ═══════════════ */
+.form-section{
+  padding:0 22px;margin-top:10px;
+}
+.form-section h3{
+  font-size:12px;font-weight:700;color:var(--ink);
+  text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px;
+}
+.form-card{
+  background:var(--surface);border-radius:22px;
+  padding:18px;box-shadow:var(--sh-sm);
+}
+
+/* Bank Selector */
+.bank-selector{
+  display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;
+  padding-bottom:4px;scrollbar-width:none;
+}
+.bank-selector::-webkit-scrollbar{display:none}
+.bank-chip{
+  min-width:42px;height:42px;border-radius:14px;display:flex;
+  align-items:center;justify-content:center;cursor:pointer;
+  transition:all .25s cubic-bezier(.4,0,.2,1);
+  border:2px solid transparent;flex-shrink:0;position:relative;
+  font-size:11px;font-weight:700;color:#fff;
+}
+.bank-chip:active{transform:scale(.9)}
+.bank-chip.selected{
+  transform:scale(1.1);border-color:#fff;
+  box-shadow:0 0 0 3px currentColor, 0 8px 20px rgba(0,0,0,.18);
+  z-index:2;
+}
+
+.bank-chip.more{
+  background:var(--surface)!important;color:var(--ink2);border-color:var(--line);
+  font-size:20px;font-weight:400;
+}
+.bank-chip.more.selected{color:var(--neni);border-color:var(--neni);box-shadow:0 0 0 3px rgba(251,111,156,.3),0 8px 20px rgba(0,0,0,.12)}
+
+/* Field */
+.field-group{margin-bottom:12px}
+.field-group label{
+  display:block;font-size:10.5px;font-weight:600;color:var(--ink2);
+  margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px;
+}
+.field-input-wrap{
+  display:flex;align-items:center;background:rgba(58,34,51,.025);
+  border-radius:14px;padding:0 14px;
+  border:1.5px solid transparent;transition:all .2s;
+}
+.field-input-wrap:focus-within{
+  border-color:var(--neni);background:rgba(251,111,156,.025);
+}
+.field-input-wrap input{
+  flex:1;border:none;background:transparent;
+  font-family:'Poppins',sans-serif;font-size:13.5px;color:var(--ink);
+  padding:12px 0;outline:none;
+}
+.field-input-wrap input::placeholder{color:var(--ink3);font-size:12px}
+.field-input-wrap .field-icon{
+  width:18px;height:18px;color:var(--ink3);flex-shrink:0;margin-right:8px;
+}
+
+.kind-toggle{
+  display:flex;gap:4px;background:rgba(58,34,51,.04);border-radius:14px;
+  padding:3px;margin-bottom:16px;
+}
+.kind-opt{
+  flex:1;padding:8px 6px;border-radius:12px;text-align:center;
+  font-size:11px;font-weight:600;color:var(--ink2);
+  cursor:pointer;transition:all .2s;border:none;font-family:inherit;
+  background:transparent;
+}
+.kind-opt.active{background:#fff;color:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+
+.save-row{
+  display:flex;gap:10px;margin-top:4px;
+}
+.btn-save{
+  flex:1;padding:14px;border-radius:16px;border:none;
+  background:linear-gradient(135deg,var(--neni),var(--neni-deep));
+  color:#fff;font-size:14px;font-weight:700;font-family:inherit;
+  cursor:pointer;transition:all .2s;
+  box-shadow:0 8px 22px rgba(251,111,156,.35);
+}
+.btn-save:active{transform:scale(.96)}
+.btn-save:disabled{opacity:.45;cursor:not-allowed}
+.btn-cancel{
+  padding:14px 18px;border-radius:16px;border:1.5px solid var(--line);
+  background:transparent;color:var(--ink2);font-size:13px;font-weight:600;
+  font-family:inherit;cursor:pointer;transition:all .2s;
+}
+.btn-cancel:active{transform:scale(.96)}
+
+/* ── Switch toggle ── */
+.switch-row{
+  display:flex;align-items:center;justify-content:space-between;margin:4px 0 12px;
+}
+.switch-row .label{font-size:12px;font-weight:600;color:var(--ink)}
+.switch-row .sub{font-size:10.5px;color:var(--ink2)}
+.toggle{
+  width:45px;height:25px;border-radius:13px;position:relative;
+  cursor:pointer;transition:background .2s;border:none;flex-shrink:0;
+}
+.toggle::after{
+  content:'';position:absolute;top:3px;width:19px;height:19px;
+  border-radius:50%;background:#fff;transition:all .25s cubic-bezier(.4,0,.2,1);
+  box-shadow:0 1px 4px rgba(0,0,0,.2);
+}
+.toggle.off{background:#c4c4c4}
+.toggle.on{background:var(--neni)}
+.toggle.off::after{left:3px}
+.toggle.on::after{left:23px}
+
+/* ── Swipe hint ── */
+.swipe-hint{
+  text-align:center;font-size:10.5px;color:var(--ink3);
+  margin-top:4px;opacity:.6;transition:opacity .5s;
+  display:flex;align-items:center;justify-content:center;gap:4px;
+}
+
+/* ── Toast ── */
+.toast{
+  position:absolute;bottom:40px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--ink);color:#fff;padding:10px 20px;border-radius:20px;
+  font-size:12px;font-weight:600;opacity:0;transition:all .3s cubic-bezier(.4,0,.2,1);
+  z-index:200;white-space:nowrap;pointer-events:none;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── Tab Switcher ── */
+.tab-switcher{
+  position:fixed;top:16px;right:16px;z-index:9999;
+  display:flex;gap:6px;flex-wrap:wrap;
+}
+.tab-switcher button{
+  padding:8px 14px;border-radius:10px;font-size:12px;font-weight:600;
+  border:2px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);
+  color:rgba(255,255,255,.7);cursor:pointer;font-family:inherit;transition:all .15s;
+}
+.tab-switcher button.active,
+.tab-switcher button:hover{
+  background:rgba(255,255,255,.16);color:#fff;border-color:rgba(255,255,255,.4);
+}
+.note{
+  position:fixed;bottom:16px;left:50%;transform:translateX(-50%);
+  font-size:11px;color:rgba(255,255,255,.3);font-family:inherit;pointer-events:none;
+}
+
+/* ── Delete confirmation ── */
+.delete-zone{
+  position:absolute;top:0;right:0;height:176px;width:70px;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(90deg,transparent 0%,rgba(255,45,85,.08) 50%,rgba(255,45,85,.15) 100%);
+  border-radius:0 18px 18px 0;opacity:0;transition:opacity .2s;
+  pointer-events:none;z-index:5;
+}
+.card-3d.showing-delete .delete-zone{opacity:1;pointer-events:auto}
+.delete-zone button{
+  width:40px;height:40px;border-radius:50%;border:none;
+  background:rgba(255,45,85,.15);color:#FF2D55;
+  cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;
+}
+.delete-zone button:active{transform:scale(.9);background:rgba(255,45,85,.3)}
+
+/* Pulse animation for new card */
+@keyframes card-in{
+  0%{transform:scale(.8);opacity:0}
+  60%{transform:scale(1.03)}
+  100%{transform:scale(1);opacity:1}
+}
+.card-3d.card-entering{animation:card-in .45s cubic-bezier(.34,1.56,.64,1)}
+</style>
+</head>
+<body>
+
+<div class="tab-switcher">
+  <button onclick="showState('design')" id="btn-design" class="active">Con tarjetas</button>
+  <button onclick="showState('empty')" id="btn-empty">Vacío</button>
+  <button onclick="showState('single')" id="btn-single">Nueva cuenta</button>
+</div>
+<div class="note">Mockup — Métodos de Pago (Vendedora) · Carrusel de Tarjetas · Nenis App</div>
+
+<div class="phone" id="phone">
+  <div class="notch"></div>
+  <div class="toast" id="toast"></div>
+
+  <div class="scroll" id="scrollView">
+
+    <!-- ═══════════ DESIGN STATE ═══════════ -->
+    <div id="state-design">
+      <div class="title-bar">
+        <span class="time">9:41</span>
+        <span class="icons">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C17.93 3.93 6.07 3.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-6-6l2 2c2.76-2.76 7.24-2.76 10 0l2-2C14.33 8.33 9.67 8.33 3 15z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor"><rect x="1" y="6" width="20" height="12" rx="2"/><rect x="3" y="9" width="16" height="6" rx="1"/></svg>
+        </span>
+      </div>
+      <div class="header">
+        <a class="back-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </a>
+        <div class="header-text">
+          <h1>Cuentas de cobro</h1>
+          <p>Tarjetas y cuentas para que tus clientas te paguen</p>
+        </div>
+      </div>
+
+      <!-- Carousel -->
+      <div class="carousel-wrapper">
+        <div class="carousel" id="carousel"></div>
+        <div class="carousel-dots" id="carouselDots"></div>
+        <div class="swipe-hint" id="swipeHint">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+          Desliza para ver tus cuentas
+        </div>
+      </div>
+
+      <!-- Form -->
+      <div class="form-section" id="formSection">
+        <h3 id="formTitle">Editar cuenta</h3>
+        <div class="form-card">
+          <div class="kind-toggle">
+            <button class="kind-opt active" data-kind="clabe" onclick="setKind('clabe', this)">CLABE</button>
+            <button class="kind-opt" data-kind="debitCard" onclick="setKind('debitCard', this)">Tarjeta</button>
+            <button class="kind-opt" data-kind="bankAccount" onclick="setKind('bankAccount', this)">Cuenta</button>
+            <button class="kind-opt" data-kind="phone" onclick="setKind('phone', this)">SPEI</button>
+          </div>
+
+          <div style="margin-bottom:12px">
+            <label style="display:block;font-size:10.5px;font-weight:600;color:var(--ink2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">BANCO</label>
+            <div class="bank-selector" id="bankSelector"></div>
+          </div>
+
+          <div class="field-group">
+            <label for="titular">Titular</label>
+            <div class="field-input-wrap">
+              <svg class="field-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+              <input type="text" id="titular" placeholder="Nombre como aparece en el banco" maxlength="50" oninput="updateCardFromForm()">
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label for="accountNum" id="accountNumLabel">CLABE interbancaria</label>
+            <div class="field-input-wrap">
+              <svg class="field-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+              <input type="text" id="accountNum" placeholder="032 180 000118359719" maxlength="20" oninput="updateCardFromForm()">
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label for="alias">Alias</label>
+            <div class="field-input-wrap">
+              <svg class="field-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M17.63 5.84C17.27 5.33 16.67 5 16 5L5 5.01C3.9 5.01 3 5.9 3 7v10c0 1.1.9 1.99 2 1.99L16 19c.67 0 1.27-.33 1.63-.84L22 12l-4.37-6.16z"/></svg>
+              <input type="text" id="alias" placeholder="Principal, Nómina, Apartados..." maxlength="30" oninput="updateCardFromForm()">
+            </div>
+          </div>
+
+          <div class="switch-row">
+            <div>
+              <div class="label">Cuenta principal</div>
+              <div class="sub">Aparecerá primero al compartir tus datos de pago</div>
+            </div>
+            <button class="toggle on" id="defaultToggle" onclick="this.classList.toggle('on');this.classList.toggle('off')"></button>
+          </div>
+
+          <div class="save-row">
+            <button class="btn-save" onclick="saveAccount()">Guardar cuenta</button>
+            <button class="btn-cancel" id="btnDelete" style="display:none" onclick="deleteAccount()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF2D55"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ EMPTY STATE ═══════════ -->
+    <div id="state-empty" style="display:none">
+      <div class="title-bar">
+        <span class="time">9:41</span><span class="icons">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C17.93 3.93 6.07 3.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-6-6l2 2c2.76-2.76 7.24-2.76 10 0l2-2C14.33 8.33 9.67 8.33 3 15z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor"><rect x="1" y="6" width="20" height="12" rx="2"/><rect x="3" y="9" width="16" height="6" rx="1"/></svg>
+        </span>
+      </div>
+      <div class="header">
+        <a class="back-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </a>
+        <div class="header-text">
+          <h1>Cuentas de cobro</h1>
+          <p>Administra cómo te pagan tus clientas</p>
+        </div>
+      </div>
+      <div class="empty-cards show" style="margin:14px 22px;">
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+        </div>
+        <h4>Sin cuentas de cobro</h4>
+        <p>Agrega al menos una tarjeta o cuenta para que tus clientas sepan a dónde transferirte.</p>
+      </div>
+      <div class="form-section" style="margin-top:4px">
+        <h3>Agregar cuenta</h3>
+        <div class="form-card">
+          <div class="kind-toggle">
+            <button class="kind-opt active" data-kind="clabe" onclick="setKind('clabe', this)">CLABE</button>
+            <button class="kind-opt" data-kind="debitCard" onclick="setKind('debitCard', this)">Tarjeta</button>
+            <button class="kind-opt" data-kind="bankAccount" onclick="setKind('bankAccount', this)">Cuenta</button>
+            <button class="kind-opt" data-kind="phone" onclick="setKind('phone', this)">SPEI</button>
+          </div>
+          <div style="margin-bottom:12px">
+            <label style="display:block;font-size:10.5px;font-weight:600;color:var(--ink2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">BANCO</label>
+            <div class="bank-selector" id="bankSelectorEmpty"></div>
+          </div>
+          <div class="field-group">
+            <label>Titular</label>
+            <div class="field-input-wrap">
+              <svg class="field-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+              <input type="text" placeholder="Nombre como aparece en el banco">
+            </div>
+          </div>
+          <div class="field-group">
+            <label>CLABE interbancaria</label>
+            <div class="field-input-wrap">
+              <svg class="field-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+              <input type="text" placeholder="032 180 000118359719">
+            </div>
+          </div>
+          <div class="field-group">
+            <label>Alias</label>
+            <div class="field-input-wrap">
+              <svg class="field-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M17.63 5.84C17.27 5.33 16.67 5 16 5L5 5.01C3.9 5.01 3 5.9 3 7v10c0 1.1.9 1.99 2 1.99L16 19c.67 0 1.27-.33 1.63-.84L22 12l-4.37-6.16z"/></svg>
+              <input type="text" placeholder="Principal, Nómina, Apartados...">
+            </div>
+          </div>
+          <div class="switch-row">
+            <div><div class="label">Cuenta principal</div><div class="sub">Aparecerá primero al compartir tus datos</div></div>
+            <button class="toggle on" onclick="this.classList.toggle('on');this.classList.toggle('off')"></button>
+          </div>
+          <button class="btn-save" style="width:100%" onclick="showToast('Cuenta guardada');showState('design')">Guardar cuenta</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ SINGLE / NEW ACCOUNT STATE ═══════════ -->
+    <div id="state-single" style="display:none">
+      <div class="title-bar">
+        <span class="time">9:41</span><span class="icons">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C17.93 3.93 6.07 3.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-6-6l2 2c2.76-2.76 7.24-2.76 10 0l2-2C14.33 8.33 9.67 8.33 3 15z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor"><rect x="1" y="6" width="20" height="12" rx="2"/><rect x="3" y="9" width="16" height="6" rx="1"/></svg>
+        </span>
+      </div>
+      <div class="header">
+        <a class="back-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </a>
+        <div class="header-text">
+          <h1>Nueva cuenta</h1>
+          <p>La tarjeta se actualiza en vivo mientras capturas</p>
+        </div>
+      </div>
+
+      <!-- Live card preview (centered) -->
+      <div style="display:flex;justify-content:center;margin:14px 0">
+        <div class="card-3d active" id="liveCard" style="min-width:280px;margin:0" onclick="this.classList.toggle('flipped')">
+          <div class="delete-zone">
+            <button><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
+          </div>
+          <div class="card-inner">
+            <div class="card-face card-front" id="liveCardFront">
+              <div>
+                <div class="card-top-row">
+                  <span class="card-bank-logo" id="liveBankLogo">BBVA</span>
+                  <div class="card-chip"></div>
+                </div>
+                <div class="card-number empty" id="liveCardNumber">•••• •••• •••• 9719</div>
+              </div>
+              <div class="card-details">
+                <div>
+                  <div class="card-holder-label">Titular</div>
+                  <div class="card-holder-name empty" id="liveHolder">—</div>
+                </div>
+                <div>
+                  <div class="card-type-label">Tipo</div>
+                  <div class="card-type-value" id="liveType">CLABE</div>
+                </div>
+              </div>
+            </div>
+            <div class="card-face card-back">
+              <div class="magnetic-stripe"></div>
+              <div class="cvv-section">
+                <span class="cvv-label">Alias</span>
+                <div class="cvv-strip" id="liveAliasBack">Principal</div>
+              </div>
+              <p class="back-footer">Nenis App · Cuenta verificada</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-bottom:6px">
+        <span style="font-size:10px;color:var(--ink3)">Toca la tarjeta para ver el reverso</span>
+      </div>
+
+      <div class="form-section" style="margin-top:0">
+        <div class="form-card">
+          <div class="kind-toggle">
+            <button class="kind-opt active" data-kind="clabe" onclick="setKindSingle('clabe', this)">CLABE</button>
+            <button class="kind-opt" data-kind="debitCard" onclick="setKindSingle('debitCard', this)">Tarjeta</button>
+            <button class="kind-opt" data-kind="bankAccount" onclick="setKindSingle('bankAccount', this)">Cuenta</button>
+            <button class="kind-opt" data-kind="phone" onclick="setKindSingle('phone', this)">SPEI</button>
+          </div>
+
+          <div style="margin-bottom:12px">
+            <label style="display:block;font-size:10.5px;font-weight:600;color:var(--ink2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">BANCO</label>
+            <div class="bank-selector" id="bankSelectorSingle"></div>
+          </div>
+
+          <div class="field-group">
+            <label>Titular</label>
+            <div class="field-input-wrap">
+              <svg class="field-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+              <input type="text" id="titularSingle" placeholder="Nombre como aparece en el banco" maxlength="50" oninput="updateLiveCard()">
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label id="accountNumLabelSingle">CLABE interbancaria</label>
+            <div class="field-input-wrap">
+              <svg class="field-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+              <input type="text" id="accountNumSingle" placeholder="032 180 000118359719" maxlength="20" oninput="updateLiveCard()">
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label>Alias</label>
+            <div class="field-input-wrap">
+              <svg class="field-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M17.63 5.84C17.27 5.33 16.67 5 16 5L5 5.01C3.9 5.01 3 5.9 3 7v10c0 1.1.9 1.99 2 1.99L16 19c.67 0 1.27-.33 1.63-.84L22 12l-4.37-6.16z"/></svg>
+              <input type="text" id="aliasSingle" placeholder="Principal, Nómina, Apartados..." maxlength="30" oninput="updateLiveCard()">
+            </div>
+          </div>
+
+          <div class="switch-row">
+            <div><div class="label">Cuenta principal</div><div class="sub">Aparecerá primero al compartir tus datos</div></div>
+            <button class="toggle on" onclick="this.classList.toggle('on');this.classList.toggle('off')"></button>
+          </div>
+
+          <button class="btn-save" style="width:100%" onclick="showToast('Cuenta guardada');showState('design')">Guardar cuenta</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /scroll -->
+</div><!-- /phone -->
+
+<script>
+/* ══════════ MEXICAN BANK COLOR DATABASE ══════════ */
+const BANKS = [
+  { id:'bbva',       name:'BBVA',          bg:'#004B93', fg:'#fff', gradient:'linear-gradient(135deg, #004B93 0%, #0066C0 50%, #004B93 100%)' },
+  { id:'banorte',    name:'Banorte',       bg:'#C41230', fg:'#fff', gradient:'linear-gradient(135deg, #C41230 0%, #EB0029 50%, #C41230 100%)' },
+  { id:'santander',  name:'Santander',     bg:'#EC0000', fg:'#fff', gradient:'linear-gradient(135deg, #D40000 0%, #EC0000 50%, #CC0000 100%)' },
+  { id:'banamex',    name:'Citibanamex',   bg:'#003B71', fg:'#fff', gradient:'linear-gradient(135deg, #002850 0%, #003B71 50%, #004D94 100%)' },
+  { id:'hsbc',       name:'HSBC',          bg:'#DB0011', fg:'#fff', gradient:'linear-gradient(135deg, #C0000E 0%, #DB0011 50%, #BE000E 100%)' },
+  { id:'azteca',     name:'Banco Azteca',  bg:'#00A650', fg:'#fff', gradient:'linear-gradient(135deg, #008040 0%, #00A650 50%, #00BF5C 100%)' },
+  { id:'banregio',   name:'BanRegio',      bg:'#FF6600', fg:'#fff', gradient:'linear-gradient(135deg, #E55D00 0%, #FF6600 50%, #FF7519 100%)' },
+  { id:'bancoppel',  name:'BanCoppel',     bg:'#F7B61A', fg:'#3A2233', gradient:'linear-gradient(135deg, #E5A710 0%, #F7B61A 50%, #FCC939 100%)' },
+  { id:'scotiabank', name:'Scotiabank',    bg:'#EE3124', fg:'#fff', gradient:'linear-gradient(135deg, #D42018 0%, #EE3124 50%, #DC1E14 100%)' },
+  { id:'inbursa',    name:'Inbursa',       bg:'#003B5C', fg:'#fff', gradient:'linear-gradient(135deg, #002A42 0%, #003B5C 50%, #004E7A 100%)' },
+  { id:'bajio',      name:'BanBajío',      bg:'#004B87', fg:'#fff', gradient:'linear-gradient(135deg, #003560 0%, #004B87 50%, #0063AC 100%)' },
+  { id:'nubank',     name:'Nu',            bg:'#820AD1', fg:'#fff', gradient:'linear-gradient(135deg, #6B00B0 0%, #820AD1 50%, #9A20E8 100%)' },
+  { id:'hey',        name:'Hey Banco',     bg:'#00E5A1', fg:'#3A2233', gradient:'linear-gradient(135deg, #00C98A 0%, #00E5A1 50%, #1AFFBB 100%)' },
+  { id:'spin',       name:'Spin (OXXO)',   bg:'#E31E25', fg:'#fff', gradient:'linear-gradient(135deg, #C41A20 0%, #E31E25 50%, #F03038 100%)' },
+  { id:'mp',         name:'Mercado Pago',  bg:'#009EE3', fg:'#fff', gradient:'linear-gradient(135deg, #0085C0 0%, #009EE3 50%, #20B8FF 100%)' },
+  { id:'amex',       name:'Amex',          bg:'#006FCF', fg:'#fff', gradient:'linear-gradient(135deg, #0059A8 0%, #006FCF 50%, #0088EE 100%)' },
+  { id:'bienestar',  name:'Bienestar',     bg:'#006847', fg:'#fff', gradient:'linear-gradient(135deg, #004D33 0%, #006847 50%, #008A5C 100%)' },
+  { id:'compartamos',name:'Compartamos',   bg:'#DA291C', fg:'#fff', gradient:'linear-gradient(135deg, #BA2015 0%, #DA291C 50%, #E84035 100%)' },
+  { id:'afirme',     name:'Afirme',        bg:'#003DA5', fg:'#fff', gradient:'linear-gradient(135deg, #002E80 0%, #003DA5 50%, #0050CC 100%)' },
+  { id:'uala',       name:'Ualá',          bg:'#7700FF', fg:'#fff', gradient:'linear-gradient(135deg, #5E00CC 0%, #7700FF 50%, #9030FF 100%)' },
+  { id:'revolut',    name:'Revolut',       bg:'#000000', fg:'#fff', gradient:'linear-gradient(135deg, #000 0%, #1a1a1a 50%, #333 100%)' },
+  { id:'klar',       name:'Klar',          bg:'#1A1A2E', fg:'#fff', gradient:'linear-gradient(135deg, #0F0F1F 0%, #1A1A2E 50%, #252545 100%)' },
+  { id:'cuenca',     name:'Cuenca',        bg:'#3A10E5', fg:'#fff', gradient:'linear-gradient(135deg, #2D0CB8 0%, #3A10E5 50%, #5530FF 100%)' },
+  { id:'albo',       name:'Albo',          bg:'#6F41E1', fg:'#fff', gradient:'linear-gradient(135deg, #5828C8 0%, #6F41E1 50%, #8A60F0 100%)' },
+  { id:'fondeadora', name:'Fondeadora',    bg:'#111111', fg:'#fff', gradient:'linear-gradient(135deg, #000 0%, #111 50%, #2a2a2a 100%)' },
+  { id:'stori',      name:'Stori',         bg:'#643B9F', fg:'#fff', gradient:'linear-gradient(135deg, #4E2E80 0%, #643B9F 50%, #7B50C0 100%)' },
+  { id:'rappi',      name:'RappiCard',     bg:'#FF441F', fg:'#fff', gradient:'linear-gradient(135deg, #E03514 0%, #FF441F 50%, #FF6040 100%)' },
+  { id:'other',      name:'Otro banco',    bg:'#E8E8EC', fg:'#3A2233', gradient:'linear-gradient(135deg, #D8D8DE 0%, #E8E8EC 50%, #F5F5F8 100%)' },
+];
+
+let selectedBank = BANKS[0];
+let editingAccountId = null;
+let accounts = [];
+
+function bankById(id) { return BANKS.find(b => b.id === id) || BANKS[BANKS.length-1]; }
+
+/* ── Format account number for card display ── */
+function formatCardNumber(num, kind) {
+  if (!num) return '•••• •••• •••• ••••';
+  const digits = num.replace(/\D/g,'');
+  if (kind === 'clabe' || kind === 'bankAccount') {
+    if (digits.length <= 4) return digits;
+    const last4 = digits.slice(-4);
+    return `•••• •••• •••• ${last4}`;
+  }
+  // debit card: 4 groups of 4
+  const groups = [];
+  for (let i = 0; i < 16; i += 4) {
+    const chunk = digits.slice(i, i+4);
+    groups.push(chunk.padEnd(4, '•'));
+  }
+  return groups.join(' ');
+}
+
+function formatMasked(num, kind) {
+  if (!num) return '••••';
+  const d = num.replace(/\D/g,'');
+  return d.length > 4 ? '•••• ' + d.slice(-4) : d;
+}
+
+/* ── Build bank chips ── */
+function buildBankChips(containerId, onClick) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = BANKS.map(b => {
+    const isOther = b.id === 'other';
+    return `<div class="bank-chip${isOther?' more':''}${b.id===selectedBank.id?' selected':''}" 
+      style="${isOther?'':'background:'+b.bg+';color:'+b.fg}"
+      data-bank="${b.id}" 
+      onclick="selectBank('${b.id}','${containerId}',${onClick?true:false})"
+      title="${b.name}">${isOther?'+':b.name.slice(0,3)}</div>`;
+  }).join('');
+}
+
+function selectBank(id, containerId, isLive) {
+  selectedBank = bankById(id);
+  // Update chips
+  const el = document.getElementById(containerId);
+  el.querySelectorAll('.bank-chip').forEach(c => c.classList.remove('selected'));
+  const chip = el.querySelector(`[data-bank="${id}"]`);
+  if (chip) chip.classList.add('selected');
+  // Update cards
+  if (isLive) updateLiveCard();
+  else updateCardFromForm();
+}
+
+/* ══════════ BUILD CAROUSEL ══════════ */
+function buildCarousel() {
+  const carousel = document.getElementById('carousel');
+  const dots = document.getElementById('carouselDots');
+  if (!carousel || !dots) return;
+
+  if (accounts.length === 0) {
+    // Show only add card
+    carousel.innerHTML = `
+      <div class="card-add" onclick="startNewAccount()">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        <span>Agregar cuenta</span>
+      </div>`;
+    dots.innerHTML = '';
+    return;
+  }
+
+  let html = '';
+  accounts.forEach((a, i) => {
+    const bank = bankById(a.bankId);
+    const isDefault = a.isDefault;
+    const num = formatCardNumber(a.accountNumber, a.kind);
+    html += `
+    <div class="card-3d${i===0?' active':''}" data-index="${i}" onclick="flipCard(this, event)">
+      <div class="delete-zone">
+        <button onclick="event.stopPropagation();deleteAccount(${a.id})">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+        </button>
+      </div>
+      <div class="card-inner">
+        <div class="card-face card-front" style="background:${bank.gradient};color:${bank.fg}">
+          <div>
+            <div class="card-top-row">
+              <span class="card-bank-logo">${bank.name}</span>
+              <div class="card-chip"></div>
+            </div>
+            <div class="card-number${a.accountNumber?'':' empty'}">${num}</div>
+          </div>
+          <div class="card-details">
+            <div>
+              <div class="card-holder-label">Titular</div>
+              <div class="card-holder-name${a.holderName?'':' empty'}">${a.holderName || '—'}</div>
+            </div>
+            <div>
+              <div class="card-type-label">${isDefault?'★ Principal':'Tipo'}</div>
+              <div class="card-type-value">${KIND_LABELS[a.kind]}</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-face card-back">
+          <div class="magnetic-stripe"></div>
+          <div class="cvv-section">
+            <span class="cvv-label">Alias</span>
+            <div class="cvv-strip">${a.alias || '—'}</div>
+          </div>
+          <p class="back-footer">Nenis App · ${a.holderName||'Cuenta verificada'}</p>
+        </div>
+      </div>
+    </div>`;
+  });
+  // Add card
+  html += `
+    <div class="card-add" onclick="startNewAccount()">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+      <span>Agregar</span>
+    </div>`;
+
+  carousel.innerHTML = html;
+
+  // Dots
+  dots.innerHTML = accounts.map((_, i) => 
+    `<span class="dot${i===0?' active':''}" onclick="scrollToCard(${i})"></span>`
+  ).join('');
+
+  // Scroll observer for dot updates
+  setupCarouselObserver();
+}
+
+function setupCarouselObserver() {
+  const carousel = document.getElementById('carousel');
+  if (!carousel) return;
+  carousel.addEventListener('scroll', () => {
+    const cards = carousel.querySelectorAll('.card-3d');
+    const dots = document.querySelectorAll('#carouselDots .dot');
+    if (cards.length === 0 || dots.length === 0) return;
+    const cx = carousel.scrollLeft + carousel.offsetWidth/2;
+    let activeIdx = 0;
+    let minDist = Infinity;
+    cards.forEach((c, i) => {
+      const dist = Math.abs(c.offsetLeft + c.offsetWidth/2 - cx);
+      if (dist < minDist) { minDist = dist; activeIdx = i; }
+    });
+    dots.forEach((d, i) => d.classList.toggle('active', i === activeIdx));
+    // Hide swipe hint after first scroll
+    if (carousel.scrollLeft > 10) {
+      document.getElementById('swipeHint').style.opacity = '0';
+    }
+  });
+}
+
+function scrollToCard(idx) {
+  const carousel = document.getElementById('carousel');
+  const cards = carousel.querySelectorAll('.card-3d');
+  if (cards[idx]) {
+    carousel.scrollTo({ left: cards[idx].offsetLeft - carousel.offsetLeft - 55, behavior: 'smooth' });
+  }
+}
+
+function flipCard(el, evt) {
+  // Only flip if clicking on the card face, not buttons
+  if (evt.target.closest('button')) return;
+  el.classList.toggle('flipped');
+  // Auto unflip after 4s
+  if (el.classList.contains('flipped')) {
+    clearTimeout(el._flipTimer);
+    el._flipTimer = setTimeout(() => el.classList.remove('flipped'), 4000);
+  }
+}
+
+/* ══════════ FORM HANDLING ══════════ */
+const KIND_LABELS = { clabe:'CLABE', debitCard:'Tarjeta', bankAccount:'Cuenta', phone:'SPEI' };
+const KIND_PLACEHOLDERS = { 
+  clabe:'032 180 000118359719', debitCard:'1234 5678 9012 3456', 
+  bankAccount:'1234567890', phone:'8681234567'
+};
+const KIND_MAX = { clabe:18, debitCard:16, bankAccount:20, phone:10 };
+
+let currentKind = 'clabe';
+
+function setKind(kind, btn) {
+  currentKind = kind;
+  btn.parentElement.querySelectorAll('.kind-opt').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  
+  const label = document.getElementById('accountNumLabel');
+  const input = document.getElementById('accountNum');
+  if (label) label.textContent = KIND_LABELS[kind]==='Tarjeta'?'Número de tarjeta':KIND_LABELS[kind]==='Cuenta'?'Número de cuenta':KIND_LABELS[kind]==='SPEI'?'Celular SPEI':'CLABE interbancaria';
+  if (input) {
+    input.placeholder = KIND_PLACEHOLDERS[kind];
+    input.maxLength = KIND_MAX[kind];
+  }
+  updateCardFromForm();
+}
+
+function setKindSingle(kind, btn) {
+  currentKind = kind;
+  btn.parentElement.querySelectorAll('.kind-opt').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  
+  const label = document.getElementById('accountNumLabelSingle');
+  const input = document.getElementById('accountNumSingle');
+  if (label) {
+    label.textContent = KIND_LABELS[kind]==='Tarjeta'?'Número de tarjeta':KIND_LABELS[kind]==='Cuenta'?'Número de cuenta':KIND_LABELS[kind]==='SPEI'?'Celular SPEI':'CLABE interbancaria';
+  }
+  if (input) {
+    input.placeholder = KIND_PLACEHOLDERS[kind];
+    input.maxLength = KIND_MAX[kind];
+  }
+  updateLiveCard();
+}
+
+function updateCardFromForm() {
+  const titular = document.getElementById('titular');
+  const accountNum = document.getElementById('accountNum');
+  const alias = document.getElementById('alias');
+  if (!titular || !accountNum || !alias) return;
+  
+  const cards = document.querySelectorAll('#carousel .card-3d.active .card-front');
+  if (cards.length === 0) {
+    // If editing, update the first card
+    const allCards = document.querySelectorAll('#carousel .card-3d .card-front');
+    if (allCards.length > 0) {
+      updateCardFrontContent(allCards[0], titular.value, accountNum.value, alias.value, currentKind);
+    }
+    return;
+  }
+  updateCardFrontContent(cards[0], titular.value, accountNum.value, alias.value, currentKind);
+}
+
+function updateCardFrontContent(cardEl, titular, num, alias, kind) {
+  const bank = selectedBank;
+  cardEl.style.background = bank.gradient;
+  cardEl.style.color = bank.fg;
+  
+  const logo = cardEl.querySelector('.card-bank-logo');
+  if (logo) logo.textContent = bank.name;
+  
+  const numberEl = cardEl.querySelector('.card-number');
+  if (numberEl) {
+    const formatted = formatCardNumber(num, kind);
+    numberEl.textContent = formatted;
+    numberEl.classList.toggle('empty', !num);
+  }
+  
+  const holderEl = cardEl.querySelector('.card-holder-name');
+  if (holderEl) {
+    holderEl.textContent = titular || '—';
+    holderEl.classList.toggle('empty', !titular);
+  }
+  
+  const typeEl = cardEl.querySelector('.card-type-value');
+  if (typeEl) typeEl.textContent = KIND_LABELS[kind];
+}
+
+/* ══════════ LIVE CARD UPDATES ══════════ */
+function updateLiveCard() {
+  const titular = document.getElementById('titularSingle');
+  const accountNum = document.getElementById('accountNumSingle');
+  const alias = document.getElementById('aliasSingle');
+  const front = document.getElementById('liveCardFront');
+  const backAlias = document.getElementById('liveAliasBack');
+  const logo = document.getElementById('liveBankLogo');
+  const numberEl = document.getElementById('liveCardNumber');
+  const holderEl = document.getElementById('liveHolder');
+  const typeEl = document.getElementById('liveType');
+  
+  if (!front) return;
+  
+  const bank = selectedBank;
+  front.style.background = bank.gradient;
+  front.style.color = bank.fg;
+  if (logo) logo.textContent = bank.name;
+  
+  const num = accountNum? accountNum.value : '';
+  if (numberEl) {
+    const formatted = formatCardNumber(num, currentKind);
+    numberEl.textContent = formatted;
+    numberEl.classList.toggle('empty', !num);
+  }
+  
+  if (holderEl) {
+    holderEl.textContent = titular? titular.value || '—' : '—';
+    holderEl.classList.toggle('empty', !(titular && titular.value));
+  }
+  
+  if (typeEl) typeEl.textContent = KIND_LABELS[currentKind];
+  
+  if (backAlias) backAlias.textContent = alias? alias.value || '—' : '—';
+}
+
+/* ══════════ CRUD ══════════ */
+let nextAccountId = 100;
+
+function startNewAccount() {
+  editingAccountId = null;
+  document.getElementById('formTitle').textContent = 'Nueva cuenta';
+  document.getElementById('btnDelete').style.display = 'none';
+  document.getElementById('titular').value = '';
+  document.getElementById('accountNum').value = '';
+  document.getElementById('alias').value = '';
+  currentKind = 'clabe';
+  selectedBank = BANKS[0];
+  
+  const tg = document.querySelectorAll('#formSection .kind-opt');
+  tg.forEach(b => b.classList.remove('active'));
+  if (tg[0]) { tg[0].classList.add('active'); tg[0].click(); }
+  
+  buildBankChips('bankSelector', false);
+  
+  document.getElementById('scrollView').scrollTo({ top: document.getElementById('formSection').offsetTop - 80, behavior: 'smooth' });
+}
+
+function saveAccount() {
+  const titular = document.getElementById('titular').value.trim();
+  const accountNum = document.getElementById('accountNum').value.trim();
+  const alias = document.getElementById('alias').value.trim();
+  const isDefault = document.getElementById('defaultToggle').classList.contains('on');
+  
+  if (!titular || !accountNum) { showToast('Completa titular y número de cuenta'); return; }
+  
+  if (editingAccountId) {
+    const idx = accounts.findIndex(a => a.id === editingAccountId);
+    if (idx >= 0) {
+      if (isDefault) accounts.forEach(a => a.isDefault = false);
+      accounts[idx] = { ...accounts[idx], bankId: selectedBank.id, holderName: titular, accountNumber: accountNum, alias, kind: currentKind, isDefault };
+    }
+  } else {
+    if (isDefault) accounts.forEach(a => a.isDefault = false);
+    accounts.push({
+      id: nextAccountId++, bankId: selectedBank.id, holderName: titular, accountNumber: accountNum, 
+      alias, kind: currentKind, isDefault
+    });
+  }
+  
+  buildCarousel();
+  document.getElementById('btnDelete').style.display = 'none';
+  document.getElementById('formTitle').textContent = 'Nueva cuenta';
+  document.getElementById('titular').value = '';
+  document.getElementById('accountNum').value = '';
+  document.getElementById('alias').value = '';
+  editingAccountId = null;
+  showToast(editingAccountId ? 'Cuenta actualizada' : 'Cuenta guardada');
+  
+  // Scroll back to carousel
+  document.getElementById('scrollView').scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function deleteAccount(id) {
+  if (id === undefined) {
+    // Delete from form
+    if (!editingAccountId) return;
+    id = editingAccountId;
+  }
+  accounts = accounts.filter(a => a.id !== id);
+  buildCarousel();
+  document.getElementById('btnDelete').style.display = 'none';
+  document.getElementById('formTitle').textContent = 'Nueva cuenta';
+  document.getElementById('titular').value = '';
+  document.getElementById('accountNum').value = '';
+  document.getElementById('alias').value = '';
+  editingAccountId = null;
+  showToast('Cuenta eliminada');
+}
+
+function editAccount(id) {
+  const a = accounts.find(ac => ac.id === id);
+  if (!a) return;
+  editingAccountId = id;
+  selectedBank = bankById(a.bankId);
+  currentKind = a.kind;
+  
+  document.getElementById('formTitle').textContent = 'Editar cuenta';
+  document.getElementById('btnDelete').style.display = 'inline-flex';
+  document.getElementById('titular').value = a.holderName;
+  document.getElementById('accountNum').value = a.accountNumber;
+  document.getElementById('alias').value = a.alias || '';
+  document.getElementById('defaultToggle').classList.toggle('on', a.isDefault);
+  document.getElementById('defaultToggle').classList.toggle('off', !a.isDefault);
+  
+  // Set kind toggle
+  const kindToggles = document.querySelectorAll('#formSection .kind-opt');
+  kindToggles.forEach(b => {
+    b.classList.toggle('active', b.dataset.kind === a.kind);
+  });
+  
+  // Set bank chips
+  buildBankChips('bankSelector', false);
+  
+  // Update card preview
+  updateCardFromForm();
+  
+  document.getElementById('scrollView').scrollTo({ top: document.getElementById('formSection').offsetTop - 80, behavior: 'smooth' });
+}
+
+/* ── Double tap on card to edit ── */
+document.addEventListener('dblclick', function(e) {
+  const card = e.target.closest('.card-3d');
+  if (card && card.dataset.index !== undefined) {
+    const idx = parseInt(card.dataset.index);
+    editAccount(accounts[idx].id);
+  }
+});
+
+/* ══════════ STATE MANAGEMENT ══════════ */
+function showState(state) {
+  ['design','empty','single'].forEach(s => {
+    document.getElementById('state-'+s).style.display = s === state ? 'block' : 'none';
+    document.getElementById('btn-'+s).classList.toggle('active', s === state);
+  });
+  
+  if (state === 'empty') {
+    buildBankChips('bankSelectorEmpty', false);
+  }
+  if (state === 'single') {
+    selectedBank = BANKS[0]; currentKind = 'clabe';
+    buildBankChips('bankSelectorSingle', true);
+    updateLiveCard();
+  }
+  document.getElementById('scrollView').scrollTop = 0;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+/* ══════════ INIT ══════════ */
+// Seed with 3 demo accounts
+accounts = [
+  { id:1, bankId:'bbva', holderName:'María García López', accountNumber:'032180000118359719', alias:'Principal', kind:'clabe', isDefault:true },
+  { id:2, bankId:'banorte', holderName:'María García López', accountNumber:'1234567890123456', alias:'Débito', kind:'debitCard', isDefault:false },
+  { id:3, bankId:'azteca', holderName:'María García López', accountNumber:'8681234567', alias:'SPEI', kind:'phone', isDefault:false },
+];
+
+buildCarousel();
+buildBankChips('bankSelector', false);
+</script>
+
+</body>
+</html>

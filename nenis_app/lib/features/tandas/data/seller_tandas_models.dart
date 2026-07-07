@@ -3,6 +3,11 @@ import 'package:intl/intl.dart';
 String tandaMoney(num value) =>
     '\$${NumberFormat('#,##0', 'es_MX').format(value)}';
 
+String tandaDate(DateTime? value) {
+  if (value == null) return 'Sin fecha';
+  return DateFormat('dd MMM yyyy', 'es_MX').format(value);
+}
+
 double _double(dynamic value) => value == null ? 0 : (value as num).toDouble();
 int _int(dynamic value) => value == null ? 0 : (value as num).toInt();
 String _string(dynamic value) => (value ?? '') as String;
@@ -284,6 +289,14 @@ class SellerTanda {
   List<SellerTandaParticipant> get lateParticipants =>
       sortedParticipants.where((participant) => participant.isLate).toList();
 
+  List<SellerTandaParticipant> get paidThisWeekParticipants {
+    final week = actionableWeek;
+    if (week == 0) return const [];
+    return sortedParticipants
+        .where((participant) => participant.hasPaidWeek(week))
+        .toList();
+  }
+
   List<SellerTandaParticipant> get deliveryParticipants {
     final week = actionableWeek;
     if (week == 0) return const [];
@@ -293,6 +306,69 @@ class SellerTanda {
               participant.assignedTurn == week && !participant.isDelivered,
         )
         .toList();
+  }
+
+  SellerTandaParticipant? get currentDeliveryParticipant {
+    final week = actionableWeek;
+    if (week == 0) return null;
+    for (final participant in sortedParticipants) {
+      if (participant.assignedTurn == week) return participant;
+    }
+    return null;
+  }
+
+  int get deliveredCount =>
+      sortedParticipants.where((participant) => participant.isDelivered).length;
+
+  double get expectedAmount => sortedParticipants.fold<double>(
+    0,
+    (sum, participant) => sum + participant.amountFor(this) * totalWeeks,
+  );
+
+  double get collectedAmount => sortedParticipants.fold<double>(
+    0,
+    (sum, participant) =>
+        sum +
+        participant.payments
+            .where((payment) => payment.isVerified)
+            .fold<double>(
+              0,
+              (paymentSum, payment) =>
+                  paymentSum + payment.amountPaid + payment.penaltyPaid,
+            ),
+  );
+
+  double get currentWeekExpected {
+    if (actionableWeek == 0) return 0;
+    return sortedParticipants.fold<double>(
+      0,
+      (sum, participant) => sum + participant.amountFor(this),
+    );
+  }
+
+  double get currentWeekCollected {
+    final week = actionableWeek;
+    if (week == 0) return 0;
+    return sortedParticipants.fold<double>(0, (sum, participant) {
+      final payment = participant.paymentForWeek(week);
+      if (payment == null) return sum;
+      return sum + payment.amountPaid + payment.penaltyPaid;
+    });
+  }
+
+  double get currentWeekPending {
+    if (actionableWeek == 0) return 0;
+    return (currentWeekExpected - currentWeekCollected)
+        .clamp(0, double.infinity)
+        .toDouble();
+  }
+
+  DateTime? deliveryDateForTurn(int turn) {
+    final start = startDate;
+    if (start == null || turn < 1) return null;
+    final date = DateTime(start.year, start.month, start.day, 12);
+    final daysToSunday = (7 - date.weekday) % 7;
+    return date.add(Duration(days: daysToSunday + ((turn - 1) * 7)));
   }
 
   factory SellerTanda.fromJson(Map<String, dynamic> json) {
@@ -377,6 +453,61 @@ class CreateTandaRequest {
       'participants': participants
           .map((participant) => participant.toJson())
           .toList(),
+    };
+  }
+}
+
+class UpdateTandaRequest {
+  const UpdateTandaRequest({
+    required this.id,
+    required this.name,
+    required this.totalWeeks,
+    required this.weeklyAmount,
+    required this.penaltyAmount,
+    required this.startDate,
+  });
+
+  final String id;
+  final String name;
+  final int totalWeeks;
+  final double weeklyAmount;
+  final double penaltyAmount;
+  final DateTime startDate;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name.trim(),
+      'totalWeeks': totalWeeks,
+      'weeklyAmount': weeklyAmount,
+      'penaltyAmount': penaltyAmount,
+      'startDate': DateFormat('yyyy-MM-dd').format(startDate),
+    };
+  }
+}
+
+class AddTandaParticipantRequest {
+  const AddTandaParticipantRequest({
+    required this.tandaId,
+    required this.customerId,
+    required this.assignedTurn,
+    this.variant,
+    this.weeklyAmount,
+  });
+
+  final String tandaId;
+  final int customerId;
+  final int assignedTurn;
+  final String? variant;
+  final double? weeklyAmount;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'tandaId': tandaId,
+      'customerId': customerId,
+      'assignedTurn': assignedTurn,
+      if (variant?.trim().isNotEmpty ?? false) 'variant': variant!.trim(),
+      if (weeklyAmount != null && weeklyAmount! > 0)
+        'weeklyAmount': weeklyAmount,
     };
   }
 }

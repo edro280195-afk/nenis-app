@@ -16,7 +16,7 @@ import '../data/tandas_models.dart';
 import '../data/tandas_repository.dart';
 
 import '../../../core/auth/auth_controller.dart';
-import 'seller_tandas_screen.dart';
+import 'seller_tandas_command_screen.dart';
 
 class TandasScreen extends ConsumerWidget {
   const TandasScreen({super.key});
@@ -25,7 +25,9 @@ class TandasScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(authControllerProvider).value;
     final isSeller = session != null && session.hasMembership;
-    return isSeller ? const SellerTandasScreen() : const BuyerTandasScreen();
+    return isSeller
+        ? const SellerTandasCommandScreen()
+        : const BuyerTandasScreen();
   }
 }
 

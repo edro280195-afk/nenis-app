@@ -8,8 +8,10 @@ import '../../../core/auth/session.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/pill_button.dart';
+import '../data/seller_settings_repository.dart';
 
 class SellerAccountScreen extends ConsumerWidget {
   const SellerAccountScreen({super.key});
@@ -22,192 +24,86 @@ class SellerAccountScreen extends ConsumerWidget {
     final roleLabel = _roleLabelFor(session);
     final initial = businessName.isEmpty
         ? 'N'
-        : businessName.substring(0, 1).toUpperCase();
+        : businessName.characters.first.toUpperCase();
+
+    final accountsAsync = ref.watch(sellerPayoutAccountsProvider);
+    final mercadoPagoAsync = ref.watch(sellerPaymentSettingsProvider);
+    final accountCount = accountsAsync.maybeWhen(
+      data: (accounts) => accounts.length,
+      orElse: () => 0,
+    );
+    final mercadoPagoReady =
+        mercadoPagoAsync.asData?.value.isConfigured ?? false;
+    final paymentReadyCount =
+        (accountCount > 0 ? 1 : 0) + (mercadoPagoReady ? 1 : 0);
+    final paymentSubtitle = _paymentSubtitle(accountCount, mercadoPagoReady);
 
     return Scaffold(
       backgroundColor: AppColors.surfaceCream,
       body: NeniBackground(
         child: SafeArea(
           bottom: false,
-          child: Stack(
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(22, 4, 22, 28),
             children: [
-              ListView(
-                padding: const EdgeInsets.fromLTRB(22, 4, 22, 24),
-                children: [
-                  // Header
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Mi Negocio',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 26,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.ink,
-                          letterSpacing: -0.4,
-                        ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Configura la información pública y ajustes de tu negocio.',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.ink2,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 22),
-
-                  // Business profile details card
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: AppRadii.softRadius,
-                      boxShadow: AppShadows.small,
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 54,
-                          height: 54,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [AppColors.neni, Color(0xFFF3B341)],
-                            ),
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            initial,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                businessName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.ink,
-                                ),
-                              ),
-                              Text(
-                                sellerName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 12,
-                                  color: AppColors.ink2,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFCECD2),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  roleLabel,
-                                  style: const TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.statusPendingFg,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 22),
-
-                  // Menu Actions
-                  const Text(
-                    'HERRAMIENTAS DE VENDEDORA',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.ink3,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: AppRadii.softRadius,
-                      boxShadow: AppShadows.small,
-                    ),
-                    child: Column(
-                      children: [
-                        _buildMenuRow(
-                          Symbols.storefront,
-                          'Perfil de la tienda',
-                          'Colores, logo, dirección pública',
-                          () => context.push('/seller/settings/profile'),
-                        ),
-                        const Divider(height: 1, color: AppColors.lineSoft),
-                        _buildMenuRow(
-                          Symbols.payments,
-                          'Métodos de pago',
-                          'Mercado Pago link, Transferencias',
-                          () => context.push('/seller/settings/payments'),
-                        ),
-                        const Divider(height: 1, color: AppColors.lineSoft),
-                        _buildMenuRow(
-                          Symbols.groups,
-                          'Equipo de reparto',
-                          'Administra a tus choferes autorizados',
-                          () => context.push('/seller/settings/team'),
-                        ),
-                        const Divider(height: 1, color: AppColors.lineSoft),
-                        _buildMenuRow(
-                          Symbols.settings,
-                          'Preferencias generales',
-                          'Notificaciones de ventas, alertas',
-                          () => context.push('/seller/settings/preferences'),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 22),
-
-                  // Sign Out Button
-                  PillButton(
-                    label: 'Cerrar Sesión',
-                    icon: Symbols.logout,
-                    variant: PillButtonVariant.ghost,
-                    onPressed: () {
-                      ref.read(authControllerProvider.notifier).logout();
-                    },
-                  ),
-                ],
+              _SellerHeader(
+                title: 'Mi negocio',
+                subtitle: 'Configura tu tienda y lo que ven tus clientas.',
+              ),
+              const SizedBox(height: 22),
+              _SellerHeroCard(
+                initial: initial,
+                businessName: businessName,
+                sellerName: sellerName,
+                roleLabel: roleLabel,
+                paymentStatus: 'Cobros $paymentReadyCount/2 listos',
+              ),
+              const SizedBox(height: 22),
+              const _SectionLabel(
+                title: 'Prioridad de hoy',
+                subtitle: 'Lo que más afecta ventas y seguimiento.',
+              ),
+              const SizedBox(height: 10),
+              _SellerMenuTile(
+                icon: Symbols.payments,
+                title: 'Cuentas de cobro',
+                subtitle: paymentSubtitle,
+                badge: accountCount == 0 ? 'Agregar' : 'Revisar',
+                highlighted: true,
+                onTap: () => context.push('/seller/settings/payments'),
+              ),
+              const SizedBox(height: 12),
+              const _SectionTitle(label: 'Herramientas de vendedora'),
+              const SizedBox(height: 10),
+              _SellerMenuTile(
+                icon: Symbols.storefront,
+                title: 'Perfil de tienda',
+                subtitle: 'Nombre, colores y enlace público.',
+                onTap: () => context.push('/seller/settings/profile'),
+              ),
+              const SizedBox(height: 10),
+              _SellerMenuTile(
+                icon: Symbols.groups,
+                title: 'Equipo de reparto',
+                subtitle: 'Permisos del chofer y mensajes de ruta.',
+                onTap: () => context.push('/seller/settings/team'),
+              ),
+              const SizedBox(height: 10),
+              _SellerMenuTile(
+                icon: Symbols.tune,
+                title: 'Preferencias',
+                subtitle: 'Alertas, mensajes y operación diaria.',
+                onTap: () => context.push('/seller/settings/preferences'),
+              ),
+              const SizedBox(height: 22),
+              PillButton(
+                label: 'Cerrar sesión',
+                icon: Symbols.logout,
+                variant: PillButtonVariant.ghost,
+                onPressed: () {
+                  ref.read(authControllerProvider.notifier).logout();
+                },
               ),
             ],
           ),
@@ -244,49 +140,342 @@ class SellerAccountScreen extends ConsumerWidget {
     }
     return 'CUENTA VENDEDORA';
   }
+}
 
-  Widget _buildMenuRow(
-    IconData icon,
-    String title,
-    String subtitle,
-    VoidCallback onTap,
-  ) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            Icon(icon, size: 22, color: AppColors.neniDeep),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.ink,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 11,
-                      color: AppColors.ink2,
-                    ),
-                  ),
-                ],
+class _SellerHeader extends StatelessWidget {
+  const _SellerHeader({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: AppTextStyles.h1.copyWith(fontSize: 26)),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
               ),
+            ],
+          ),
+        ),
+        Container(
+          width: 44,
+          height: 44,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.line),
+            boxShadow: AppShadows.small,
+          ),
+          child: const Icon(
+            Symbols.notifications,
+            size: 22,
+            color: AppColors.ink,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SellerHeroCard extends StatelessWidget {
+  const _SellerHeroCard({
+    required this.initial,
+    required this.businessName,
+    required this.sellerName,
+    required this.roleLabel,
+    required this.paymentStatus,
+  });
+
+  final String initial;
+  final String businessName;
+  final String sellerName;
+  final String roleLabel;
+  final String paymentStatus;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: AppRadii.cardRadius,
+        boxShadow: AppShadows.card,
+        gradient: const LinearGradient(
+          colors: [AppColors.neniDeep, AppColors.neni, AppColors.gold],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 62,
+                height: 62,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.55),
+                    width: 2,
+                  ),
+                ),
+                child: Text(
+                  initial,
+                  style: AppTextStyles.h1.copyWith(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      businessName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.h2.copyWith(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '$sellerName · $roleLabel',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.subtitle.copyWith(
+                        color: Colors.white.withValues(alpha: 0.86),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              const _HeroPill(icon: Symbols.storefront, label: 'Tienda activa'),
+              _HeroPill(icon: Symbols.payments, label: paymentStatus),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroPill extends StatelessWidget {
+  const _HeroPill({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: Colors.white),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: AppTextStyles.chip.copyWith(
+              color: Colors.white,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
             ),
-            const Icon(Symbols.chevron_right, size: 18, color: AppColors.ink3),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: AppTextStyles.h2.copyWith(fontSize: 17)),
+        const SizedBox(height: 2),
+        Text(subtitle, style: AppTextStyles.subtitle.copyWith(fontSize: 12.5)),
+      ],
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label.toUpperCase(),
+      style: AppTextStyles.eyebrow(
+        AppColors.neniDeep,
+      ).copyWith(letterSpacing: 1.0),
+    );
+  }
+}
+
+class _SellerMenuTile extends StatelessWidget {
+  const _SellerMenuTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.badge,
+    this.highlighted = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final String? badge;
+  final bool highlighted;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Ink(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: highlighted ? const Color(0xFFF7FAFF) : AppColors.surface,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: highlighted
+                  ? AppColors.statusRouteFg.withValues(alpha: 0.2)
+                  : AppColors.line,
+            ),
+            boxShadow: AppShadows.small,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: highlighted
+                      ? AppColors.statusRouteBg
+                      : AppColors.neni.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  icon,
+                  color: highlighted
+                      ? AppColors.statusRouteFg
+                      : AppColors.neniDeep,
+                  size: 23,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.subtitle.copyWith(fontSize: 11.5),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              if (badge != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.statusDeliveredBg,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    badge!,
+                    style: AppTextStyles.chip.copyWith(
+                      color: AppColors.statusDeliveredFg,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                )
+              else
+                const Icon(
+                  Symbols.chevron_right,
+                  size: 20,
+                  color: AppColors.ink3,
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+String _paymentSubtitle(int accountCount, bool mercadoPagoReady) {
+  if (accountCount == 0 && !mercadoPagoReady) {
+    return 'Agrega una cuenta para compartir datos de pago.';
+  }
+  if (accountCount == 0) {
+    return 'Mercado Pago listo. Falta una cuenta de respaldo.';
+  }
+  if (!mercadoPagoReady) {
+    return 'Cuenta bancaria lista. Mercado Pago pendiente.';
+  }
+  return 'Cuenta bancaria y Mercado Pago listos.';
 }
