@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/auth/auth_repository.dart';
-import '../../../core/storage/credential_storage.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -206,7 +205,6 @@ class _PasswordResetScreenState extends ConsumerState<PasswordResetScreen> {
             code: _code,
             newPassword: _newPassword.text,
           );
-      await ref.read(credentialStorageProvider).clear();
       if (!mounted) return;
       _timer?.cancel();
       _newPassword.clear();

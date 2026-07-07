@@ -10,6 +10,7 @@ import '../../features/auth/screens/password_reset_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/confirm_screen.dart';
 import '../../features/auth/screens/claim_profile_screen.dart';
+import '../../features/claim/screens/claim_order_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/store/screens/store_screen.dart';
 import '../../features/live/screens/live_screen.dart';
@@ -83,10 +84,11 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final session = auth.value;
       if (session == null) {
-        // Deep link sin sesión: orillar a crear cuenta para desbloquear el
-        // pedido, dejando pasar las pantallas de acceso.
+        // Deep link sin sesión: al onboarding contextual "reclama tu pedido"
+        // (passwordless). Deja pasar esa pantalla y el acceso manual.
         if (hasPending) {
-          return _authRoutes.contains(loc) ? null : '/welcome';
+          if (loc == '/claim-order' || _authRoutes.contains(loc)) return null;
+          return '/claim-order';
         }
         if (loc == '/splash') return '/login';
         if (loc == '/confirm' &&
@@ -139,6 +141,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/claim',
         builder: (context, state) => const ClaimProfileScreen(),
+      ),
+      GoRoute(
+        path: '/claim-order',
+        builder: (context, state) => const ClaimOrderScreen(),
       ),
       ShellRoute(
         builder: (context, state, child) =>

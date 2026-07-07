@@ -5,8 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// sobreviva el ida-y-vuelta del OTP de WhatsApp (durante el cual el SO puede
 /// matar el proceso) e incluso el reinicio de la app tras instalar.
 ///
-/// Vive en almacenamiento seguro del dispositivo, igual que
-/// [CredentialStorage] y [SessionStorage].
+/// Vive en almacenamiento seguro del dispositivo, igual que la sesión.
 class PendingClaimStore {
   PendingClaimStore(this._storage);
 

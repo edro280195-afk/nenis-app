@@ -35,6 +35,7 @@ class Session {
     required this.expiresAt,
     required this.memberships,
     this.activeBusinessId,
+    this.refreshToken,
   });
 
   final String token;
@@ -47,6 +48,10 @@ class Session {
   /// Negocio activo (para el header `X-Business-Id`). Una compradora sin
   /// memberships lo deja en null; con una sola, se autoselecciona.
   final int? activeBusinessId;
+
+  /// Refresh token opaco (90 días) para renovar el JWT sin re-autenticar.
+  /// Reemplaza al guardado de contraseña en el dispositivo.
+  final String? refreshToken;
 
   bool get isExpired => DateTime.now().isAfter(expiresAt);
   bool get hasMembership => memberships.isNotEmpty;
@@ -66,6 +71,7 @@ class Session {
       memberships: memberships,
       activeBusinessId:
           memberships.length == 1 ? memberships.first.businessId : null,
+      refreshToken: j['refreshToken'] as String?,
     );
   }
 
@@ -82,6 +88,7 @@ class Session {
           DateTime.tryParse((j['expiresAt'] ?? '') as String) ?? DateTime.now(),
       memberships: memberships,
       activeBusinessId: (j['activeBusinessId'] as num?)?.toInt(),
+      refreshToken: j['refreshToken'] as String?,
     );
   }
 
@@ -93,9 +100,10 @@ class Session {
         'expiresAt': expiresAt.toIso8601String(),
         'memberships': memberships.map((m) => m.toJson()).toList(),
         'activeBusinessId': activeBusinessId,
+        'refreshToken': refreshToken,
       };
 
-  Session copyWith({int? activeBusinessId}) => Session(
+  Session copyWith({int? activeBusinessId, String? refreshToken}) => Session(
         token: token,
         accountId: accountId,
         displayName: displayName,
@@ -103,6 +111,7 @@ class Session {
         expiresAt: expiresAt,
         memberships: memberships,
         activeBusinessId: activeBusinessId ?? this.activeBusinessId,
+        refreshToken: refreshToken ?? this.refreshToken,
       );
 
   String encode() => jsonEncode(toJson());

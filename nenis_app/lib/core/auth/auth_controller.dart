@@ -1,18 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../storage/credential_storage.dart';
 import '../storage/session_storage.dart';
 import 'auth_repository.dart';
 import 'session.dart';
 
-/// Estado de autenticación de la app. `build()` carga la sesión persistida al
-/// arrancar y, si el JWT expiró, intenta un re-login silencioso con las
-/// credenciales guardadas para no pedir acceso en cada apertura.
+/// Estado de autenticación de la app. `build()` carga la sesión persistida y,
+/// si el JWT expiró, la renueva en silencio con el refresh token (ya no se
+/// guarda la contraseña en el dispositivo).
 class AuthController extends AsyncNotifier<Session?> {
-  // Datos del flujo de verificación en curso (registro o confirmación pendiente).
+  // Datos del flujo de verificación en curso.
   String? _pendingPhone;
-  String? _pendingPassword;
   bool _pendingDevMode = false;
+  // Nombre pendiente para el alta passwordless pre-llenada desde el pedido.
+  String? _pendingFirstName;
+  String? _pendingLastName;
 
   // Datos de Facebook en espera de completar perfil o verificar teléfono.
   FacebookAccessCredential? _pendingFacebookCredential;
@@ -29,31 +32,89 @@ class AuthController extends AsyncNotifier<Session?> {
   Future<Session?> build() async {
     final storage = ref.read(sessionStorageProvider);
     final session = await storage.read();
+    if (session == null) return null;
+    if (!session.isExpired) return session;
+    // JWT expirado: renovar con el refresh token (o limpiar si ya no sirve).
+    return _refreshOrClear(session);
+  }
 
-    if (session != null && !session.isExpired) {
-      return session;
-    }
-    if (session != null && session.isExpired) {
+  Future<Session?> _refreshOrClear(Session stale) async {
+    final storage = ref.read(sessionStorageProvider);
+    final rt = stale.refreshToken;
+    if (rt == null || rt.isEmpty) {
       await storage.clear();
+      return null;
     }
-
-    // Sin sesión válida: re-login silencioso con las credenciales guardadas.
-    final creds = await ref.read(credentialStorageProvider).read();
-    if (creds == null) return null;
     try {
-      final refreshed = await ref
-          .read(authRepositoryProvider)
-          .loginPhone(creds.phone, creds.password);
+      final refreshed = await ref.read(authRepositoryProvider).refresh(rt);
       await storage.write(refreshed);
       return refreshed;
     } catch (_) {
-      // Credenciales inválidas o teléfono sin confirmar: pedir login manual.
-      await ref.read(credentialStorageProvider).clear();
+      await storage.clear();
       return null;
     }
   }
 
-  /// Paso 1 del registro: crea la cuenta y dispara el código por WhatsApp.
+  // ── Renovación reactiva (la usa el interceptor Dio ante un 401) ──
+
+  Future<bool>? _refreshing;
+
+  /// Renueva la sesión de forma idempotente ante 401 concurrentes. Devuelve
+  /// `true` si quedó una sesión válida.
+  Future<bool> tryRefresh() =>
+      _refreshing ??= _doRefresh().whenComplete(() => _refreshing = null);
+
+  Future<bool> _doRefresh() async {
+    final rt = state.asData?.value?.refreshToken;
+    if (rt == null || rt.isEmpty) return false;
+    try {
+      final refreshed = await ref.read(authRepositoryProvider).refresh(rt);
+      await ref.read(sessionStorageProvider).write(refreshed);
+      state = AsyncData<Session?>(refreshed);
+      return true;
+    } catch (_) {
+      await ref.read(sessionStorageProvider).clear();
+      state = const AsyncData<Session?>(null);
+      return false;
+    }
+  }
+
+  // ── Passwordless (clienta): teléfono + código, sin contraseña ──
+
+  /// Paso 1: pide el código por WhatsApp y recuerda el teléfono + nombre
+  /// (pre-llenado del pedido) para el paso 2.
+  Future<void> requestPasswordlessOtp(
+    String phone, {
+    String? firstName,
+    String? lastName,
+  }) async {
+    final result =
+        await ref.read(authRepositoryProvider).requestPhoneOtp(phone);
+    _pendingPhone = phone;
+    _pendingFirstName = firstName;
+    _pendingLastName = lastName;
+    _pendingDevMode = result.devMode;
+  }
+
+  /// Paso 2: valida el código, crea/loguea la cuenta (sin contraseña) y guarda
+  /// la sesión.
+  Future<void> verifyPasswordlessOtp(String code) async {
+    final phone = _pendingPhone;
+    if (phone == null) {
+      throw AuthException('Primero pide un código.');
+    }
+    final session = await ref.read(authRepositoryProvider).verifyPhoneOtp(
+          phone,
+          code,
+          firstName: _pendingFirstName,
+          lastName: _pendingLastName,
+        );
+    await _apply(session);
+  }
+
+  // ── Registro/login por contraseña (se conserva; ya no guarda la contraseña) ──
+
+  /// Paso 1 del registro con contraseña: crea la cuenta y dispara el código.
   Future<void> registerPhone({
     required String firstName,
     required String lastName,
@@ -61,9 +122,7 @@ class AuthController extends AsyncNotifier<Session?> {
     required String email,
     required String password,
   }) async {
-    final result = await ref
-        .read(authRepositoryProvider)
-        .registerPhone(
+    final result = await ref.read(authRepositoryProvider).registerPhone(
           firstName: firstName,
           lastName: lastName,
           phone: phone,
@@ -71,40 +130,37 @@ class AuthController extends AsyncNotifier<Session?> {
           password: password,
         );
     _pendingPhone = phone;
-    _pendingPassword = password;
+    _pendingFirstName = firstName;
+    _pendingLastName = lastName;
     _pendingDevMode = result.devMode;
   }
 
   /// Paso 2 del registro (o confirmación de un teléfono pendiente): valida el
-  /// código de WhatsApp, guarda la sesión y las credenciales.
+  /// código de WhatsApp y guarda la sesión.
   Future<void> confirmPhone(String code) async {
     final phone = _pendingPhone;
     if (phone == null) {
       throw AuthException('Primero regístrate o inicia sesión.');
     }
-    final session = await ref
-        .read(authRepositoryProvider)
-        .confirmPhone(
+    final session = await ref.read(authRepositoryProvider).confirmPhone(
           phone,
           code,
           accountType: _pendingFacebookAccountType,
           businessName: _pendingFacebookBusinessName,
           city: _pendingFacebookCity,
         );
-    await _persist(session, phone: phone, password: _pendingPassword);
+    await _apply(session);
   }
 
   /// Acceso con teléfono + contraseña. Si el teléfono no está confirmado, lanza
   /// [PhoneNotVerifiedException] tras dejar el pendiente listo para /confirm.
   Future<void> loginPhone(String phone, String password) async {
     try {
-      final session = await ref
-          .read(authRepositoryProvider)
-          .loginPhone(phone, password);
-      await _persist(session, phone: phone, password: password);
+      final session =
+          await ref.read(authRepositoryProvider).loginPhone(phone, password);
+      await _apply(session);
     } on PhoneNotVerifiedException {
       _pendingPhone = phone;
-      _pendingPassword = password;
       _pendingDevMode = false;
       rethrow;
     }
@@ -118,15 +174,11 @@ class AuthController extends AsyncNotifier<Session?> {
     _pendingDevMode = result.devMode;
   }
 
-  /// Acceso de vendedora con correo y contraseña. No guarda credenciales para
-  /// re-login automático.
+  /// Acceso de vendedora con correo y contraseña.
   Future<void> loginEmail(String email, String password) async {
-    final session = await ref
-        .read(authRepositoryProvider)
-        .loginEmail(email, password);
-    await ref.read(sessionStorageProvider).write(session);
-    _clearPending();
-    state = AsyncData<Session?>(session);
+    final session =
+        await ref.read(authRepositoryProvider).loginEmail(email, password);
+    await _apply(session);
   }
 
   /// Acceso con Facebook para clientas o vendedoras. Una cuenta vinculada y
@@ -140,7 +192,7 @@ class AuthController extends AsyncNotifier<Session?> {
       credential,
       accountType: accountType,
     );
-    await _persistSocial(session);
+    await _apply(session);
   }
 
   /// Completa una cuenta nueva o vincula una existente con Facebook. Si falta
@@ -160,19 +212,22 @@ class AuthController extends AsyncNotifier<Session?> {
       final session = await ref
           .read(authRepositoryProvider)
           .completeFacebookProfile(credential, profile);
-      await _persistSocial(session);
+      await _apply(session);
     } on FacebookPhoneVerificationRequiredException catch (e) {
       _pendingPhone = e.phone;
-      _pendingPassword = null;
       _pendingDevMode = e.devMode;
       rethrow;
     }
   }
 
   Future<void> logout() async {
-    await ref.read(authRepositoryProvider).facebookLogout();
+    final repo = ref.read(authRepositoryProvider);
+    final rt = state.asData?.value?.refreshToken;
+    if (rt != null && rt.isNotEmpty) {
+      await repo.revokeRefreshToken(rt);
+    }
+    await repo.facebookLogout();
     await ref.read(sessionStorageProvider).clear();
-    await ref.read(credentialStorageProvider).clear();
     _clearPending();
     state = const AsyncData<Session?>(null);
   }
@@ -185,24 +240,8 @@ class AuthController extends AsyncNotifier<Session?> {
     ref.read(sessionStorageProvider).write(updated);
   }
 
-  Future<void> _persist(
-    Session session, {
-    required String phone,
-    String? password,
-  }) async {
-    await ref.read(sessionStorageProvider).write(session);
-    if (password != null && password.isNotEmpty) {
-      await ref
-          .read(credentialStorageProvider)
-          .write(SavedCredentials(phone: phone, password: password));
-    }
-    _clearPending();
-    state = AsyncData<Session?>(session);
-  }
-
-  /// Guarda la sesión de un login social (Facebook). No persiste credenciales
-  /// de teléfono/contraseña porque el acceso no las usa.
-  Future<void> _persistSocial(Session session) async {
+  /// Guarda la sesión (con su refresh token) y limpia el estado pendiente.
+  Future<void> _apply(Session session) async {
     await ref.read(sessionStorageProvider).write(session);
     _clearPending();
     state = AsyncData<Session?>(session);
@@ -210,7 +249,8 @@ class AuthController extends AsyncNotifier<Session?> {
 
   void _clearPending() {
     _pendingPhone = null;
-    _pendingPassword = null;
+    _pendingFirstName = null;
+    _pendingLastName = null;
     _pendingDevMode = false;
     _pendingFacebookCredential = null;
     _pendingFacebookAccountType = null;

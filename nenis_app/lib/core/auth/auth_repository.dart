@@ -283,6 +283,69 @@ class AuthRepository {
     }
   }
 
+  /// Passwordless paso 1: pide el código de WhatsApp para entrar o registrarse
+  /// por teléfono, sin contraseña.
+  Future<OtpRequestResult> requestPhoneOtp(String phone) async {
+    try {
+      final res = await _dio.post(
+        '/api/auth/phone/request-otp',
+        data: {'phone': phone},
+      );
+      return OtpRequestResult.fromJson(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw AuthException(
+        _message(e, 'No pudimos enviar el código. Intenta de nuevo.'),
+      );
+    }
+  }
+
+  /// Passwordless paso 2: valida el código y devuelve la sesión (con refresh
+  /// token). Si el teléfono no existía, crea la cuenta usando el nombre si
+  /// viene. No usa contraseña.
+  Future<Session> verifyPhoneOtp(
+    String phone,
+    String code, {
+    String? firstName,
+    String? lastName,
+  }) async {
+    try {
+      final res = await _dio.post(
+        '/api/auth/phone/verify',
+        data: {
+          'phone': phone,
+          'code': code,
+          if (firstName?.trim().isNotEmpty == true)
+            'firstName': firstName!.trim(),
+          if (lastName?.trim().isNotEmpty == true) 'lastName': lastName!.trim(),
+        },
+      );
+      return Session.fromLoginJson(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw AuthException(
+        _message(e, 'Código incorrecto. Revísalo e intenta de nuevo.'),
+      );
+    }
+  }
+
+  /// Renueva la sesión con el refresh token (lo rota). Lanza si es
+  /// inválido/expirado para que la app pida entrar de nuevo.
+  Future<Session> refresh(String refreshToken) async {
+    final res = await _dio.post(
+      '/api/auth/refresh',
+      data: {'refreshToken': refreshToken},
+    );
+    return Session.fromLoginJson(res.data as Map<String, dynamic>);
+  }
+
+  /// Revoca el refresh token en el backend (best-effort al cerrar sesión).
+  Future<void> revokeRefreshToken(String refreshToken) async {
+    try {
+      await _dio.post('/api/auth/logout', data: {'refreshToken': refreshToken});
+    } catch (_) {
+      // Silencioso: el cierre de sesión local no debe fallar por esto.
+    }
+  }
+
   /// Reenvía el código de verificación por WhatsApp.
   Future<OtpRequestResult> resendCode(String phone) async {
     try {
