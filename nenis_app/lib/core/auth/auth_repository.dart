@@ -494,6 +494,7 @@ class AuthRepository {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
+      case DioExceptionType.transformTimeout:
         return 'La conexión tardó demasiado. Inténtalo nuevamente.';
       case DioExceptionType.connectionError:
         return 'No pudimos conectar con el servidor. Revisa tu internet.';
