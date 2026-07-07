@@ -114,6 +114,7 @@ List<NavItem> buildDefaultNavItems() => const [
 List<NavItem> buildSellerNavItems() => const [
   NavItem(icon: Symbols.home, label: 'Inicio', route: '/home'),
   NavItem(icon: Symbols.receipt_long, label: 'Pedidos', route: '/orders'),
+  NavItem(icon: Symbols.group, label: 'Clientas', route: '/clients'),
   NavItem(icon: Symbols.groups, label: 'Tandas', route: '/tandas'),
   NavItem(icon: Symbols.directions_car, label: 'Reparto', route: '/routes'),
   NavItem(icon: Symbols.person, label: 'Cuenta', route: '/account'),

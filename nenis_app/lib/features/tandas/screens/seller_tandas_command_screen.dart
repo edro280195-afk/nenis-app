@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -302,6 +304,45 @@ class _SellerTandasCommandScreenState
     );
   }
 
+  Future<void> _selectTanda(String id, {required bool openDetail}) async {
+    final controller = ref.read(sellerTandasControllerProvider.notifier);
+    unawaited(controller.selectTanda(id));
+    if (!mounted || !openDetail) return;
+    unawaited(HapticFeedback.selectionClick());
+    await _openSelectedTandaSheet();
+  }
+
+  Future<void> _openSelectedTandaSheet() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Consumer(
+        builder: (context, ref, _) {
+          final async = ref.watch(sellerTandasControllerProvider);
+          return async.maybeWhen(
+            data: (workspace) => _MobileDetailSheet(
+              child: _DetailPanel(
+                workspace: workspace,
+                onCopyLink: _copyPublicLink,
+                onEditTanda: _editTanda,
+                onAddParticipant: (tanda) => _addParticipant(workspace, tanda),
+                onReorder: _reorderParticipants,
+                onPay: _payParticipant,
+                onUndoPay: _deletePayment,
+                onDeliver: _confirmDelivery,
+                onProcessPenalties: _processPenalties,
+                onEditParticipant: _editParticipant,
+              ),
+            ),
+            orElse: () => const _MobileDetailSheet(child: _LoadingPanel()),
+          );
+        },
+      ),
+    );
+  }
+
   List<SellerTanda> _visibleTandas(SellerTandasWorkspace workspace) {
     final query = _searchCtrl.text.trim().toLowerCase();
     final filtered = workspace.filtered(_filter);
@@ -372,11 +413,8 @@ class _SellerTandasCommandScreenState
                               child: _TandaRail(
                                 tandas: visibleTandas,
                                 selectedId: workspace.selectedId,
-                                onSelect: (id) => ref
-                                    .read(
-                                      sellerTandasControllerProvider.notifier,
-                                    )
-                                    .selectTanda(id),
+                                onSelect: (id) =>
+                                    _selectTanda(id, openDetail: false),
                               ),
                             ),
                             const SizedBox(width: 16),
@@ -401,23 +439,7 @@ class _SellerTandasCommandScreenState
                         _TandaRail(
                           tandas: visibleTandas,
                           selectedId: workspace.selectedId,
-                          onSelect: (id) => ref
-                              .read(sellerTandasControllerProvider.notifier)
-                              .selectTanda(id),
-                        ),
-                        const SizedBox(height: 16),
-                        _DetailPanel(
-                          workspace: workspace,
-                          onCopyLink: _copyPublicLink,
-                          onEditTanda: _editTanda,
-                          onAddParticipant: (tanda) =>
-                              _addParticipant(workspace, tanda),
-                          onReorder: _reorderParticipants,
-                          onPay: _payParticipant,
-                          onUndoPay: _deletePayment,
-                          onDeliver: _confirmDelivery,
-                          onProcessPenalties: _processPenalties,
-                          onEditParticipant: _editParticipant,
+                          onSelect: (id) => _selectTanda(id, openDetail: true),
                         ),
                       ],
                     ],
@@ -1009,7 +1031,7 @@ class _DetailPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tanda = workspace.selectedTanda;
-    if (workspace.detailLoading) {
+    if (tanda == null && workspace.detailLoading) {
       return const _LoadingPanel();
     }
     if (tanda == null) {
@@ -1020,60 +1042,140 @@ class _DetailPanel extends StatelessWidget {
       );
     }
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.line),
-        boxShadow: AppShadows.small,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _DetailHeader(
-            tanda: tanda,
-            onCopyLink: () => onCopyLink(tanda),
-            onEdit: () => onEditTanda(tanda),
-            onAddParticipant: () => onAddParticipant(tanda),
-            onReorder: () => onReorder(tanda),
-          ),
-          const SizedBox(height: 14),
-          _TandaScoreboard(tanda: tanda),
-          const SizedBox(height: 14),
-          _WeekActionPanel(
-            tanda: tanda,
-            onPay: onPay,
-            onUndoPay: onUndoPay,
-            onDeliver: onDeliver,
-            onProcessPenalties: onProcessPenalties,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Participantes y pagos',
-            style: AppTextStyles.h2.copyWith(fontSize: 16),
-          ),
-          const SizedBox(height: 10),
-          if (tanda.sortedParticipants.isEmpty)
-            const _EmptyPanel(
-              icon: Symbols.person_add,
-              title: 'Sin participantes',
-              body: 'Inscribir clientas habilita cobros, turnos y entregas.',
-            )
-          else
-            for (final participant in tanda.sortedParticipants) ...[
-              _ParticipantLedgerRow(
-                tanda: tanda,
-                participant: participant,
-                onPay: () => onPay(tanda, participant),
-                onUndoPay: () => onUndoPay(tanda, participant),
-                onDeliver: () => onDeliver(tanda, participant),
-                onEdit: () => onEditParticipant(tanda, participant),
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 180),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      child: Container(
+        key: ValueKey(tanda.id),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.line),
+          boxShadow: AppShadows.small,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (workspace.detailLoading) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: const LinearProgressIndicator(
+                  minHeight: 3,
+                  color: AppColors.neniDeep,
+                  backgroundColor: AppColors.lineSoft,
+                ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
             ],
-        ],
+            _DetailHeader(
+              tanda: tanda,
+              onCopyLink: () => onCopyLink(tanda),
+              onEdit: () => onEditTanda(tanda),
+              onAddParticipant: () => onAddParticipant(tanda),
+              onReorder: () => onReorder(tanda),
+            ),
+            const SizedBox(height: 14),
+            _TandaScoreboard(tanda: tanda),
+            const SizedBox(height: 14),
+            _WeekActionPanel(
+              tanda: tanda,
+              onPay: onPay,
+              onUndoPay: onUndoPay,
+              onDeliver: onDeliver,
+              onProcessPenalties: onProcessPenalties,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Participantes y pagos',
+              style: AppTextStyles.h2.copyWith(fontSize: 16),
+            ),
+            const SizedBox(height: 10),
+            if (tanda.sortedParticipants.isEmpty)
+              const _EmptyPanel(
+                icon: Symbols.person_add,
+                title: 'Sin participantes',
+                body: 'Inscribir clientas habilita cobros, turnos y entregas.',
+              )
+            else
+              for (final participant in tanda.sortedParticipants) ...[
+                _ParticipantLedgerRow(
+                  tanda: tanda,
+                  participant: participant,
+                  onPay: () => onPay(tanda, participant),
+                  onUndoPay: () => onUndoPay(tanda, participant),
+                  onDeliver: () => onDeliver(tanda, participant),
+                  onEdit: () => onEditParticipant(tanda, participant),
+                ),
+                const SizedBox(height: 10),
+              ],
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _MobileDetailSheet extends StatelessWidget {
+  const _MobileDetailSheet({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.92,
+      minChildSize: 0.45,
+      maxChildSize: 0.96,
+      snap: true,
+      snapSizes: const [0.45, 0.92],
+      builder: (context, scrollController) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: AppColors.surfaceCream,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: AppColors.ink3.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Tooltip(
+                        message: 'Cerrar',
+                        child: IconButton.filledTonal(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Symbols.close, size: 20),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 24),
+                  child: child,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

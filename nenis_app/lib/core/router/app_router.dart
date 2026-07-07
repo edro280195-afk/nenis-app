@@ -30,6 +30,7 @@ import '../../features/notifications/screens/notifications_screen.dart';
 import '../../features/payments/screens/payments_screen.dart';
 import '../../features/reserve/screens/reserve_screen.dart';
 import '../../features/routes/screens/seller_routes_screen.dart';
+import '../../features/clients/screens/seller_clients_screen.dart';
 import '../../shared/screens/splash_screen.dart';
 import '../../shared/widgets/app_shell.dart';
 
@@ -102,8 +103,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         return loc == target ? null : target;
       }
 
-      // Restringir ruta de reparto solo a vendedoras (miembros de negocio)
-      if (loc == '/routes' && !session.hasMembership) return '/home';
+      // Restringir rutas de gestión solo a vendedoras (miembros de negocio).
+      if ((loc == '/routes' || loc == '/clients') && !session.hasMembership) {
+        return '/home';
+      }
 
       // Recién confirmada por WhatsApp y sin negocio propio -> a reclamar perfil.
       if (loc == '/confirm' && !session.hasMembership) return '/claim';
@@ -148,6 +151,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/routes',
             builder: (context, state) => const SellerRoutesScreen(),
+          ),
+          GoRoute(
+            path: '/clients',
+            builder: (context, state) => const SellerClientsScreen(),
           ),
           GoRoute(
             path: '/store/:businessId',
