@@ -75,7 +75,7 @@ class BuyerAccountScreen extends ConsumerWidget {
                     _AccountMenuCard(
                       icon: Symbols.location_on,
                       title: 'Mis direcciones',
-                      subtitle: 'Edita dÃ³nde quieres recibir tus pedidos',
+                      subtitle: 'Edita dónde quieres recibir tus pedidos',
                       onTap: () => context.push('/addresses'),
                     ),
                     _AccountMenuCard(
@@ -336,7 +336,7 @@ class _StoresEmpty extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'AÃºn no tienes tiendas',
+                  'Aún no tienes tiendas',
                   style: AppTextStyles.body.copyWith(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -344,7 +344,7 @@ class _StoresEmpty extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Cuando abras un pedido desde el link de una tienda o ella registre tu nÃºmero, aparecerÃ¡ aquÃ­.',
+                  'Cuando abras un pedido desde el link de una tienda o ella registre tu número, aparecerá aquí.',
                   style: AppTextStyles.subtitle.copyWith(fontSize: 12),
                 ),
               ],
@@ -412,7 +412,7 @@ class _StoresError extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Revisa tu conexiÃ³n e intenta de nuevo.',
+            'Revisa tu conexión e intenta de nuevo.',
             style: AppTextStyles.subtitle.copyWith(fontSize: 12),
           ),
           const SizedBox(height: 12),
@@ -506,9 +506,9 @@ class _LogoutButton extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text('Â¿Cerrar sesiÃ³n?'),
+        title: const Text('¿Cerrar sesión?'),
         content: const Text(
-          'TendrÃ¡s que volver a verificar tu nÃºmero para entrar.',
+          'Tendrás que volver a verificar tu número para entrar.',
         ),
         actions: [
           TextButton(
@@ -518,7 +518,7 @@ class _LogoutButton extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(
-              'Cerrar sesiÃ³n',
+              'Cerrar sesión',
               style: TextStyle(
                 color: AppColors.neniDeep,
                 fontWeight: FontWeight.w600,
@@ -537,7 +537,7 @@ class _LogoutButton extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       child: PillButton(
-        label: 'Cerrar sesiÃ³n',
+        label: 'Cerrar sesión',
         icon: Symbols.logout,
         variant: PillButtonVariant.ghost,
         onPressed: () => _handleTap(context),

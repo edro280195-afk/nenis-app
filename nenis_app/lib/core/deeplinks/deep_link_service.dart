@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:android_play_install_referrer/android_play_install_referrer.dart';
+import 'package:play_install_referrer/play_install_referrer.dart';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -110,7 +110,7 @@ class DeepLinkService {
     final store = _ref.read(pendingClaimStoreProvider);
     try {
       if (await store.isReferrerConsumed()) return;
-      final details = await AndroidPlayInstallReferrer.installReferrer;
+      final details = await PlayInstallReferrer.installReferrer;
       final raw = details.installReferrer;
       if (raw == null || raw.isEmpty) {
         await store.markReferrerConsumed();

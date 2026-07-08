@@ -62,10 +62,11 @@ if (isReleaseTask && !hasReleaseSigning) {
 
 android {
     namespace = "com.nenisapp.nenis_app"
-    // compileSdk 34: requerido por deps de plugins (android_play_install_referrer
-    // trae androidx.fragment:1.7.1, window, activity, lifecycle que exigen 34).
+    // compileSdk 36: requerido por plugins recientes (app_links,
+    // flutter_facebook_auth, flutter_secure_storage, google_maps_flutter_android,
+    // shared_preferences_android, sqflite_android, url_launcher_android).
     // No sube targetSdk (comportamiento runtime) ni minSdk (dispositivos).
-    compileSdk = 34
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

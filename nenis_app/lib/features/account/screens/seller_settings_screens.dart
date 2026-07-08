@@ -18,13 +18,13 @@ import '../data/seller_settings_repository.dart';
 const _configSections = [
   _ConfigSectionInfo(
     title: 'Perfil de tienda',
-    subtitle: 'Nombre, colores y vista pÃºblica.',
+    subtitle: 'Nombre, colores y vista pública.',
     route: '/seller/settings/profile',
     icon: Symbols.storefront,
     color: AppColors.neniDeep,
   ),
   _ConfigSectionInfo(
-    title: 'MÃ©todos de pago',
+    title: 'Métodos de pago',
     subtitle: 'Mercado Pago y cobros para tus clientas.',
     route: '/seller/settings/payments',
     icon: Symbols.payments,
@@ -32,14 +32,14 @@ const _configSections = [
   ),
   _ConfigSectionInfo(
     title: 'Equipo de reparto',
-    subtitle: 'CÃ³mo trabajan tus choferes con las rutas.',
+    subtitle: 'Cómo trabajan tus choferes con las rutas.',
     route: '/seller/settings/team',
     icon: Symbols.groups,
     color: AppColors.statusDeliveredFg,
   ),
   _ConfigSectionInfo(
     title: 'Preferencias',
-    subtitle: 'Alertas, mensajes y operaciÃ³n diaria.',
+    subtitle: 'Alertas, mensajes y operación diaria.',
     route: '/seller/settings/preferences',
     icon: Symbols.tune,
     color: AppColors.lavender,
@@ -53,7 +53,7 @@ class SellerSettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(sellerBusinessSettingsProvider);
     return _SettingsScaffold(
-      title: 'ConfiguraciÃ³n',
+      title: 'Configuración',
       subtitle: 'Ajusta tu tienda sin perder el ritmo de venta.',
       child: async.when(
         loading: () => const _SettingsLoading(),
@@ -190,7 +190,7 @@ class _SellerStoreProfileSettingsScreenState
                 children: [
                   AppTextField(
                     controller: _nameCtrl,
-                    label: 'Nombre pÃºblico',
+                    label: 'Nombre público',
                     hint: 'Regi Bazar',
                     prefixIcon: Symbols.storefront,
                     textInputAction: TextInputAction.next,
@@ -199,7 +199,7 @@ class _SellerStoreProfileSettingsScreenState
                   const SizedBox(height: 14),
                   _ReadOnlyInfoRow(
                     icon: Symbols.link,
-                    title: 'Ruta pÃºblica',
+                    title: 'Ruta pública',
                     value: '/${settings.slug}',
                   ),
                   if (settings.city?.trim().isNotEmpty == true) ...[
@@ -276,7 +276,7 @@ class _SellerStoreProfileSettingsScreenState
                 const SizedBox(height: 12),
                 const _InlineWarning(
                   text:
-                      'Revisa que el nombre no estÃ© vacÃ­o y que los colores usen formato #RRGGBB.',
+                      'Revisa que el nombre no esté vacío y que los colores usen formato #RRGGBB.',
                 ),
               ],
             ],
@@ -299,7 +299,7 @@ class _SellerTeamSettingsScreenState extends State<SellerTeamSettingsScreen> {
   Future<void> _copyInviteMessage() async {
     const text =
         'Hola, te voy a compartir tu enlace de ruta desde Neni. '
-        'Ãbrelo en tu celular, permite ubicaciÃ³n y mantÃ©n la app abierta '
+        'Ábrelo en tu celular, permite ubicación y mantén la app abierta '
         'mientras repartes para que las clientas vean el avance.';
     await Clipboard.setData(const ClipboardData(text: text));
     if (!mounted) return;
@@ -311,7 +311,7 @@ class _SellerTeamSettingsScreenState extends State<SellerTeamSettingsScreen> {
   Widget build(BuildContext context) {
     return _SettingsScaffold(
       title: 'Equipo de reparto',
-      subtitle: 'Prepara a tus choferes para rutas mÃ¡s claras.',
+      subtitle: 'Prepara a tus choferes para rutas más claras.',
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
         children: [
@@ -324,11 +324,11 @@ class _SellerTeamSettingsScreenState extends State<SellerTeamSettingsScreen> {
           const SizedBox(height: 14),
           _SettingsCard(
             title: 'Permisos del chofer',
-            subtitle: 'Estos ajustes guÃ­an cÃ³mo operas cada ruta.',
+            subtitle: 'Estos ajustes guían cómo operas cada ruta.',
             children: [
               _SwitchRow(
                 title: 'Puede registrar cobros',
-                subtitle: 'Ãštil cuando cobra contra entrega.',
+                subtitle: 'Útil cuando cobra contra entrega.',
                 value: true,
                 onChanged: null,
               ),
@@ -351,10 +351,10 @@ class _SellerTeamSettingsScreenState extends State<SellerTeamSettingsScreen> {
           const SizedBox(height: 14),
           _SettingsCard(
             title: 'Mensaje para compartir',
-            subtitle: 'Ãšsalo cuando le mandes su enlace de ruta.',
+            subtitle: 'Úsalo cuando le mandes su enlace de ruta.',
             children: [
               Text(
-                'â€œAbre tu ruta, permite ubicaciÃ³n y marca cada entrega al terminar.â€',
+                '“Abre tu ruta, permite ubicación y marca cada entrega al terminar.”',
                 style: AppTextStyles.body.copyWith(height: 1.45),
               ),
               const SizedBox(height: 14),
@@ -428,7 +428,7 @@ class _SellerPreferencesSettingsScreenState
 
     return _SettingsScaffold(
       title: 'Preferencias',
-      subtitle: 'PequeÃ±os ajustes para vender mÃ¡s fluido.',
+      subtitle: 'Pequeños ajustes para vender más fluido.',
       bottomBar: _SaveBar(
         saving: _saving,
         enabled: true,
@@ -461,7 +461,7 @@ class _SellerPreferencesSettingsScreenState
           ),
           const SizedBox(height: 14),
           _SettingsCard(
-            title: 'OperaciÃ³n',
+            title: 'Operación',
             subtitle: 'Define el comportamiento base al capturar pedidos.',
             children: [
               _SwitchRow(
@@ -604,7 +604,7 @@ class _BusinessSummaryCard extends StatelessWidget {
                     ),
                     Text(
                       settings.city?.trim().isNotEmpty == true
-                          ? '${settings.city} Â· /${settings.slug}'
+                          ? '${settings.city} · /${settings.slug}'
                           : '/${settings.slug}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -741,7 +741,7 @@ class _StorePreviewCard extends StatelessWidget {
               const Spacer(),
               _MiniPill(
                 icon: Symbols.visibility,
-                label: 'Vista pÃºblica',
+                label: 'Vista pública',
                 color: primary,
               ),
             ],
@@ -756,7 +756,7 @@ class _StorePreviewCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             city?.trim().isNotEmpty == true
-                ? '$city Â· nenis.app/$slug'
+                ? '$city · nenis.app/$slug'
                 : 'nenis.app/$slug',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -817,7 +817,7 @@ class _RouteFlowCard extends StatelessWidget {
           const _StepLine(
             number: '3',
             title: 'Monitorea entregas',
-            subtitle: 'Los estados y ubicaciÃ³n se actualizan en vivo.',
+            subtitle: 'Los estados y ubicación se actualizan en vivo.',
             isLast: true,
           ),
         ],
@@ -1058,7 +1058,7 @@ class _DeliveryWindowSelector extends StatelessWidget {
   static const _options = [
     'Domingos por la tarde',
     'Entre semana',
-    'Mismo dÃ­a',
+    'Mismo día',
   ];
 
   @override
@@ -1373,7 +1373,7 @@ class _SettingsError extends StatelessWidget {
         const Icon(Symbols.cloud_off, color: AppColors.ink3, size: 46),
         const SizedBox(height: 12),
         Text(
-          'No pudimos abrir configuraciÃ³n',
+          'No pudimos abrir configuración',
           textAlign: TextAlign.center,
           style: AppTextStyles.h2,
         ),
