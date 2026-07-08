@@ -3,7 +3,7 @@ import 'package:flutter/widgets.dart';
 /// Tabs de la pantalla de tienda. El contenido de "Tandas" y "Sorteos"
 /// se hidrata reusando los providers existentes (`tandasControllerProvider`
 /// y `rafflesControllerProvider`) y filtrando client-side por `businessId`.
-enum StoreTab { products, lives, tandas, sorteos }
+enum StoreTab { products, lives, novedades, tandas, sorteos }
 
 extension StoreTabX on StoreTab {
   String get label {
@@ -12,6 +12,8 @@ extension StoreTabX on StoreTab {
         return 'Productos';
       case StoreTab.lives:
         return 'En vivo';
+      case StoreTab.novedades:
+        return 'Novedades';
       case StoreTab.tandas:
         return 'Tandas';
       case StoreTab.sorteos:
@@ -35,6 +37,8 @@ class BuyerStoreDetail {
     required this.followerCount,
     required this.isFollowing,
     required this.isVip,
+    required this.isLiveNow,
+    this.liveAnnouncementTitle,
     this.slug,
     this.city,
     this.logoUrl,
@@ -59,6 +63,8 @@ class BuyerStoreDetail {
   final int followerCount;
   final bool isFollowing;
   final bool isVip;
+  final bool isLiveNow;
+  final String? liveAnnouncementTitle;
 
   String get initial => name.isNotEmpty
       ? name.characters.first.toUpperCase()
@@ -87,6 +93,8 @@ class BuyerStoreDetail {
         followerCount: (j['followerCount'] as num?)?.toInt() ?? 0,
         isFollowing: (j['isFollowing'] as bool?) ?? false,
         isVip: (j['isVip'] as bool?) ?? false,
+        isLiveNow: (j['isLiveNow'] as bool?) ?? false,
+        liveAnnouncementTitle: j['liveAnnouncementTitle'] as String?,
       );
 
   BuyerStoreDetail copyWith({
@@ -111,6 +119,8 @@ class BuyerStoreDetail {
         followerCount: followerCount ?? this.followerCount,
         isFollowing: isFollowing ?? this.isFollowing,
         isVip: isVip ?? this.isVip,
+        isLiveNow: isLiveNow,
+        liveAnnouncementTitle: liveAnnouncementTitle,
       );
 }
 

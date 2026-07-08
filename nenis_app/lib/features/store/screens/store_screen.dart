@@ -20,6 +20,8 @@ import '../../tandas/data/tandas_models.dart';
 import '../../tandas/data/tandas_repository.dart';
 import '../data/follow_repository.dart';
 import '../data/store_models.dart';
+import '../data/store_posts_models.dart';
+import '../data/store_posts_repository.dart';
 import '../data/store_repository.dart';
 
 class StoreScreen extends ConsumerStatefulWidget {
@@ -229,6 +231,7 @@ class _StoreContent extends ConsumerWidget {
         _StoreHeader(store: store),
         _ProfileRow(store: store),
         _PtsBar(store: store),
+        if (store.isLiveNow) _LiveNowBanner(store: store),
         if (store.live != null) _LiveStrip(live: store.live!),
         _TabsRow(
           store: store,
@@ -623,6 +626,84 @@ class _LiveStrip extends StatelessWidget {
   }
 }
 
+/// Aviso en tiempo real de "está en vivo ahora" (LiveAnnouncement) —
+/// distinto de `_LiveStrip`, que muestra el pipeline post-hoc de
+/// `LiveSession` (transcripción de un vivo ya grabado). Ambos pueden
+/// coexistir; este va primero, con un punto pulsante para distinguirlo.
+class _LiveNowBanner extends StatefulWidget {
+  const _LiveNowBanner({required this.store});
+  final BuyerStoreDetail store;
+
+  @override
+  State<_LiveNowBanner> createState() => _LiveNowBannerState();
+}
+
+class _LiveNowBannerState extends State<_LiveNowBanner>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 0, 22, 14),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.liveRed,
+          borderRadius: AppRadii.softRadius,
+          boxShadow: AppShadows.brandPrimary(AppColors.liveRed),
+        ),
+        child: Row(
+          children: [
+            FadeTransition(
+              opacity: _controller,
+              child: Container(
+                width: 12,
+                height: 12,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                widget.store.liveAnnouncementTitle != null
+                    ? '¡En vivo! ${widget.store.liveAnnouncementTitle}'
+                    : '¡Está en vivo ahora mismo!',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.body.copyWith(
+                  fontSize: 14,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            PillButton(
+              label: 'Ver en Facebook',
+              icon: Symbols.open_in_new,
+              expand: false,
+              variant: PillButtonVariant.ghost,
+              onPressed: () => _soonToast(context, 'Abre la app de Facebook para verlo'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _TabsRow extends StatelessWidget {
   const _TabsRow({
     required this.store,
@@ -662,6 +743,8 @@ class _TabsRow extends StatelessWidget {
         return 'Productos${s.products.isNotEmpty ? ' · ${s.products.length}' : ''}';
       case StoreTab.lives:
         return 'En vivo${s.live != null ? ' · 1' : ''}';
+      case StoreTab.novedades:
+        return 'Novedades';
       case StoreTab.tandas:
         return s.activeTandasCount > 0
             ? 'Tandas · ${s.activeTandasCount}'
@@ -717,6 +800,8 @@ class _TabContent extends ConsumerWidget {
         return _ProductsGrid(store: store);
       case StoreTab.lives:
         return _LiveTabContent(store: store);
+      case StoreTab.novedades:
+        return _NovedadesTabContent(businessId: store.businessId);
       case StoreTab.tandas:
         return _TandasTabContent(businessId: store.businessId);
       case StoreTab.sorteos:
@@ -1085,6 +1170,128 @@ class _TandaCompactRow extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _NovedadesTabContent extends ConsumerWidget {
+  const _NovedadesTabContent({required this.businessId});
+  final int businessId;
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final feed = ref.watch(storePostsControllerProvider);
+    return feed.when(
+      loading: () => const SizedBox(
+        height: 60,
+        child: Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2.4, color: AppColors.neni),
+          ),
+        ),
+      ),
+      error: (e, _) => _EmptyTab(
+        icon: Symbols.cloud_off,
+        iconColor: AppColors.ink3,
+        iconBg: AppColors.segTrack,
+        title: 'No pudimos cargar las novedades',
+        body: 'Revisa tu conexión e intenta de nuevo.',
+      ),
+      data: (posts) {
+        if (posts.isEmpty) {
+          return const _EmptyTab(
+            icon: Symbols.campaign,
+            iconColor: AppColors.neniDeep,
+            iconBg: Color(0xFFFFE1EC),
+            title: 'Aún no hay novedades',
+            body: 'Esta tienda avisará por aquí cuando publique algo nuevo.',
+          );
+        }
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(22, 8, 22, 0),
+          child: Column(
+            children: [
+              for (final p in posts) ...[
+                _PostCard(post: p),
+                const SizedBox(height: 11),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PostCard extends StatelessWidget {
+  const _PostCard({required this.post});
+  final StorePostFeedItem post;
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadii.softRadius,
+        boxShadow: AppShadows.small,
+        border: post.isVipOnly
+            ? Border.all(color: AppColors.gold.withValues(alpha: 0.5))
+            : null,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (post.isVipOnly) ...[
+            Row(
+              children: [
+                const Icon(Symbols.workspace_premium, size: 15, color: AppColors.gold),
+                const SizedBox(width: 5),
+                Text(
+                  'SOLO VIP',
+                  style: AppTextStyles.chip.copyWith(
+                    color: AppColors.gold,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
+          if (post.isLocked)
+            Row(
+              children: [
+                const Icon(Symbols.lock, size: 18, color: AppColors.ink3),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Únete al grupo VIP de esta tienda para ver esta novedad.',
+                    style: AppTextStyles.subtitle.copyWith(fontSize: 12.5, color: AppColors.ink2),
+                  ),
+                ),
+              ],
+            )
+          else
+            Text(
+              post.body,
+              style: AppTextStyles.body.copyWith(fontSize: 13.5, height: 1.35),
+            ),
+          const SizedBox(height: 8),
+          Text(
+            _relativeTime(post.createdAt),
+            style: AppTextStyles.subtitle.copyWith(fontSize: 11, color: AppColors.ink3),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _relativeTime(DateTime date) {
+    final diff = DateTime.now().difference(date);
+    if (diff.inMinutes < 60) return 'hace ${diff.inMinutes} min';
+    if (diff.inHours < 24) return 'hace ${diff.inHours} h';
+    if (diff.inDays < 7) return 'hace ${diff.inDays} d';
+    return '${date.day}/${date.month}/${date.year}';
   }
 }
 

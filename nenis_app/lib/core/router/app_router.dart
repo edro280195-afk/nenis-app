@@ -34,6 +34,8 @@ import '../../features/payments/screens/payments_screen.dart';
 import '../../features/reserve/screens/reserve_screen.dart';
 import '../../features/routes/screens/seller_routes_screen.dart';
 import '../../features/clients/screens/seller_clients_screen.dart';
+import '../../features/seller_updates/screens/seller_updates_screen.dart';
+import '../../features/seller_vip/screens/seller_vip_screen.dart';
 import '../../features/subscription/screens/my_plan_screen.dart';
 import '../../features/subscription/screens/mp_checkout_webview_screen.dart';
 import '../../shared/screens/splash_screen.dart';
@@ -370,6 +372,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           slideUp: true,
         ),
+      ),
+      GoRoute(
+        path: '/seller/updates',
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: const SellerUpdatesScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/seller/vip',
+        pageBuilder: (context, state) =>
+            _pageTransition(key: state.pageKey, child: const SellerVipScreen()),
       ),
       GoRoute(
         path: '/addresses',

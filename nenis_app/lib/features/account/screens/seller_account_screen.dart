@@ -97,6 +97,20 @@ class SellerAccountScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 10),
               _SellerMenuTile(
+                icon: Symbols.campaign,
+                title: 'Novedades y vivo',
+                subtitle: 'Publica actualizaciones y avisa cuando estés en vivo.',
+                onTap: () => context.push('/seller/updates'),
+              ),
+              const SizedBox(height: 10),
+              _SellerMenuTile(
+                icon: Symbols.workspace_premium,
+                title: 'Grupo VIP',
+                subtitle: 'Elige a tus seguidoras favoritas para novedades exclusivas.',
+                onTap: () => context.push('/seller/vip'),
+              ),
+              const SizedBox(height: 10),
+              _SellerMenuTile(
                 icon: Symbols.groups,
                 title: 'Equipo de reparto',
                 subtitle: 'Permisos del chofer y mensajes de ruta.',
