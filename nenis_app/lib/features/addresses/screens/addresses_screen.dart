@@ -239,21 +239,24 @@ class _EmptyAddresses extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(22, 8, 22, 24),
       children: [
-        Material(
-          color: AppColors.surface,
-          shape: const CircleBorder(),
-          elevation: 2,
-          shadowColor: Colors.black26,
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: onBack,
-            child: SizedBox(
-              width: 40,
-              height: 40,
-              child: Icon(
-                Icons.adaptive.arrow_back,
-                size: 20,
-                color: AppColors.ink,
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Material(
+            color: AppColors.surface,
+            shape: const CircleBorder(),
+            elevation: 2,
+            shadowColor: Colors.black26,
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: onBack,
+              child: SizedBox(
+                width: 40,
+                height: 40,
+                child: Icon(
+                  Icons.adaptive.arrow_back,
+                  size: 20,
+                  color: AppColors.ink,
+                ),
               ),
             ),
           ),

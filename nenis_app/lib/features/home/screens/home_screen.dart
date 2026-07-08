@@ -469,7 +469,9 @@ class _RecentOrderRow extends StatelessWidget {
         ? '1 artículo'
         : '${order.itemsCount} artículos';
     return GestureDetector(
-      onTap: () => context.go('/orders'),
+      onTap: () => context.go(
+        '/tracking/${order.orderId}?token=${order.accessToken ?? ''}',
+      ),
       child: Container(
         padding: const EdgeInsets.all(13),
         decoration: BoxDecoration(
