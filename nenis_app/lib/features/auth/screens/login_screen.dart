@@ -849,6 +849,33 @@ class _ClientLoginForm extends StatelessWidget {
             ),
           ),
         ),
+        const SizedBox(height: 13),
+        // Login passwordless (telefono + codigo, sin contrasena).
+        Center(
+          child: TextButton(
+            onPressed: loading ? null : () => context.go('/login-otp'),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.neniDeep,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            child: Text.rich(
+              TextSpan(
+                text: '¿Sin contraseña? ',
+                style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+                children: [
+                  TextSpan(
+                    text: 'Entrar con código',
+                    style: AppTextStyles.subtitle.copyWith(
+                      color: AppColors.neniDeep,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
         const SizedBox(height: 12),
         const _OrDivider(),
         const SizedBox(height: 14),

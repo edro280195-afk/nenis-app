@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../deeplinks/deep_link_service.dart';
 import '../storage/session_storage.dart';
 import 'auth_repository.dart';
 import 'session.dart';
@@ -17,16 +18,22 @@ class AuthController extends AsyncNotifier<Session?> {
   String? _pendingFirstName;
   String? _pendingLastName;
 
-  // Datos de Facebook en espera de completar perfil o verificar teléfono.
+  // Datos del Facebook en espera de completar perfil o verificar teléfono.
   FacebookAccessCredential? _pendingFacebookCredential;
   FacebookAccountType? _pendingFacebookAccountType;
   String? _pendingFacebookBusinessName;
   String? _pendingFacebookCity;
 
+  /// Marca que el login passwordless terminó y hay un pedido pendiente por
+  /// deep link que debe "rescatarse" (reclamar). El router la usa para decidir
+  /// a dónde llevar tras autenticar: `/pedido/{token}` (rescate) vs `/home`.
+  bool _needsOrderRescue = false;
+
   /// Teléfono al que se le envió el código de WhatsApp (lo usa la pantalla de
   /// verificación).
   String? get pendingPhone => _pendingPhone;
   bool get pendingDevMode => _pendingDevMode;
+  bool get needsOrderRescue => _needsOrderRescue;
 
   @override
   Future<Session?> build() async {
@@ -97,7 +104,8 @@ class AuthController extends AsyncNotifier<Session?> {
   }
 
   /// Paso 2: valida el código, crea/loguea la cuenta (sin contraseña) y guarda
-  /// la sesión.
+  /// la sesión. Si hay un pedido pendiente por deep link, marca
+  /// [needsOrderRescue] para que el router lo lleve a rescatarlo.
   Future<void> verifyPasswordlessOtp(String code) async {
     final phone = _pendingPhone;
     if (phone == null) {
@@ -109,6 +117,7 @@ class AuthController extends AsyncNotifier<Session?> {
           firstName: _pendingFirstName,
           lastName: _pendingLastName,
         );
+    _needsOrderRescue = ref.read(pendingDeepLinkProvider) != null;
     await _apply(session);
   }
 
@@ -252,6 +261,7 @@ class AuthController extends AsyncNotifier<Session?> {
     _pendingFirstName = null;
     _pendingLastName = null;
     _pendingDevMode = false;
+    _needsOrderRescue = false;
     _pendingFacebookCredential = null;
     _pendingFacebookAccountType = null;
     _pendingFacebookBusinessName = null;

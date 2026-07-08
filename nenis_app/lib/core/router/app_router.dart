@@ -6,6 +6,7 @@ import '../auth/auth_controller.dart';
 import '../deeplinks/deep_link_service.dart';
 import '../../features/auth/screens/auth_welcome_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
+import '../../features/auth/screens/login_otp_screen.dart';
 import '../../features/auth/screens/password_reset_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/confirm_screen.dart';
@@ -41,6 +42,7 @@ const _authRoutes = {
   '/splash',
   '/welcome',
   '/login',
+  '/login-otp',
   '/register',
   '/forgot-password',
   '/confirm',
@@ -126,6 +128,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const AuthWelcomeScreen(),
       ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/login-otp',
+        builder: (context, state) => const LoginOtpScreen(),
+      ),
       GoRoute(
         path: '/register',
         builder: (context, state) => const RegisterScreen(),

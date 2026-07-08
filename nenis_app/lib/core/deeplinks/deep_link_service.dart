@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:android_play_install_referrer/android_play_install_referrer.dart';
 import 'package:app_links/app_links.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../api/dio_provider.dart';
 import 'pending_claim_store.dart';
 
 /// Token del pedido que llegó por deep link / referrer y que debe abrirse (y
@@ -48,12 +52,14 @@ String? extractOrderToken(Uri uri) {
 /// Orquesta la captura de deep links hacia un pedido:
 ///  - link inicial (cold start) y stream (warm) vía [AppLinks];
 ///  - re-siembra desde [PendingClaimStore] al arrancar (sobrevive la muerte de
-///    proceso durante el OTP y la reinstalación).
+///    proceso durante el OTP y la reinstalación);
+///  - **Install Referrer de Google Play** (deep linking diferido): si la app
+///    se instala desde el muro /o/{token}, el referrer `token=...` se captura
+///    una sola vez por instalación y se siembra como pending deep link.
 ///
-/// Nota: el deep link diferido de Android por Google Play Install Referrer se
-/// dejó fuera por ahora (el plugin obliga a subir compileSdk y las apps aún no
-/// están publicadas). El rescate por match de teléfono cubre ese caso. Se puede
-/// re-agregar al publicar.
+/// El referrer de iOS se cubre con Universal Links + Smart App Banner (no hay
+/// equivalente al Install Referrer; el rescate por match de teléfono cierra
+/// el hueco).
 ///
 /// No navega directamente: sólo alimenta [pendingDeepLinkProvider] + el store,
 /// y el router reacciona. Así el token sobrevive el "bounce" al splash mientras
@@ -78,17 +84,76 @@ class DeepLinkService {
       }
     } catch (_) {}
 
-    // 2) Link que abrió la app en frío.
+    // 2) Install Referrer de Google Play (deep linking diferido). Sólo se
+    //    consume una vez por instalación para no re-abrir el pedido en cada
+    //    cold start. En iOS/web es no-op (el plugin lanza; va en try/catch).
+    await _readInstallReferrer();
+
+    // 3) Link que abrió la app en frío.
     try {
       final initial = await _appLinks.getInitialLink();
       if (initial != null) await _handleUri(initial);
     } catch (_) {}
 
-    // 3) Links que llegan con la app viva.
+    // 4) Links que llegan con la app viva.
     _sub = _appLinks.uriLinkStream.listen(
       _handleUri,
       onError: (_) {},
     );
+  }
+
+  /// Lee el Install Referrer de Google Play y, si trae `token=...`, lo siembra
+  /// como pending deep link y reporta el evento `install_referrer` al backend
+  /// (analítica auto-alojada). No-op en iOS/web y si ya se consumió.
+  Future<void> _readInstallReferrer() async {
+    if (!kIsWeb && !Platform.isAndroid) return;
+    final store = _ref.read(pendingClaimStoreProvider);
+    try {
+      if (await store.isReferrerConsumed()) return;
+      final details = await AndroidPlayInstallReferrer.installReferrer;
+      final raw = details.installReferrer;
+      if (raw == null || raw.isEmpty) {
+        await store.markReferrerConsumed();
+        return;
+      }
+      final token = _extractTokenFromReferrer(raw);
+      if (token != null) {
+        await _persistAndSet(token);
+        await _reportInstallReferrer(token, raw);
+      }
+      // Marca consumido haya o no token: si Play no trajo nada, no reintentamos.
+      await store.markReferrerConsumed();
+    } catch (_) {
+      // El plugin lanza en iOS o si no hay Play Services. No marcamos consumido
+      // para reintentar en el siguiente arranque (raro, pero defensivo).
+    }
+  }
+
+  /// Extrae `token=...` del referrer (p. ej. `token=ABC` o `utm_source=...&token=ABC`).
+  String? _extractTokenFromReferrer(String referrer) {
+    try {
+      final uri = Uri(query: referrer);
+      final token = uri.queryParameters['token'];
+      if (token != null && token.trim().isNotEmpty) return token.trim();
+    } catch (_) {}
+    // Fallback: buscar `token=...` a mano si el referrer no es un query string.
+    final m = RegExp(r'token=([^\s&=]+)').firstMatch(referrer);
+    return m?.group(1);
+  }
+
+  /// Reporta el evento `install_referrer` al backend (analítica auto-alojada).
+  /// Fire-and-forget: si falla, no rompe el flujo de deep link.
+  Future<void> _reportInstallReferrer(String token, String rawReferrer) async {
+    try {
+      await _ref.read(dioProvider).post<dynamic>(
+        '/api/link-events',
+        data: {
+          'AccessToken': token,
+          'Event': 'install_referrer',
+          'Referrer': rawReferrer,
+        },
+      );
+    } catch (_) {}
   }
 
   Future<void> _handleUri(Uri uri) async {

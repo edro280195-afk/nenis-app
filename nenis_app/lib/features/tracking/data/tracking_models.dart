@@ -227,6 +227,83 @@ class OrderRating {
       );
 }
 
+/// Pago registrado sobre el pedido (efectivo, transferencia, tarjeta, ...).
+class OrderPayment {
+  const OrderPayment({
+    required this.id,
+    required this.orderId,
+    required this.amount,
+    required this.method,
+    required this.date,
+    required this.registeredBy,
+    this.notes,
+  });
+
+  final int id;
+  final int orderId;
+  final double amount;
+  final String method;
+  final DateTime date;
+  final String registeredBy;
+  final String? notes;
+
+  factory OrderPayment.fromJson(Map<String, dynamic> j) => OrderPayment(
+        id: (j['id'] as num?)?.toInt() ?? 0,
+        orderId: (j['orderId'] as num?)?.toInt() ?? 0,
+        amount: (j['amount'] as num?)?.toDouble() ?? 0,
+        method: (j['method'] ?? '') as String,
+        date: DateTime.tryParse((j['date'] ?? '') as String) ?? DateTime.now(),
+        registeredBy: (j['registeredBy'] ?? '') as String,
+        notes: j['notes'] as String?,
+      );
+}
+
+/// Remitente de un mensaje de chat clienta ↔ chofer / admin.
+enum ChatSender { client, driver, admin, unknown }
+
+ChatSender chatSenderFromString(String? value) {
+  switch (value) {
+    case 'Client':
+      return ChatSender.client;
+    case 'Driver':
+      return ChatSender.driver;
+    case 'Admin':
+      return ChatSender.admin;
+    default:
+      return ChatSender.unknown;
+  }
+}
+
+/// Mensaje del chat del pedido (clienta ↔ chofer / admin).
+class ChatMessage {
+  const ChatMessage({
+    required this.id,
+    required this.sender,
+    required this.text,
+    required this.timestamp,
+    this.deliveryId,
+    this.deliveryRouteId,
+  });
+
+  final int id;
+  final ChatSender sender;
+  final String text;
+  final DateTime timestamp;
+  final int? deliveryId;
+  final int? deliveryRouteId;
+
+  factory ChatMessage.fromJson(Map<String, dynamic> j) => ChatMessage(
+        id: (j['id'] as num?)?.toInt() ?? 0,
+        sender: chatSenderFromString(j['sender'] as String?),
+        text: (j['text'] ?? '') as String,
+        timestamp:
+            DateTime.tryParse((j['timestamp'] ?? '') as String) ??
+                DateTime.now(),
+        deliveryId: (j['deliveryId'] as num?)?.toInt(),
+        deliveryRouteId: (j['deliveryRouteId'] as num?)?.toInt(),
+      );
+}
+
 /// Vista pública del pedido devuelta por `GET /api/pedido/{accessToken}`.
 class OrderTracking {
   const OrderTracking({
@@ -252,6 +329,15 @@ class OrderTracking {
     this.businessName,
     this.businessLogoUrl,
     this.courierName,
+    this.courierPhone,
+    this.deliveryInstructions,
+    this.payments = const [],
+    this.evidenceUrls = const [],
+    this.nonDeliveryEvidenceUrls = const [],
+    this.signatureSvg,
+    this.signedByName,
+    this.signedAt,
+    this.mercadoPagoPublicKey,
     this.rating,
   });
 
@@ -284,6 +370,29 @@ class OrderTracking {
 
   /// Nombre del repartidor asignado a la ruta.
   final String? courierName;
+
+  /// Teléfono del repartidor (para el botón de llamar). Null si no hay.
+  final String? courierPhone;
+
+  /// Instrucciones de entrega que la clienta puede editar.
+  final String? deliveryInstructions;
+
+  /// Pagos ya registrados sobre el pedido.
+  final List<OrderPayment> payments;
+
+  /// Fotos de evidencia de la entrega (solo si Delivered).
+  final List<String> evidenceUrls;
+
+  /// Fotos del intento fallido (solo si NotDelivered).
+  final List<String> nonDeliveryEvidenceUrls;
+
+  /// Firma SVG de quien recibió (solo si Delivered).
+  final String? signatureSvg;
+  final String? signedByName;
+  final DateTime? signedAt;
+
+  /// Public key de Mercado Pago del tenant (null si no tiene MP configurado).
+  final String? mercadoPagoPublicKey;
 
   /// Evaluación previa (si la clienta ya calificó este pedido).
   final OrderRating? rating;
@@ -343,6 +452,25 @@ class OrderTracking {
         businessName: j['businessName'] as String?,
         businessLogoUrl: j['businessLogoUrl'] as String?,
         courierName: j['courierName'] as String?,
+        courierPhone: j['courierPhone'] as String?,
+        deliveryInstructions: j['deliveryInstructions'] as String?,
+        payments: ((j['payments'] as List?) ?? const [])
+            .map((e) => OrderPayment.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        evidenceUrls: (j['evidenceUrls'] as List?)
+                ?.map((e) => e as String)
+                .toList() ??
+            const [],
+        nonDeliveryEvidenceUrls: (j['nonDeliveryEvidenceUrls'] as List?)
+                ?.map((e) => e as String)
+                .toList() ??
+            const [],
+        signatureSvg: j['signatureSvg'] as String?,
+        signedByName: j['signedByName'] as String?,
+        signedAt: j['signedAt'] != null
+            ? DateTime.tryParse(j['signedAt'] as String)
+            : null,
+        mercadoPagoPublicKey: j['mercadoPagoPublicKey'] as String?,
         rating: j['rating'] != null
             ? OrderRating.fromJson(j['rating'] as Map<String, dynamic>)
             : null,
@@ -354,6 +482,10 @@ class OrderTracking {
     int? deliveriesAhead,
     int? queuePosition,
     bool? isCurrentDelivery,
+    double? amountPaid,
+    double? balanceDue,
+    String? deliveryInstructions,
+    List<OrderPayment>? payments,
     OrderRating? rating,
   }) =>
       OrderTracking(
@@ -365,8 +497,8 @@ class OrderTracking {
         total: total,
         status: status ?? this.status,
         isCurrentDelivery: isCurrentDelivery ?? this.isCurrentDelivery,
-        amountPaid: amountPaid,
-        balanceDue: balanceDue,
+        amountPaid: amountPaid ?? this.amountPaid,
+        balanceDue: balanceDue ?? this.balanceDue,
         clientPoints: clientPoints,
         clientAddress: clientAddress,
         scheduledDeliveryDate: scheduledDeliveryDate,
@@ -379,6 +511,15 @@ class OrderTracking {
         businessName: businessName,
         businessLogoUrl: businessLogoUrl,
         courierName: courierName,
+        courierPhone: courierPhone,
+        deliveryInstructions: deliveryInstructions ?? this.deliveryInstructions,
+        payments: payments ?? this.payments,
+        evidenceUrls: evidenceUrls,
+        nonDeliveryEvidenceUrls: nonDeliveryEvidenceUrls,
+        signatureSvg: signatureSvg,
+        signedByName: signedByName,
+        signedAt: signedAt,
+        mercadoPagoPublicKey: mercadoPagoPublicKey,
         rating: rating ?? this.rating,
       );
 }

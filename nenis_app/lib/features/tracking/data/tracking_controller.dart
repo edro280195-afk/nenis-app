@@ -83,9 +83,95 @@ class TrackingController extends AsyncNotifier<OrderTracking?> {
     if (current == null) return;
     state = AsyncData(current.copyWith(rating: rating));
   }
+
+  /// Re-carga el pedido (token público) y actualiza el estado. Lo usan las
+  /// acciones de la clienta (confirmar, instrucciones) para reflejar el cambio.
+  Future<void> reload() async {
+    final accessToken = ref.read(trackingTokenProvider);
+    if (accessToken.isEmpty) return;
+    state = const AsyncLoading<OrderTracking?>();
+    try {
+      final order =
+          await ref.read(trackingRepositoryProvider).getOrderByToken(accessToken);
+      state = AsyncData<OrderTracking?>(order);
+    } catch (e, st) {
+      state = AsyncError<OrderTracking?>(e, st);
+    }
+  }
+
+  /// Confirma el pedido (visible si está Pending/Postponed).
+  Future<void> confirmOrder() async {
+    final accessToken = ref.read(trackingTokenProvider);
+    if (accessToken.isEmpty) return;
+    await ref.read(trackingRepositoryProvider).confirmOrder(accessToken);
+    await reload();
+  }
+
+  /// Guarda las instrucciones de entrega editadas por la clienta.
+  Future<void> saveInstructions(String instructions) async {
+    final accessToken = ref.read(trackingTokenProvider);
+    if (accessToken.isEmpty) return;
+    await ref.read(trackingRepositoryProvider)
+        .updateInstructions(accessToken, instructions);
+    final current = state.asData?.value;
+    if (current != null) {
+      state = AsyncData(current.copyWith(deliveryInstructions: instructions));
+    }
+  }
 }
 
 final trackingControllerProvider =
     AsyncNotifierProvider<TrackingController, OrderTracking?>(
   TrackingController.new,
+);
+
+/// Estado del chat clienta ↔ chofer/admin. Carga el histórico al arrancar,
+/// mezcla los mensajes en vivo que llegan por SignalR
+/// (`ReceiveClientChatMessage`) y expone `send` para enviar.
+class OrderChatNotifier extends Notifier<List<ChatMessage>> {
+  StreamSubscription<ChatMessage>? _chatSub;
+  String? _token;
+
+  @override
+  List<ChatMessage> build() {
+    final token = ref.watch(trackingTokenProvider);
+    if (token.isEmpty) return const [];
+    _token = token;
+
+    // Histórico (no bloquea el build; se actualiza al resolver).
+    Future(() async {
+      try {
+        final msgs = await ref.read(trackingRepositoryProvider).getChat(token);
+        if (msgs.isNotEmpty) state = msgs;
+      } catch (_) {}
+    });
+
+    // Mensajes en vivo del chofer/admin.
+    final hub = ref.read(trackingHubProvider);
+    _chatSub = hub.chatStream.listen((msg) {
+      if (state.any((m) => m.id == msg.id)) return;
+      state = [...state, msg];
+    });
+
+    ref.onDispose(() => _chatSub?.cancel());
+    return const [];
+  }
+
+  Future<void> send(String text) async {
+    final token = _token;
+    final body = text.trim();
+    if (token == null || body.isEmpty) return;
+    try {
+      final msg = await ref.read(trackingRepositoryProvider).sendChat(token, body);
+      if (state.any((m) => m.id == msg.id)) return;
+      state = [...state, msg];
+    } catch (_) {
+      // El envío falló: la UI puede mostrar un error leve. No rompemos el chat.
+    }
+  }
+}
+
+final orderChatProvider =
+    NotifierProvider<OrderChatNotifier, List<ChatMessage>>(
+  OrderChatNotifier.new,
 );

@@ -3,11 +3,9 @@
 <plist version="1.0">
 <dict>
 	<!-- Universal Links del enlace del pedido. Requiere el archivo
-	     /.well-known/apple-app-site-association en https://app.nenisapp.com.
-	     PENDIENTE (paso manual en Xcode desde una Mac): añadir este archivo al
-	     target Runner en "Signing & Capabilities" → "Associated Domains"
-	     (o poner CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements en el
-	     project.pbxproj para las 3 configuraciones). -->
+	     /.well-known/apple-app-site-association en https://app.nenisapp.com
+	     (servido por ShareLandingController). CODE_SIGN_ENTITLEMENTS ya está
+	     cableado en project.pbxproj para Debug/Release/Profile. -->
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:app.nenisapp.com</string>

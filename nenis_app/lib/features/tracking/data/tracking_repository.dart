@@ -62,6 +62,63 @@ class TrackingRepository {
       throw TrackingException('Error de conexión.');
     }
   }
+
+  /// POST /api/pedido/{token}/confirm — la clienta confirma su pedido.
+  Future<void> confirmOrder(String accessToken) async {
+    try {
+      await _dio.post('/api/pedido/$accessToken/confirm');
+    } on DioException catch (e) {
+      throw TrackingException(
+        e.response?.data?['message'] ?? 'No se pudo confirmar el pedido.',
+      );
+    } catch (_) {
+      throw TrackingException('Error de conexión.');
+    }
+  }
+
+  /// PATCH /api/pedido/{token}/instructions — actualiza las instrucciones
+  /// de entrega de la clienta.
+  Future<void> updateInstructions(
+    String accessToken,
+    String instructions,
+  ) async {
+    try {
+      await _dio.patch(
+        '/api/pedido/$accessToken/instructions',
+        data: {'instructions': instructions},
+      );
+    } on DioException catch (e) {
+      throw TrackingException(
+        e.response?.data?['message'] ??
+            'No se pudieron guardar las instrucciones.',
+      );
+    } catch (_) {
+      throw TrackingException('Error de conexión.');
+    }
+  }
+
+  /// GET /api/pedido/{token}/chat — historial de mensajes clienta ↔ chofer.
+  Future<List<ChatMessage>> getChat(String accessToken) async {
+    try {
+      final res = await _dio.get('/api/pedido/$accessToken/chat');
+      final list = res.data as List? ?? const [];
+      return list
+          .map((e) => ChatMessage.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      // El chat es opcional: si falla, devolvemos vacío en lugar de romper.
+      return const [];
+    }
+  }
+
+  /// POST /api/pedido/{token}/chat — envía un mensaje de la clienta.
+  Future<ChatMessage> sendChat(String accessToken, String text) async {
+    final res = await _dio.post(
+      '/api/pedido/$accessToken/chat',
+      data: {'text': text},
+    );
+    return ChatMessage.fromJson(res.data as Map<String, dynamic>);
+  }
 }
 
 final trackingRepositoryProvider = Provider<TrackingRepository>((ref) {
@@ -96,10 +153,13 @@ class TrackingHubClient {
       StreamController<TrackingStatus>.broadcast();
   final StreamController<bool> _connectionCtl =
       StreamController<bool>.broadcast();
+  final StreamController<ChatMessage> _chatCtl =
+      StreamController<ChatMessage>.broadcast();
 
   Stream<DriverLocation> get locationStream => _locationCtl.stream;
   Stream<TrackingStatus> get statusStream => _statusCtl.stream;
   Stream<bool> get connectionStream => _connectionCtl.stream;
+  Stream<ChatMessage> get chatStream => _chatCtl.stream;
 
   void _wireEvents() {
     _connection.on('LocationUpdate', (args) {
@@ -123,6 +183,19 @@ class TrackingHubClient {
       final raw = args[1];
       if (raw is String) {
         _statusCtl.add(trackingStatusFromString(raw));
+      }
+    });
+
+    // Chat chofer/admin → clienta: el repartidor envía por
+    // POST /api/driver/{token}/deliver/{id}/chat y el backend emite
+    // `ReceiveClientChatMessage` al grupo Order_ (donde está la clienta).
+    _connection.on('ReceiveClientChatMessage', (args) {
+      if (args == null || args.isEmpty) return;
+      final raw = args.first;
+      if (raw is Map<String, dynamic>) {
+        _chatCtl.add(ChatMessage.fromJson(raw));
+      } else if (raw is Map) {
+        _chatCtl.add(ChatMessage.fromJson(Map<String, dynamic>.from(raw)));
       }
     });
 
@@ -190,6 +263,7 @@ class TrackingHubClient {
     await _locationCtl.close();
     await _statusCtl.close();
     await _connectionCtl.close();
+    await _chatCtl.close();
   }
 
   bool get isJoined => _joined;

@@ -4,6 +4,7 @@ import '../data/tracking_models.dart';
 import 'status_journey_card.dart';
 import 'delivery_celebration.dart';
 import 'rating_experience.dart';
+import 'order_tools_section.dart';
 
 /// Orquestador principal de la experiencia de seguimiento de pedidos (Nenis V3).
 ///
@@ -221,6 +222,15 @@ class _OrderTrackingExperienceState extends State<OrderTrackingExperience> {
                                 ),
                               ],
                             ),
+                          ),
+
+                          // ── Herramientas de la clienta (Fase E) ──
+                          // Confirmar, instrucciones, repartidor (chat/llamada),
+                          // RegiPuntos, pago (tarjeta en revisión) y evidencia.
+                          const SizedBox(height: 20),
+                          OrderToolsSection(
+                            order: order,
+                            accessToken: widget.accessToken,
                           ),
                         ],
                       ),

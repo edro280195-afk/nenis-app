@@ -10,6 +10,7 @@ const _publicPrefixes = [
   '/api/pedido/',
   '/api/driver/',
   '/api/public-tanda/',
+  '/api/link-events',
 ];
 
 void _applyAuthHeaders(RequestOptions options, Session? session) {
