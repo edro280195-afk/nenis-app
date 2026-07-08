@@ -8,6 +8,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../data/seller_order_message.dart';
 import '../data/seller_orders_models.dart';
 import '../data/seller_orders_repository.dart';
@@ -188,16 +189,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         child: SafeArea(
           bottom: false,
           child: async.when(
-            loading: () => Column(
-              children: [
-                _TopBar(title: 'Pedido', onBack: _goBack),
-                const Expanded(
-                  child: Center(
-                    child: CircularProgressIndicator(color: AppColors.neni),
-                  ),
-                ),
-              ],
-            ),
+            loading: () => _OrderDetailLoading(onBack: _goBack),
             error: (e, _) => Column(
               children: [
                 _TopBar(title: 'Pedido', onBack: _goBack),
@@ -1507,6 +1499,38 @@ class _FooterBar extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _OrderDetailLoading extends StatelessWidget {
+  const _OrderDetailLoading({required this.onBack});
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _TopBar(title: 'Pedido', onBack: onBack),
+        Expanded(
+          child: SingleChildScrollView(
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: const [
+                Skeleton(height: 76, borderRadius: 20),
+                SizedBox(height: 18),
+                Skeleton(height: 94, borderRadius: 20),
+                SizedBox(height: 18),
+                Skeleton(height: 160, borderRadius: 20),
+                SizedBox(height: 18),
+                Skeleton(height: 110, borderRadius: 20),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

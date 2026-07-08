@@ -13,6 +13,8 @@ import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/status_chip.dart';
 import '../../../shared/widgets/store_avatar.dart';
+import '../../../shared/widgets/skeleton.dart';
+import '../../../shared/widgets/interactive_bounce.dart';
 import '../../notifications/data/notifications_repository.dart';
 import '../data/home_models.dart';
 import '../data/home_repository.dart';
@@ -56,9 +58,7 @@ class BuyerHomeScreen extends ConsumerWidget {
         child: SafeArea(
           bottom: false,
           child: feed.when(
-            loading: () => const Center(
-              child: CircularProgressIndicator(color: AppColors.neni),
-            ),
+            loading: () => const _BuyerHomeSkeleton(),
             error: (e, _) =>
                 _HomeError(onRetry: () => ref.invalidate(homeFeedProvider)),
             data: (home) => RefreshIndicator(
@@ -146,6 +146,7 @@ class _HomeContent extends StatelessWidget {
                   value: '${home.totalPoints}',
                   caption: 'Puntos acumulados',
                   tint: const Color(0xFFFFF7E6),
+                  onTap: () => context.go('/points'),
                 ),
               ),
               const SizedBox(width: 14),
@@ -157,6 +158,7 @@ class _HomeContent extends StatelessWidget {
                   value: '${home.liveCount}',
                   caption: 'Lives en vivo',
                   tint: const Color(0xFFF1E9FF),
+                  onTap: () => context.go('/live'),
                 ),
               ),
             ],
@@ -330,6 +332,7 @@ class _BentoTile extends StatelessWidget {
     required this.value,
     required this.caption,
     required this.tint,
+    this.onTap,
   });
 
   final IconData icon;
@@ -338,48 +341,52 @@ class _BentoTile extends StatelessWidget {
   final String value;
   final String caption;
   final Color tint;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [tint, AppColors.surface],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    return InteractiveBounce(
+      onPressed: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [tint, AppColors.surface],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: AppRadii.softRadius,
+          boxShadow: AppShadows.small,
         ),
-        borderRadius: AppRadii.softRadius,
-        boxShadow: AppShadows.small,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(13),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: iconBg,
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: Icon(icon, color: iconColor, size: 23, fill: 1),
             ),
-            child: Icon(icon, color: iconColor, size: 23, fill: 1),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: AppTextStyles.display.copyWith(
-              fontSize: 26,
-              letterSpacing: -0.5,
+            const SizedBox(height: 12),
+            Text(
+              value,
+              style: AppTextStyles.display.copyWith(
+                fontSize: 26,
+                letterSpacing: -0.5,
+              ),
             ),
-          ),
-          Text(
-            caption,
-            style: AppTextStyles.subtitle.copyWith(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w500,
+            Text(
+              caption,
+              style: AppTextStyles.subtitle.copyWith(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -392,8 +399,8 @@ class _StoreCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brand = colorFromHex(store.brandPrimaryColor);
-    return GestureDetector(
-      onTap: () => context.go('/store/${store.businessId}'),
+    return InteractiveBounce(
+      onPressed: () => context.go('/store/${store.businessId}'),
       child: SizedBox(
         width: 96,
         child: Column(
@@ -724,3 +731,93 @@ class _NotificationsIconButton extends ConsumerWidget {
     );
   }
 }
+
+class _BuyerHomeSkeleton extends StatelessWidget {
+  const _BuyerHomeSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
+      physics: const NeverScrollableScrollPhysics(),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(22, 4, 22, 0),
+          child: Row(
+            children: [
+              const Skeleton.circle(size: 40),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Skeleton.text(width: 80, height: 12),
+                    SizedBox(height: 6),
+                    Skeleton.text(width: 120, height: 16),
+                  ],
+                ),
+              ),
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                child: const Skeleton.circle(size: 24),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 22),
+          child: Skeleton(height: 48, borderRadius: 14),
+        ),
+        const SizedBox(height: 18),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 22),
+          child: Row(
+            children: [
+              Expanded(
+                child: Skeleton(height: 94, borderRadius: 20),
+              ),
+              SizedBox(width: 14),
+              Expanded(
+                child: Skeleton(height: 94, borderRadius: 20),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 22),
+          child: Skeleton.text(width: 100, height: 16),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 116,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            itemCount: 4,
+            separatorBuilder: (_, _) => const SizedBox(width: 13),
+            itemBuilder: (_, __) => const Skeleton(width: 104, height: 116, borderRadius: 20),
+          ),
+        ),
+        const SizedBox(height: 24),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 22),
+          child: Skeleton.text(width: 140, height: 16),
+        ),
+        const SizedBox(height: 12),
+        ...List.generate(
+          3,
+          (_) => const Padding(
+            padding: EdgeInsets.fromLTRB(22, 0, 22, 11),
+            child: Skeleton(height: 72, borderRadius: 18),
+          ),
+        ),
+      ],
+    );
+  }
+}
+

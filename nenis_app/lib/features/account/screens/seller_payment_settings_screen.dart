@@ -335,10 +335,7 @@ class _SellerPaymentSettingsScreenState
           bottom: false,
           child: Column(
             children: [
-              _PaymentHeader(
-                onBack: () =>
-                    context.canPop() ? context.pop() : context.go('/account'),
-              ),
+              _PaymentHeader(onBack: () => context.go('/account')),
               Expanded(
                 child: accountsAsync.when(
                   loading: () => const _PaymentLoading(),

@@ -521,11 +521,7 @@ class _SettingsScaffold extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(16, 8, 20, 6),
                 child: Row(
                   children: [
-                    BackIconButton(
-                      onPressed: () => context.canPop()
-                          ? context.pop()
-                          : context.go('/account'),
-                    ),
+                    BackIconButton(onPressed: () => context.go('/account')),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(

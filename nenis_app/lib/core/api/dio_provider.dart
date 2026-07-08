@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../features/subscription/data/subscription_repository.dart';
 import '../auth/auth_controller.dart';
 import '../auth/session.dart';
 import '../config/app_config.dart';
@@ -70,6 +71,17 @@ final dioProvider = Provider<Dio>((ref) {
               return handler.next(retryError);
             }
           }
+        }
+
+        // 402 de cuenta bloqueada (prueba/plan vencido): refresca el estado
+        // de suscripción para que el muro de `AppShell` se actualice solo.
+        // El 402 de una sola feature (`feature_locked`) se queda como hoy,
+        // manejado localmente por cada repositorio.
+        final data = e.response?.data;
+        if (e.response?.statusCode == 402 &&
+            data is Map &&
+            data['error'] == 'subscription_locked') {
+          invalidateSubscriptionState(ref);
         }
 
         handler.next(e);

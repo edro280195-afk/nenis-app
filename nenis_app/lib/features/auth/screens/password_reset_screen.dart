@@ -395,7 +395,7 @@ class _PasswordResetScreenState extends ConsumerState<PasswordResetScreen> {
           key: const Key('reset-phone-field'),
           controller: _phone,
           label: 'Teléfono celular',
-          prefix: '+52',
+          prefix: '🇲🇽 +52',
           hint: '868 145 22 90',
           keyboardType: TextInputType.phone,
           textInputAction: TextInputAction.done,

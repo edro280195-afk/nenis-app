@@ -6,6 +6,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/pill_button.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../data/tracking_controller.dart';
 import '../widgets/order_tracking_experience.dart';
 
@@ -80,8 +81,59 @@ class _LoadingTracking extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: CircularProgressIndicator(color: AppColors.neni),
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(
+              bottom: BorderSide(
+                color: Color(0xFFF5EEF2),
+                width: 1,
+              ),
+            ),
+          ),
+          child: SafeArea(
+            bottom: false,
+            child: Row(
+              children: [
+                const Skeleton.circle(size: 32),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Skeleton.text(width: 140, height: 16),
+                      SizedBox(height: 6),
+                      Skeleton.text(width: 80, height: 10),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const Expanded(
+          child: SingleChildScrollView(
+            physics: NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Skeleton(height: 180, borderRadius: 20),
+                SizedBox(height: 20),
+                Skeleton(height: 80, borderRadius: 20),
+                SizedBox(height: 20),
+                Skeleton(height: 100, borderRadius: 20),
+                SizedBox(height: 20),
+                Skeleton(height: 150, borderRadius: 20),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

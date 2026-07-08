@@ -9,6 +9,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../core/auth/auth_controller.dart';
 import '../../../core/auth/auth_repository.dart';
 import '../../../core/deeplinks/deep_link_service.dart';
+import '../../../core/legal/legal_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
@@ -17,7 +18,9 @@ import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/otp_cell.dart';
 import '../../../shared/widgets/pill_button.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../../auth/widgets/auth_feedback.dart';
+import '../../auth/widgets/legal_acceptance.dart';
 import '../data/order_teaser.dart';
 
 /// Onboarding contextual cuando la clienta llega por el enlace del pedido sin
@@ -38,6 +41,7 @@ class _ClaimOrderScreenState extends ConsumerState<ClaimOrderScreen> {
   _Step _step = _Step.phone;
   bool _prefilled = false;
   bool _loading = false;
+  bool _acceptedLegal = false;
   String? _error;
   int _otpRevision = 0;
 
@@ -67,6 +71,13 @@ class _ClaimOrderScreenState extends ConsumerState<ClaimOrderScreen> {
   Future<void> _sendCode(OrderTeaser teaser) async {
     if (_loading) return;
     final phone = _phone.text.replaceAll(RegExp(r'\D'), '');
+    if (!_acceptedLegal) {
+      setState(
+        () => _error =
+            'Acepta los Terminos y el Aviso de privacidad para continuar.',
+      );
+      return;
+    }
     if (phone.length != 10) {
       setState(() => _error = 'Escribe tu teléfono a 10 dígitos.');
       return;
@@ -76,10 +87,14 @@ class _ClaimOrderScreenState extends ConsumerState<ClaimOrderScreen> {
       _error = null;
     });
     try {
-      await ref.read(authControllerProvider.notifier).requestPasswordlessOtp(
+      await ref
+          .read(authControllerProvider.notifier)
+          .requestPasswordlessOtp(
             phone,
             firstName: teaser.firstName,
             lastName: teaser.lastName,
+            acceptedLegal: _acceptedLegal,
+            legalVersion: LegalConfig.currentVersion,
           );
       if (!mounted) return;
       setState(() => _step = _Step.code);
@@ -100,13 +115,17 @@ class _ClaimOrderScreenState extends ConsumerState<ClaimOrderScreen> {
       _error = null;
     });
     try {
-      await ref.read(authControllerProvider.notifier).verifyPasswordlessOtp(code);
+      await ref
+          .read(authControllerProvider.notifier)
+          .verifyPasswordlessOtp(code);
       // Éxito: el redirect del router lleva sola a /pedido/{token}.
     } on AuthException catch (e) {
       _fail(e.message, resetCode: true);
     } catch (_) {
-      _fail('Ocurrió un problema inesperado. Inténtalo de nuevo.',
-          resetCode: true);
+      _fail(
+        'Ocurrió un problema inesperado. Inténtalo de nuevo.',
+        resetCode: true,
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -118,8 +137,11 @@ class _ClaimOrderScreenState extends ConsumerState<ClaimOrderScreen> {
       await ref.read(authControllerProvider.notifier).resendCode();
       _startCountdown();
       if (mounted) {
-        showAuthNotification(context, 'Te enviamos un nuevo código.',
-            tone: AuthFeedbackTone.success);
+        showAuthNotification(
+          context,
+          'Te enviamos un nuevo código.',
+          tone: AuthFeedbackTone.success,
+        );
       }
     } catch (_) {
       if (mounted) setState(() => _error = 'No pudimos reenviar el código.');
@@ -147,9 +169,7 @@ class _ClaimOrderScreenState extends ConsumerState<ClaimOrderScreen> {
       body: NeniBackground(
         child: SafeArea(
           child: teaserAsync.when(
-            loading: () => const Center(
-              child: CircularProgressIndicator(color: AppColors.neni),
-            ),
+            loading: () => const _ClaimOrderLoading(),
             error: (_, _) => _Fallback(onEnter: () => context.go('/login')),
             data: (teaser) {
               if (!_prefilled) {
@@ -162,10 +182,15 @@ class _ClaimOrderScreenState extends ConsumerState<ClaimOrderScreen> {
                 phone: _phone,
                 step: _step,
                 loading: _loading,
+                acceptedLegal: _acceptedLegal,
                 error: _error,
                 seconds: _seconds,
                 otpRevision: _otpRevision,
                 onSend: () => _sendCode(teaser),
+                onLegalChanged: (value) => setState(() {
+                  _acceptedLegal = value;
+                  if (value) _error = null;
+                }),
                 onCompleted: _verify,
                 onResend: _resend,
                 onChangeNumber: () => setState(() {
@@ -188,10 +213,12 @@ class _Content extends StatelessWidget {
     required this.phone,
     required this.step,
     required this.loading,
+    required this.acceptedLegal,
     required this.error,
     required this.seconds,
     required this.otpRevision,
     required this.onSend,
+    required this.onLegalChanged,
     required this.onCompleted,
     required this.onResend,
     required this.onChangeNumber,
@@ -202,10 +229,12 @@ class _Content extends StatelessWidget {
   final TextEditingController phone;
   final _Step step;
   final bool loading;
+  final bool acceptedLegal;
   final String? error;
   final int seconds;
   final int otpRevision;
   final VoidCallback onSend;
+  final ValueChanged<bool> onLegalChanged;
   final ValueChanged<String> onCompleted;
   final VoidCallback onResend;
   final VoidCallback onChangeNumber;
@@ -226,9 +255,11 @@ class _Content extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const SizedBox(height: 6),
-          Text('Neni’s \u{1F338}',
-              textAlign: TextAlign.center,
-              style: AppTextStyles.h2.copyWith(color: AppColors.neniDeep)),
+          Text(
+            'Neni’s \u{1F338}',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.h2.copyWith(color: AppColors.neniDeep),
+          ),
           const SizedBox(height: 18),
 
           // Teaser de confianza.
@@ -242,35 +273,47 @@ class _Content extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(teaser.businessName.toUpperCase(),
-                    style: AppTextStyles.eyebrow(AppColors.neniDeep)),
+                Text(
+                  teaser.businessName.toUpperCase(),
+                  style: AppTextStyles.eyebrow(AppColors.neniDeep),
+                ),
                 const SizedBox(height: 6),
                 Text('Hola $hi \u{1F338}', style: AppTextStyles.h2),
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
-                      child: Text('Tu pedido',
-                          style: AppTextStyles.subtitle
-                              .copyWith(color: AppColors.ink2)),
+                      child: Text(
+                        'Tu pedido',
+                        style: AppTextStyles.subtitle.copyWith(
+                          color: AppColors.ink2,
+                        ),
+                      ),
                     ),
-                    Text(money.format(teaser.total),
-                        style: AppTextStyles.h2.copyWith(fontSize: 20)),
+                    Text(
+                      money.format(teaser.total),
+                      style: AppTextStyles.h2.copyWith(fontSize: 20),
+                    ),
                   ],
                 ),
                 if (teaser.statusLabel.trim().isNotEmpty) ...[
                   const SizedBox(height: 10),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFE1EC),
                       borderRadius: BorderRadius.circular(99),
                     ),
-                    child: Text(teaser.statusLabel,
-                        style: AppTextStyles.chip.copyWith(
-                            color: AppColors.neniDeep,
-                            fontWeight: FontWeight.w700)),
+                    child: Text(
+                      teaser.statusLabel,
+                      style: AppTextStyles.chip.copyWith(
+                        color: AppColors.neniDeep,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ],
               ],
@@ -279,8 +322,10 @@ class _Content extends StatelessWidget {
           const SizedBox(height: 22),
 
           if (step == _Step.phone) ...[
-            Text('Confirma tu WhatsApp\npara ver y guardar tu pedido',
-                style: AppTextStyles.h1.copyWith(fontSize: 22)),
+            Text(
+              'Confirma tu WhatsApp\npara ver y guardar tu pedido',
+              style: AppTextStyles.h1.copyWith(fontSize: 22),
+            ),
             const SizedBox(height: 8),
             Text(
               'Sin contraseñas. Te mandamos un código y listo — así siempre lo tendrás a la mano.',
@@ -297,9 +342,19 @@ class _Content extends StatelessWidget {
               textInputAction: TextInputAction.done,
               autofillHints: const [AutofillHints.telephoneNumber],
             ),
+            const SizedBox(height: 14),
+            LegalAcceptanceCheckbox(
+              key: const Key('claim-legal-checkbox'),
+              value: acceptedLegal,
+              enabled: !loading,
+              onChanged: onLegalChanged,
+            ),
             if (error != null) ...[
               const SizedBox(height: 14),
-              AuthFeedbackBanner(key: const Key('claim-error'), message: error!),
+              AuthFeedbackBanner(
+                key: const Key('claim-error'),
+                message: error!,
+              ),
             ],
             const SizedBox(height: 22),
             loading
@@ -310,17 +365,25 @@ class _Content extends StatelessWidget {
                     onPressed: onSend,
                   ),
           ] else ...[
-            Text('Escribe tu código',
-                style: AppTextStyles.h1.copyWith(fontSize: 22)),
+            Text(
+              'Escribe tu código',
+              style: AppTextStyles.h1.copyWith(fontSize: 22),
+            ),
             const SizedBox(height: 8),
-            Text('Te lo mandamos por WhatsApp al +52 ··· ${_last2(phone.text)}.',
-                style: AppTextStyles.subtitle),
+            Text(
+              'Te lo mandamos por WhatsApp al +52 ··· ${_last2(phone.text)}.',
+              style: AppTextStyles.subtitle,
+            ),
             const SizedBox(height: 6),
             GestureDetector(
               onTap: onChangeNumber,
-              child: Text('Cambiar número',
-                  style: AppTextStyles.subtitle.copyWith(
-                      color: AppColors.neniDeep, fontWeight: FontWeight.w600)),
+              child: Text(
+                'Cambiar número',
+                style: AppTextStyles.subtitle.copyWith(
+                  color: AppColors.neniDeep,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
             const SizedBox(height: 22),
             OtpInput(
@@ -333,18 +396,25 @@ class _Content extends StatelessWidget {
               child: seconds > 0
                   ? Text(
                       'Reenvía el código en 0:${seconds.toString().padLeft(2, '0')}',
-                      style: AppTextStyles.subtitle)
+                      style: AppTextStyles.subtitle,
+                    )
                   : GestureDetector(
                       onTap: onResend,
-                      child: Text('Reenviar código',
-                          style: AppTextStyles.subtitle.copyWith(
-                              color: AppColors.neniDeep,
-                              fontWeight: FontWeight.w600)),
+                      child: Text(
+                        'Reenviar código',
+                        style: AppTextStyles.subtitle.copyWith(
+                          color: AppColors.neniDeep,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
             ),
             if (error != null) ...[
               const SizedBox(height: 16),
-              AuthFeedbackBanner(key: const Key('claim-error'), message: error!),
+              AuthFeedbackBanner(
+                key: const Key('claim-error'),
+                message: error!,
+              ),
             ],
             if (loading) ...[
               const SizedBox(height: 18),
@@ -352,7 +422,9 @@ class _Content extends StatelessWidget {
                 child: SizedBox.square(
                   dimension: 22,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2.4, color: AppColors.neniDeep),
+                    strokeWidth: 2.4,
+                    color: AppColors.neniDeep,
+                  ),
                 ),
               ),
             ],
@@ -362,9 +434,13 @@ class _Content extends StatelessWidget {
           Center(
             child: GestureDetector(
               onTap: onOther,
-              child: Text('Entrar con otra cuenta',
-                  style: AppTextStyles.subtitle
-                      .copyWith(fontSize: 13, color: AppColors.ink3)),
+              child: Text(
+                'Entrar con otra cuenta',
+                style: AppTextStyles.subtitle.copyWith(
+                  fontSize: 13,
+                  color: AppColors.ink3,
+                ),
+              ),
             ),
           ),
         ],
@@ -396,7 +472,9 @@ class _LoadingPill extends StatelessWidget {
           width: 24,
           height: 24,
           child: CircularProgressIndicator(
-              strokeWidth: 2.5, color: AppColors.surface),
+            strokeWidth: 2.5,
+            color: AppColors.surface,
+          ),
         ),
       ),
     );
@@ -420,17 +498,52 @@ class _Fallback extends StatelessWidget {
               children: [
                 const Icon(Symbols.link_off, size: 46, color: AppColors.ink3),
                 const SizedBox(height: 14),
-                Text('No pudimos abrir tu pedido',
-                    textAlign: TextAlign.center, style: AppTextStyles.h2),
+                Text(
+                  'No pudimos abrir tu pedido',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.h2,
+                ),
                 const SizedBox(height: 8),
-                Text('Revisa tu enlace o entra a tu cuenta.',
-                    textAlign: TextAlign.center, style: AppTextStyles.subtitle),
+                Text(
+                  'Revisa tu enlace o entra a tu cuenta.',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.subtitle,
+                ),
                 const SizedBox(height: 22),
                 PillButton(label: "Entrar a Neni's", onPressed: onEnter),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ClaimOrderLoading extends StatelessWidget {
+  const _ClaimOrderLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(22, 14, 22, 28),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: const [
+          SizedBox(height: 6),
+          Skeleton.text(width: 80, height: 16),
+          SizedBox(height: 18),
+          Skeleton(height: 130, borderRadius: 20),
+          SizedBox(height: 22),
+          Skeleton.text(width: 200, height: 22),
+          SizedBox(height: 8),
+          Skeleton.text(width: double.infinity, height: 32),
+          SizedBox(height: 20),
+          Skeleton(height: 56, borderRadius: 14),
+          SizedBox(height: 22),
+          Skeleton(height: 56, borderRadius: 28),
+        ],
       ),
     );
   }

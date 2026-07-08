@@ -68,6 +68,7 @@ void main() {
         phone: '8681234567',
         businessName: 'Regi Bazar',
         city: 'Matamoros',
+        acceptedLegal: true,
       );
 
       expect(
@@ -85,6 +86,8 @@ void main() {
           'lastName': 'López',
           'email': 'ana@example.com',
           'phone': '8681234567',
+          'acceptedLegal': true,
+          'legalVersion': '2026-07-08',
           'businessName': 'Regi Bazar',
           'city': 'Matamoros',
         },
@@ -99,6 +102,7 @@ void main() {
         email: 'ana@example.com',
         phone: '8681234567',
         existingPassword: 'correcta-123',
+        acceptedLegal: true,
       );
 
       final json = profile.toJson(
@@ -195,6 +199,7 @@ void main() {
             email: 'ana@example.com',
             phone: '8681234567',
             businessName: 'Regi Bazar',
+            acceptedLegal: true,
           ),
         ),
         throwsA(

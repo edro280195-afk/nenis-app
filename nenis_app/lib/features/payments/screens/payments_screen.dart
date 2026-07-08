@@ -12,6 +12,7 @@ import '../../../core/utils/color_hex.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/store_avatar.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../data/payments_models.dart';
 import '../data/payments_repository.dart';
 
@@ -28,9 +29,7 @@ class PaymentsScreen extends ConsumerWidget {
         child: SafeArea(
           bottom: false,
           child: feed.when(
-            loading: () => const Center(
-              child: CircularProgressIndicator(color: AppColors.neni),
-            ),
+            loading: () => const _PaymentsLoading(),
             error: (e, _) => _PaymentsError(
               onRetry: () => ref.invalidate(paymentsFeedProvider),
             ),
@@ -411,4 +410,41 @@ class _PaymentsError extends StatelessWidget {
 
 String _formatDate(DateTime date) {
   return DateFormat("d 'de' MMM, yyyy", 'es').format(date.toLocal());
+}
+
+class _PaymentsLoading extends StatelessWidget {
+  const _PaymentsLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
+      physics: const NeverScrollableScrollPhysics(),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(22, 14, 22, 14),
+          child: Row(
+            children: const [
+              Skeleton.circle(size: 32),
+              SizedBox(width: 16),
+              Skeleton.text(width: 150, height: 20),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 22),
+          child: Skeleton(height: 84, borderRadius: 20),
+        ),
+        const SizedBox(height: 24),
+        ...List.generate(
+          3,
+          (_) => const Padding(
+            padding: EdgeInsets.fromLTRB(22, 0, 22, 12),
+            child: Skeleton(height: 72, borderRadius: 18),
+          ),
+        ),
+      ],
+    );
+  }
 }

@@ -10,7 +10,10 @@ import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/color_hex.dart';
 import '../../../shared/widgets/background.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/pill_button.dart';
+import '../../../shared/widgets/premium_toast.dart';
+import '../../../shared/widgets/premium_dialog.dart';
 import '../../store/data/store_models.dart';
 import '../../store/data/store_repository.dart';
 import '../data/reserve_models.dart';
@@ -63,19 +66,17 @@ class _ReserveScreenState extends ConsumerState<ReserveScreen> {
       await _showSuccessDialog(result);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(e.toString())));
+      context.showPremiumToast(e.toString(), type: PremiumToastType.error);
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
   }
 
   Future<void> _showSuccessDialog(ReserveResult result) async {
-    final goTracking = await showDialog<bool>(
+    final goTracking = await showPremiumDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => _SuccessDialog(order: result),
+      child: _SuccessDialog(order: result),
     );
     if (!mounted) return;
     if (goTracking == true && result.accessToken != null) {
@@ -150,8 +151,44 @@ class _ReserveLoading extends StatelessWidget {
   const _ReserveLoading();
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: CircularProgressIndicator(color: AppColors.neni),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(22, 14, 22, 14),
+          child: Row(
+            children: const [
+              Skeleton.circle(size: 32),
+              SizedBox(width: 16),
+              Skeleton.text(width: 150, height: 20),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: SingleChildScrollView(
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: const [
+                Skeleton(height: 240, borderRadius: 28),
+                SizedBox(height: 20),
+                Skeleton.text(width: 180, height: 22),
+                SizedBox(height: 10),
+                Skeleton.text(width: 120, height: 16),
+                SizedBox(height: 14),
+                Skeleton.text(width: double.infinity, height: 64),
+                SizedBox(height: 28),
+                Skeleton(height: 56, borderRadius: 16),
+              ],
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(22),
+          child: const Skeleton(height: 56, borderRadius: 28),
+        ),
+      ],
     );
   }
 }

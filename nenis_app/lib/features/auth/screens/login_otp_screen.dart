@@ -7,6 +7,7 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/auth/auth_controller.dart';
 import '../../../core/auth/auth_repository.dart';
+import '../../../core/legal/legal_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -16,15 +17,11 @@ import '../../../shared/widgets/nenis_logo.dart';
 import '../../../shared/widgets/otp_cell.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../widgets/auth_feedback.dart';
+import '../widgets/auth_motion.dart';
+import '../widgets/legal_acceptance.dart';
 
-/// Login **passwordless** genérico (teléfono + código por WhatsApp, sin
-/// contraseña). Es el mismo flujo que `ClaimOrderScreen` pero sin el teaser
-/// del pedido — lo usa la clienta que entra directamente a la app (no por deep
-/// link) y prefiere código en lugar de contraseña.
-///
-/// Si hay un pedido pendiente (deep link / Install Referrer capturado después
-/// del primer arranque), el router la lleva a `/pedido/{token}` al autenticar;
-/// si no, a `/home`.
+/// Login passwordless generico: telefono + codigo por WhatsApp.
+/// Si el telefono no existe, el backend puede crear una cuenta de clienta.
 class LoginOtpScreen extends ConsumerStatefulWidget {
   const LoginOtpScreen({super.key});
 
@@ -38,6 +35,7 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
   final _phone = TextEditingController();
   _Step _step = _Step.phone;
   bool _loading = false;
+  bool _acceptedLegal = false;
   String? _error;
   int _otpRevision = 0;
 
@@ -68,22 +66,36 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
     if (_loading) return;
     final phone = _phone.text.replaceAll(RegExp(r'\D'), '');
     if (phone.length != 10) {
-      setState(() => _error = 'Escribe tu teléfono a 10 dígitos.');
+      setState(() => _error = 'Escribe tu telefono a 10 digitos.');
       return;
     }
+    if (!_acceptedLegal) {
+      setState(
+        () => _error =
+            'Acepta los Terminos y el Aviso de privacidad para continuar.',
+      );
+      return;
+    }
+
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      await ref.read(authControllerProvider.notifier).requestPasswordlessOtp(phone);
+      await ref
+          .read(authControllerProvider.notifier)
+          .requestPasswordlessOtp(
+            phone,
+            acceptedLegal: _acceptedLegal,
+            legalVersion: LegalConfig.currentVersion,
+          );
       if (!mounted) return;
       setState(() => _step = _Step.code);
       _startCountdown();
     } on AuthException catch (e) {
       _fail(e.message);
     } catch (_) {
-      _fail('Ocurrió un problema inesperado. Inténtalo de nuevo.');
+      _fail('Ocurrio un problema inesperado. Intentalo de nuevo.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -96,13 +108,17 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
       _error = null;
     });
     try {
-      await ref.read(authControllerProvider.notifier).verifyPasswordlessOtp(code);
+      await ref
+          .read(authControllerProvider.notifier)
+          .verifyPasswordlessOtp(code);
       // Exito: el redirect del router lleva a /home o /pedido/{token}.
     } on AuthException catch (e) {
       _fail(e.message, resetCode: true);
     } catch (_) {
-      _fail('Ocurrió un problema inesperado. Inténtalo de nuevo.',
-          resetCode: true);
+      _fail(
+        'Ocurrio un problema inesperado. Intentalo de nuevo.',
+        resetCode: true,
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -114,8 +130,11 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
       await ref.read(authControllerProvider.notifier).resendCode();
       _startCountdown();
       if (mounted) {
-        showAuthNotification(context, 'Te enviamos un nuevo codigo.',
-            tone: AuthFeedbackTone.success);
+        showAuthNotification(
+          context,
+          'Te enviamos un nuevo codigo.',
+          tone: AuthFeedbackTone.success,
+        );
       }
     } catch (_) {
       if (mounted) setState(() => _error = 'No pudimos reenviar el codigo.');
@@ -139,19 +158,21 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
           child: SingleChildScrollView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: const EdgeInsets.fromLTRB(22, 14, 22, 28),
-            child: Column(
+            child: AuthMotionColumn(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 6),
                 const Center(child: NenisLogo(markSize: 46, wordmarkSize: 23)),
                 const SizedBox(height: 18),
                 if (_step == _Step.phone) ...[
-                  Text('Entra con tu codigo',
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.h1.copyWith(fontSize: 24)),
+                  Text(
+                    'Entra o crea con codigo',
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.h1.copyWith(fontSize: 24),
+                  ),
                   const SizedBox(height: 8),
                   Text(
-                    'Sin contrasenas. Te mandamos un codigo por WhatsApp y entras directo.',
+                    'Te mandamos un codigo por WhatsApp. Si es tu primera vez, crearemos tu cuenta de clienta.',
                     textAlign: TextAlign.center,
                     style: AppTextStyles.subtitle,
                   ),
@@ -166,10 +187,22 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
                     textInputAction: TextInputAction.done,
                     autofillHints: const [AutofillHints.telephoneNumber],
                   ),
+                  const SizedBox(height: 14),
+                  LegalAcceptanceCheckbox(
+                    key: const Key('login-otp-legal-checkbox'),
+                    value: _acceptedLegal,
+                    enabled: !_loading,
+                    onChanged: (value) => setState(() {
+                      _acceptedLegal = value;
+                      if (value) _error = null;
+                    }),
+                  ),
                   if (_error != null) ...[
                     const SizedBox(height: 14),
                     AuthFeedbackBanner(
-                        key: const Key('login-otp-error'), message: _error!),
+                      key: const Key('login-otp-error'),
+                      message: _error!,
+                    ),
                   ],
                   const SizedBox(height: 22),
                   _loading
@@ -181,9 +214,11 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
                           onPressed: _sendCode,
                         ),
                 ] else ...[
-                  Text('Escribe tu codigo',
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.h1.copyWith(fontSize: 24)),
+                  Text(
+                    'Escribe tu codigo',
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.h1.copyWith(fontSize: 24),
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     'Te lo mandamos por WhatsApp al +52 ... ${_last2(_phone.text)}.',
@@ -196,11 +231,14 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
                       _step = _Step.phone;
                       _error = null;
                     }),
-                    child: Text('Cambiar numero',
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.subtitle.copyWith(
-                            color: AppColors.neniDeep,
-                            fontWeight: FontWeight.w600)),
+                    child: Text(
+                      'Cambiar numero',
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.subtitle.copyWith(
+                        color: AppColors.neniDeep,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 22),
                   OtpInput(
@@ -213,19 +251,25 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
                     child: _seconds > 0
                         ? Text(
                             'Reenvia el codigo en 0:${_seconds.toString().padLeft(2, '0')}',
-                            style: AppTextStyles.subtitle)
+                            style: AppTextStyles.subtitle,
+                          )
                         : GestureDetector(
                             onTap: _resend,
-                            child: Text('Reenviar codigo',
-                                style: AppTextStyles.subtitle.copyWith(
-                                    color: AppColors.neniDeep,
-                                    fontWeight: FontWeight.w600)),
+                            child: Text(
+                              'Reenviar codigo',
+                              style: AppTextStyles.subtitle.copyWith(
+                                color: AppColors.neniDeep,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 16),
                     AuthFeedbackBanner(
-                        key: const Key('login-otp-error'), message: _error!),
+                      key: const Key('login-otp-error'),
+                      message: _error!,
+                    ),
                   ],
                   if (_loading) ...[
                     const SizedBox(height: 18),
@@ -233,7 +277,9 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
                       child: SizedBox.square(
                         dimension: 22,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2.4, color: AppColors.neniDeep),
+                          strokeWidth: 2.4,
+                          color: AppColors.neniDeep,
+                        ),
                       ),
                     ),
                   ],
@@ -242,9 +288,13 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
                 Center(
                   child: GestureDetector(
                     onTap: () => context.go('/login'),
-                    child: Text('Volver al login',
-                        style: AppTextStyles.subtitle
-                            .copyWith(fontSize: 13, color: AppColors.ink3)),
+                    child: Text(
+                      'Volver al login',
+                      style: AppTextStyles.subtitle.copyWith(
+                        fontSize: 13,
+                        color: AppColors.ink3,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -279,7 +329,9 @@ class _LoadingPill extends StatelessWidget {
           width: 24,
           height: 24,
           child: CircularProgressIndicator(
-              strokeWidth: 2.5, color: AppColors.surface),
+            strokeWidth: 2.5,
+            color: AppColors.surface,
+          ),
         ),
       ),
     );

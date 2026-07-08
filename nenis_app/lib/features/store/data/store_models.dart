@@ -32,6 +32,9 @@ class BuyerStoreDetail {
     required this.products,
     required this.activeTandasCount,
     required this.activeRafflesCount,
+    required this.followerCount,
+    required this.isFollowing,
+    required this.isVip,
     this.slug,
     this.city,
     this.logoUrl,
@@ -53,6 +56,9 @@ class BuyerStoreDetail {
   final List<BuyerProduct> products;
   final int activeTandasCount;
   final int activeRafflesCount;
+  final int followerCount;
+  final bool isFollowing;
+  final bool isVip;
 
   String get initial => name.isNotEmpty
       ? name.characters.first.toUpperCase()
@@ -78,6 +84,33 @@ class BuyerStoreDetail {
             .toList(),
         activeTandasCount: (j['activeTandasCount'] as num?)?.toInt() ?? 0,
         activeRafflesCount: (j['activeRafflesCount'] as num?)?.toInt() ?? 0,
+        followerCount: (j['followerCount'] as num?)?.toInt() ?? 0,
+        isFollowing: (j['isFollowing'] as bool?) ?? false,
+        isVip: (j['isVip'] as bool?) ?? false,
+      );
+
+  BuyerStoreDetail copyWith({
+    int? followerCount,
+    bool? isFollowing,
+    bool? isVip,
+  }) => BuyerStoreDetail(
+        businessId: businessId,
+        name: name,
+        slug: slug,
+        city: city,
+        logoUrl: logoUrl,
+        brandPrimaryColor: brandPrimaryColor,
+        brandAccentColor: brandAccentColor,
+        clientCount: clientCount,
+        isVerified: isVerified,
+        points: points,
+        live: live,
+        products: products,
+        activeTandasCount: activeTandasCount,
+        activeRafflesCount: activeRafflesCount,
+        followerCount: followerCount ?? this.followerCount,
+        isFollowing: isFollowing ?? this.isFollowing,
+        isVip: isVip ?? this.isVip,
       );
 }
 

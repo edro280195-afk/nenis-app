@@ -13,6 +13,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/color_hex.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/pill_button.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/segmented.dart';
 import '../data/notifications_models.dart';
 import '../data/notifications_repository.dart';
@@ -91,9 +92,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         child: SafeArea(
           bottom: false,
           child: feed.when(
-            loading: () => const Center(
-              child: CircularProgressIndicator(color: AppColors.neni),
-            ),
+            loading: () => const _NotificationsLoading(),
             error: (e, _) => _NotificationsError(
               onRetry: () => ref.invalidate(notificationsFeedProvider),
             ),
@@ -452,4 +451,41 @@ String _formatTime(DateTime date) {
   if (diff.inHours < 24) return 'hace ${diff.inHours} h';
   if (diff.inDays < 7) return 'hace ${diff.inDays} d';
   return DateFormat("d MMM", 'es').format(local);
+}
+
+class _NotificationsLoading extends StatelessWidget {
+  const _NotificationsLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
+      physics: const NeverScrollableScrollPhysics(),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(22, 14, 22, 14),
+          child: Row(
+            children: const [
+              Skeleton.circle(size: 32),
+              SizedBox(width: 16),
+              Skeleton.text(width: 130, height: 20),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 22),
+          child: Skeleton(height: 48, borderRadius: 14),
+        ),
+        const SizedBox(height: 20),
+        ...List.generate(
+          4,
+          (_) => const Padding(
+            padding: EdgeInsets.fromLTRB(22, 0, 22, 12),
+            child: Skeleton(height: 80, borderRadius: 18),
+          ),
+        ),
+      ],
+    );
+  }
 }

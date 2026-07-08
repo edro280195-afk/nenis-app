@@ -12,6 +12,7 @@ import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/segmented.dart';
 import '../../../shared/widgets/store_avatar.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../data/tandas_models.dart';
 import '../data/tandas_repository.dart';
 
@@ -45,9 +46,7 @@ class BuyerTandasScreen extends ConsumerWidget {
         child: SafeArea(
           bottom: false,
           child: feed.when(
-            loading: () => const Center(
-              child: CircularProgressIndicator(color: AppColors.neni),
-            ),
+            loading: () => const _TandasLoading(),
             error: (e, _) => _TandasError(
               onRetry: () => ref.invalidate(tandasControllerProvider),
             ),
@@ -554,6 +553,43 @@ class _TandasError extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _TandasLoading extends StatelessWidget {
+  const _TandasLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
+      physics: const NeverScrollableScrollPhysics(),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(22, 14, 22, 14),
+          child: Row(
+            children: const [
+              Skeleton.circle(size: 32),
+              SizedBox(width: 16),
+              Skeleton.text(width: 120, height: 20),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 22),
+          child: Skeleton(height: 48, borderRadius: 14),
+        ),
+        const SizedBox(height: 20),
+        ...List.generate(
+          3,
+          (_) => const Padding(
+            padding: EdgeInsets.fromLTRB(22, 0, 22, 14),
+            child: Skeleton(height: 150, borderRadius: 24),
+          ),
+        ),
+      ],
     );
   }
 }

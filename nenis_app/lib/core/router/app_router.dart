@@ -1,8 +1,9 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../auth/auth_controller.dart';
+import '../auth/auth_repository.dart';
 import '../deeplinks/deep_link_service.dart';
 import '../../features/auth/screens/auth_welcome_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
@@ -33,6 +34,8 @@ import '../../features/payments/screens/payments_screen.dart';
 import '../../features/reserve/screens/reserve_screen.dart';
 import '../../features/routes/screens/seller_routes_screen.dart';
 import '../../features/clients/screens/seller_clients_screen.dart';
+import '../../features/subscription/screens/my_plan_screen.dart';
+import '../../features/subscription/screens/mp_checkout_webview_screen.dart';
 import '../../shared/screens/splash_screen.dart';
 import '../../shared/widgets/app_shell.dart';
 
@@ -126,32 +129,57 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/welcome',
-        builder: (context, state) => const AuthWelcomeScreen(),
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: const AuthWelcomeScreen(),
+        ),
       ),
-      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/login',
+        pageBuilder: (context, state) =>
+            _pageTransition(key: state.pageKey, child: const LoginScreen()),
+      ),
       GoRoute(
         path: '/login-otp',
-        builder: (context, state) => const LoginOtpScreen(),
+        pageBuilder: (context, state) =>
+            _pageTransition(key: state.pageKey, child: const LoginOtpScreen()),
       ),
       GoRoute(
         path: '/register',
-        builder: (context, state) => const RegisterScreen(),
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: RegisterScreen(
+            initialRole: state.uri.queryParameters['role'] == 'seller'
+                ? FacebookAccountType.seller
+                : FacebookAccountType.client,
+          ),
+        ),
       ),
       GoRoute(
         path: '/forgot-password',
-        builder: (context, state) => const PasswordResetScreen(),
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: const PasswordResetScreen(),
+        ),
       ),
       GoRoute(
         path: '/confirm',
-        builder: (context, state) => const ConfirmScreen(),
+        pageBuilder: (context, state) =>
+            _pageTransition(key: state.pageKey, child: const ConfirmScreen()),
       ),
       GoRoute(
         path: '/claim',
-        builder: (context, state) => const ClaimProfileScreen(),
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: const ClaimProfileScreen(),
+        ),
       ),
       GoRoute(
         path: '/claim-order',
-        builder: (context, state) => const ClaimOrderScreen(),
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: const ClaimOrderScreen(),
+        ),
       ),
       ShellRoute(
         builder: (context, state, child) =>
@@ -159,121 +187,241 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: '/home',
-            builder: (context, state) => const HomeScreen(),
+            pageBuilder: (context, state) =>
+                _pageTransition(key: state.pageKey, child: const HomeScreen()),
           ),
           GoRoute(
             path: '/routes',
-            builder: (context, state) => const SellerRoutesScreen(),
+            pageBuilder: (context, state) => _pageTransition(
+              key: state.pageKey,
+              child: const SellerRoutesScreen(),
+            ),
           ),
           GoRoute(
             path: '/clients',
-            builder: (context, state) => const SellerClientsScreen(),
+            pageBuilder: (context, state) => _pageTransition(
+              key: state.pageKey,
+              child: const SellerClientsScreen(),
+            ),
           ),
           GoRoute(
             path: '/store/:businessId',
-            builder: (context, state) =>
-                StoreScreen(businessId: state.pathParameters['businessId']!),
+            pageBuilder: (context, state) => _pageTransition(
+              key: state.pageKey,
+              child: StoreScreen(
+                businessId: state.pathParameters['businessId']!,
+              ),
+            ),
           ),
           GoRoute(
             path: '/orders',
-            builder: (context, state) => const OrdersScreen(),
+            pageBuilder: (context, state) => _pageTransition(
+              key: state.pageKey,
+              child: const OrdersScreen(),
+            ),
           ),
           GoRoute(
             path: '/points',
-            builder: (context, state) => const PointsScreen(),
+            pageBuilder: (context, state) => _pageTransition(
+              key: state.pageKey,
+              child: const PointsScreen(),
+            ),
           ),
           GoRoute(
             path: '/tandas',
-            builder: (context, state) => const TandasScreen(),
+            pageBuilder: (context, state) => _pageTransition(
+              key: state.pageKey,
+              child: const TandasScreen(),
+            ),
           ),
           GoRoute(
             path: '/raffles',
-            builder: (context, state) => const RafflesScreen(),
+            pageBuilder: (context, state) => _pageTransition(
+              key: state.pageKey,
+              child: const RafflesScreen(),
+            ),
           ),
           GoRoute(
             path: '/account',
-            builder: (context, state) => const AccountScreen(),
+            pageBuilder: (context, state) => _pageTransition(
+              key: state.pageKey,
+              child: const AccountScreen(),
+            ),
           ),
         ],
       ),
       GoRoute(
         path: '/live/:sessionId',
-        builder: (context, state) =>
-            LiveScreen(sessionId: state.pathParameters['sessionId']!),
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: LiveScreen(sessionId: state.pathParameters['sessionId']!),
+        ),
       ),
       GoRoute(
         path: '/orders/new',
-        builder: (context, state) => const OrderCreateScreen(),
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: const OrderCreateScreen(),
+        ),
       ),
       GoRoute(
         path: '/orders/detail/:id',
-        builder: (context, state) => OrderDetailScreen(
-          orderId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: OrderDetailScreen(
+            orderId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+          ),
         ),
       ),
       GoRoute(
         path: '/tracking/:orderId',
-        builder: (context, state) => TrackingScreen(
-          orderId: state.pathParameters['orderId']!,
-          accessToken: state.uri.queryParameters['token'],
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: TrackingScreen(
+            orderId: state.pathParameters['orderId']!,
+            accessToken: state.uri.queryParameters['token'],
+          ),
         ),
       ),
-      // Destino del enlace del pedido (deep link). `/o/:token` es red de
-      // seguridad: normalmente el redirect reescribe /o/ a /pedido/.
       GoRoute(
         path: '/pedido/:token',
-        builder: (context, state) =>
-            OrderLinkScreen(token: state.pathParameters['token']!),
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: OrderLinkScreen(token: state.pathParameters['token']!),
+        ),
       ),
       GoRoute(
         path: '/o/:token',
-        builder: (context, state) =>
-            OrderLinkScreen(token: state.pathParameters['token']!),
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: OrderLinkScreen(token: state.pathParameters['token']!),
+        ),
       ),
       GoRoute(
         path: '/reserve/:businessId/:productId',
-        builder: (context, state) => ReserveScreen(
-          businessId: state.pathParameters['businessId']!,
-          productId: state.pathParameters['productId']!,
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: ReserveScreen(
+            businessId: state.pathParameters['businessId']!,
+            productId: state.pathParameters['productId']!,
+          ),
+          slideUp: true,
         ),
       ),
       GoRoute(
         path: '/notifications',
-        builder: (context, state) => const NotificationsScreen(),
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: const NotificationsScreen(),
+        ),
       ),
       GoRoute(
         path: '/payments',
-        builder: (context, state) => const PaymentsScreen(),
+        pageBuilder: (context, state) =>
+            _pageTransition(key: state.pageKey, child: const PaymentsScreen()),
       ),
       GoRoute(
         path: '/seller/settings',
-        builder: (context, state) => const SellerSettingsScreen(),
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: const SellerSettingsScreen(),
+        ),
       ),
       GoRoute(
         path: '/seller/settings/profile',
-        builder: (context, state) => const SellerStoreProfileSettingsScreen(),
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: const SellerStoreProfileSettingsScreen(),
+        ),
       ),
       GoRoute(
         path: '/seller/settings/payments',
-        builder: (context, state) => const SellerPaymentSettingsScreen(),
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: const SellerPaymentSettingsScreen(),
+        ),
       ),
       GoRoute(
         path: '/seller/settings/team',
-        builder: (context, state) => const SellerTeamSettingsScreen(),
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: const SellerTeamSettingsScreen(),
+        ),
       ),
       GoRoute(
         path: '/seller/settings/preferences',
-        builder: (context, state) => const SellerPreferencesSettingsScreen(),
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: const SellerPreferencesSettingsScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/seller/plan',
+        pageBuilder: (context, state) =>
+            _pageTransition(key: state.pageKey, child: const MyPlanScreen()),
+      ),
+      GoRoute(
+        path: '/seller/plan/checkout',
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: MpCheckoutWebViewScreen(
+            planTier: state.uri.queryParameters['plan'] ?? 'Pro',
+            periodicity: state.uri.queryParameters['periodicity'] ?? 'monthly',
+          ),
+          slideUp: true,
+        ),
       ),
       GoRoute(
         path: '/addresses',
-        builder: (context, state) => const AddressesScreen(),
+        pageBuilder: (context, state) =>
+            _pageTransition(key: state.pageKey, child: const AddressesScreen()),
       ),
       GoRoute(
         path: '/addresses/:clientId',
-        builder: (context, state) =>
-            AddressEditScreen(clientId: state.pathParameters['clientId']!),
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: AddressEditScreen(clientId: state.pathParameters['clientId']!),
+        ),
       ),
     ],
   );
 });
+
+Page<T> _pageTransition<T>({
+  required LocalKey key,
+  required Widget child,
+  bool slideUp = false,
+}) {
+  return CustomTransitionPage<T>(
+    key: key,
+    child: child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final curve = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+      if (slideUp) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0.0, 1.0),
+            end: Offset.zero,
+          ).animate(curve),
+          child: child,
+        );
+      }
+      return FadeTransition(
+        opacity: curve,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0.0, 0.06),
+            end: Offset.zero,
+          ).animate(curve),
+          child: child,
+        ),
+      );
+    },
+    transitionDuration: const Duration(milliseconds: 320),
+    reverseTransitionDuration: const Duration(milliseconds: 260),
+  );
+}

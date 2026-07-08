@@ -36,6 +36,7 @@ void main() {
     expect(find.byKey(const Key('seller-email-field')), findsOneWidget);
     expect(find.text('Tu espacio de ventas'), findsOneWidget);
     expect(find.text('Entrar a mi tienda'), findsOneWidget);
+    expect(find.byKey(const Key('seller-register-link')), findsOneWidget);
     expect(find.byKey(const Key('client-phone-field')), findsNothing);
     expect(find.text('Continuar con Facebook'), findsOneWidget);
     expect(find.byKey(const Key('forgot-password-seller')), findsOneWidget);

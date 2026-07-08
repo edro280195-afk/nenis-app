@@ -10,6 +10,7 @@ import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/segmented.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../data/seller_orders_models.dart';
 import '../data/seller_orders_repository.dart';
 import '../widgets/seller_status_chip.dart';
@@ -153,9 +154,7 @@ class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen> {
                   ),
                   Expanded(
                     child: async.when(
-                      loading: () => const Center(
-                        child: CircularProgressIndicator(color: AppColors.neni),
-                      ),
+                      loading: () => const _SellerOrdersLoading(),
                       error: (e, _) => _ErrorState(
                         message: e.toString(),
                         onRetry: () => ref
@@ -1224,6 +1223,23 @@ class _ErrorState extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SellerOrdersLoading extends StatelessWidget {
+  const _SellerOrdersLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: 4,
+      itemBuilder: (_, __) => const Padding(
+        padding: EdgeInsets.only(bottom: 14),
+        child: Skeleton(height: 120, borderRadius: 20),
       ),
     );
   }

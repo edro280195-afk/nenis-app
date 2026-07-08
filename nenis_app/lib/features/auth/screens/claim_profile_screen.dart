@@ -7,6 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../../claim/data/claim_models.dart';
 import '../../claim/data/claim_repository.dart';
 import '../../../shared/widgets/background.dart';
@@ -86,46 +87,56 @@ class _ClaimProfileScreenState extends ConsumerState<ClaimProfileScreen> {
                   ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(22, 18, 22, 4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Te reconocimos 🌸',
-                        style: AppTextStyles.eyebrow(AppColors.neniDeep)),
-                    const SizedBox(height: 8),
-                    Text('Encontramos tu historial\nen estas tiendas',
-                        style: AppTextStyles.h1),
-                    const SizedBox(height: 9),
-                    Text(
-                      'Reclámalo para ver tus pedidos pasados y juntar tus puntos. Tú eliges cuáles.',
-                      style: AppTextStyles.subtitle,
-                    ),
-                  ],
-                ),
-              ),
               Expanded(
                 child: candidatesAsync.when(
-                  loading: () => const Center(
-                    child: CircularProgressIndicator(color: AppColors.neni),
-                  ),
+                  loading: () => const _CandidatesLoading(),
                   error: (err, _) => _ErrorState(
                     onRetry: () => ref.invalidate(claimCandidatesProvider),
                     onEnter: () => context.go('/home'),
                   ),
                   data: (candidates) {
                     if (candidates.isEmpty) {
-                      return _EmptyState(onEnter: () => context.go('/home'));
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) {
+                          context.go('/home');
+                        }
+                      });
+                      return const SizedBox.shrink();
                     }
                     _selected ??= candidates.map((c) => c.clientId).toSet();
-                    return _CandidateList(
-                      candidates: candidates,
-                      selected: _selected!,
-                      onToggle: (id) => setState(() {
-                        _selected!.contains(id)
-                            ? _selected!.remove(id)
-                            : _selected!.add(id);
-                      }),
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(22, 18, 22, 4),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Te reconocimos 🌸',
+                                  style: AppTextStyles.eyebrow(AppColors.neniDeep)),
+                              const SizedBox(height: 8),
+                              Text('Encontramos tu historial\nen estas tiendas',
+                                  style: AppTextStyles.h1),
+                              const SizedBox(height: 9),
+                              Text(
+                                'Reclámalo para ver tus pedidos pasados y juntar tus puntos. Tú eliges cuáles.',
+                                style: AppTextStyles.subtitle,
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: _CandidateList(
+                            candidates: candidates,
+                            selected: _selected!,
+                            onToggle: (id) => setState(() {
+                              _selected!.contains(id)
+                                  ? _selected!.remove(id)
+                                  : _selected!.add(id);
+                            }),
+                          ),
+                        ),
+                      ],
                     );
                   },
                 ),
@@ -402,6 +413,34 @@ class _LoadingPill extends StatelessWidget {
               strokeWidth: 2.5, color: AppColors.surface),
         ),
       ),
+    );
+  }
+}
+
+class _CandidatesLoading extends StatelessWidget {
+  const _CandidatesLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
+      physics: const NeverScrollableScrollPhysics(),
+      children: const [
+        SizedBox(height: 18),
+        Skeleton.text(width: 140, height: 16),
+        SizedBox(height: 12),
+        Skeleton.text(width: 240, height: 28),
+        SizedBox(height: 8),
+        Skeleton.text(width: 200, height: 28),
+        SizedBox(height: 12),
+        Skeleton.text(width: 280, height: 14),
+        SizedBox(height: 24),
+        Skeleton(height: 76, borderRadius: 20),
+        SizedBox(height: 14),
+        Skeleton(height: 76, borderRadius: 20),
+        SizedBox(height: 14),
+        Skeleton(height: 76, borderRadius: 20),
+      ],
     );
   }
 }

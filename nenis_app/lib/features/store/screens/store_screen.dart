@@ -11,10 +11,14 @@ import '../../../core/utils/color_hex.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/store_avatar.dart';
+import '../../../shared/widgets/skeleton.dart';
+import '../../../shared/widgets/interactive_bounce.dart';
+import '../../../shared/widgets/premium_toast.dart';
 import '../../raffles/data/raffles_models.dart';
 import '../../raffles/data/raffles_repository.dart';
 import '../../tandas/data/tandas_models.dart';
 import '../../tandas/data/tandas_repository.dart';
+import '../data/follow_repository.dart';
 import '../data/store_models.dart';
 import '../data/store_repository.dart';
 
@@ -69,8 +73,119 @@ class _StoreLoading extends StatelessWidget {
   const _StoreLoading();
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: CircularProgressIndicator(color: AppColors.neni),
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
+      physics: const NeverScrollableScrollPhysics(),
+      children: [
+        Container(
+          height: 132,
+          decoration: const BoxDecoration(
+            color: Color(0xFFF5EEF2),
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(28),
+              bottomRight: Radius.circular(28),
+            ),
+          ),
+          child: SafeArea(
+            bottom: false,
+            child: Stack(
+              children: [
+                Positioned(
+                  top: 8,
+                  left: 14,
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white30,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 14,
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white30,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white30,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              const Skeleton.circle(size: 64),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Skeleton.text(width: 140, height: 18),
+                    SizedBox(height: 6),
+                    Skeleton.text(width: 180, height: 12),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20),
+          child: Skeleton(height: 48, borderRadius: 14),
+        ),
+        const SizedBox(height: 24),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              Skeleton(width: 80, height: 32, borderRadius: 16),
+              SizedBox(width: 12),
+              Skeleton(width: 80, height: 32, borderRadius: 16),
+              SizedBox(width: 12),
+              Skeleton(width: 80, height: 32, borderRadius: 16),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 14,
+              mainAxisSpacing: 14,
+              childAspectRatio: 0.78,
+            ),
+            itemCount: 4,
+            itemBuilder: (_, __) => const Skeleton(borderRadius: 20),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -231,11 +346,12 @@ class _HeaderIcon extends StatelessWidget {
   }
 }
 
-class _ProfileRow extends StatelessWidget {
+class _ProfileRow extends ConsumerWidget {
   const _ProfileRow({required this.store});
   final BuyerStoreDetail store;
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isBusy = ref.watch(followControllerProvider);
     return Transform.translate(
       offset: const Offset(0, -34),
       child: Padding(
@@ -297,11 +413,26 @@ class _ProfileRow extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             PillButton(
-              label: 'Seguir pronto',
-              icon: Symbols.schedule,
+              label: store.isFollowing ? 'Siguiendo' : 'Seguir',
+              icon: store.isFollowing ? Symbols.check : Symbols.add,
               expand: false,
-              variant: PillButtonVariant.ghost,
-              onPressed: () => _soonToast(context, 'Función próximamente'),
+              variant: store.isFollowing
+                  ? PillButtonVariant.ghost
+                  : PillButtonVariant.brand,
+              onPressed: isBusy
+                  ? null
+                  : () async {
+                      try {
+                        await ref.read(followControllerProvider.notifier).toggle();
+                      } on FollowException catch (e) {
+                        if (context.mounted) {
+                          context.showPremiumToast(
+                            e.message,
+                            type: PremiumToastType.error,
+                          );
+                        }
+                      }
+                    },
             ),
           ],
         ),
@@ -314,6 +445,9 @@ class _ProfileRow extends StatelessWidget {
     if (s.city != null && s.city!.isNotEmpty) parts.add(s.city!);
     if (s.clientCount > 0) {
       parts.add('${s.clientCount} clientas');
+    }
+    if (s.followerCount > 0) {
+      parts.add('${s.followerCount} siguen');
     }
     return parts.isEmpty ? 'Tienda en Neni\'s' : parts.join(' · ');
   }
@@ -641,8 +775,8 @@ class _ProductCard extends StatelessWidget {
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
+    return InteractiveBounce(
+      onPressed: onTap,
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surface,
@@ -1134,7 +1268,5 @@ class _EmptyTab extends StatelessWidget {
 }
 
 void _soonToast(BuildContext context, String message) {
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(message)));
+  context.showPremiumToast(message, type: PremiumToastType.info);
 }

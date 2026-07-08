@@ -18,4 +18,17 @@ class AppConfig {
     if (Platform.isAndroid) return 'http://10.0.2.2:5080';
     return 'http://localhost:5080';
   }
+
+  /// Base URL del panel web Angular (`sellgeneral`). Se usa para el
+  /// checkout de Mercado Pago (`mp_checkout_webview_screen.dart`), que
+  /// reusa la página de pago ya construida ahí en vez de duplicarla nativa.
+  ///
+  /// Override en build release: `--dart-define=WEB_ADMIN_BASE_URL=https://tu-dominio`.
+  static String get webAdminBaseUrl {
+    const override = String.fromEnvironment('WEB_ADMIN_BASE_URL');
+    if (override.isNotEmpty) return override;
+    if (kIsWeb) return 'http://localhost:4200';
+    if (Platform.isAndroid) return 'http://10.0.2.2:4200';
+    return 'http://localhost:4200';
+  }
 }

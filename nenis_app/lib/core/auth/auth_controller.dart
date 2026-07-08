@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../deeplinks/deep_link_service.dart';
+import '../legal/legal_config.dart';
+import '../notifications/push_service.dart';
 import '../storage/session_storage.dart';
 import 'auth_repository.dart';
 import 'session.dart';
@@ -17,12 +19,14 @@ class AuthController extends AsyncNotifier<Session?> {
   // Nombre pendiente para el alta passwordless pre-llenada desde el pedido.
   String? _pendingFirstName;
   String? _pendingLastName;
+  FacebookAccountType? _pendingAccountType;
+  String? _pendingBusinessName;
+  String? _pendingCity;
+  bool _pendingAcceptedLegal = false;
+  String _pendingLegalVersion = LegalConfig.currentVersion;
 
   // Datos del Facebook en espera de completar perfil o verificar teléfono.
   FacebookAccessCredential? _pendingFacebookCredential;
-  FacebookAccountType? _pendingFacebookAccountType;
-  String? _pendingFacebookBusinessName;
-  String? _pendingFacebookCity;
 
   /// Marca que el login passwordless terminó y hay un pedido pendiente por
   /// deep link que debe "rescatarse" (reclamar). El router la usa para decidir
@@ -94,12 +98,20 @@ class AuthController extends AsyncNotifier<Session?> {
     String phone, {
     String? firstName,
     String? lastName,
+    bool acceptedLegal = false,
+    String legalVersion = LegalConfig.currentVersion,
   }) async {
-    final result =
-        await ref.read(authRepositoryProvider).requestPhoneOtp(phone);
+    final result = await ref
+        .read(authRepositoryProvider)
+        .requestPhoneOtp(phone);
     _pendingPhone = phone;
     _pendingFirstName = firstName;
     _pendingLastName = lastName;
+    _pendingAccountType = FacebookAccountType.client;
+    _pendingBusinessName = null;
+    _pendingCity = null;
+    _pendingAcceptedLegal = acceptedLegal;
+    _pendingLegalVersion = legalVersion;
     _pendingDevMode = result.devMode;
   }
 
@@ -111,11 +123,18 @@ class AuthController extends AsyncNotifier<Session?> {
     if (phone == null) {
       throw AuthException('Primero pide un código.');
     }
-    final session = await ref.read(authRepositoryProvider).verifyPhoneOtp(
+    final session = await ref
+        .read(authRepositoryProvider)
+        .verifyPhoneOtp(
           phone,
           code,
           firstName: _pendingFirstName,
           lastName: _pendingLastName,
+          acceptedLegal: _pendingAcceptedLegal,
+          legalVersion: _pendingLegalVersion,
+          accountType: _pendingAccountType,
+          businessName: _pendingBusinessName,
+          city: _pendingCity,
         );
     _needsOrderRescue = ref.read(pendingDeepLinkProvider) != null;
     await _apply(session);
@@ -130,17 +149,34 @@ class AuthController extends AsyncNotifier<Session?> {
     required String phone,
     required String email,
     required String password,
+    required FacebookAccountType accountType,
+    required bool acceptedLegal,
+    String legalVersion = LegalConfig.currentVersion,
+    String? businessName,
+    String? city,
   }) async {
-    final result = await ref.read(authRepositoryProvider).registerPhone(
+    final result = await ref
+        .read(authRepositoryProvider)
+        .registerPhone(
           firstName: firstName,
           lastName: lastName,
           phone: phone,
           email: email,
           password: password,
+          accountType: accountType,
+          acceptedLegal: acceptedLegal,
+          legalVersion: legalVersion,
+          businessName: businessName,
+          city: city,
         );
     _pendingPhone = phone;
     _pendingFirstName = firstName;
     _pendingLastName = lastName;
+    _pendingAccountType = accountType;
+    _pendingBusinessName = businessName;
+    _pendingCity = city;
+    _pendingAcceptedLegal = acceptedLegal;
+    _pendingLegalVersion = legalVersion;
     _pendingDevMode = result.devMode;
   }
 
@@ -151,12 +187,16 @@ class AuthController extends AsyncNotifier<Session?> {
     if (phone == null) {
       throw AuthException('Primero regístrate o inicia sesión.');
     }
-    final session = await ref.read(authRepositoryProvider).confirmPhone(
+    final session = await ref
+        .read(authRepositoryProvider)
+        .confirmPhone(
           phone,
           code,
-          accountType: _pendingFacebookAccountType,
-          businessName: _pendingFacebookBusinessName,
-          city: _pendingFacebookCity,
+          accountType: _pendingAccountType,
+          businessName: _pendingBusinessName,
+          city: _pendingCity,
+          acceptedLegal: _pendingAcceptedLegal,
+          legalVersion: _pendingLegalVersion,
         );
     await _apply(session);
   }
@@ -165,12 +205,18 @@ class AuthController extends AsyncNotifier<Session?> {
   /// [PhoneNotVerifiedException] tras dejar el pendiente listo para /confirm.
   Future<void> loginPhone(String phone, String password) async {
     try {
-      final session =
-          await ref.read(authRepositoryProvider).loginPhone(phone, password);
+      final session = await ref
+          .read(authRepositoryProvider)
+          .loginPhone(phone, password);
       await _apply(session);
     } on PhoneNotVerifiedException {
       _pendingPhone = phone;
       _pendingDevMode = false;
+      _pendingAccountType = null;
+      _pendingBusinessName = null;
+      _pendingCity = null;
+      _pendingAcceptedLegal = false;
+      _pendingLegalVersion = LegalConfig.currentVersion;
       rethrow;
     }
   }
@@ -185,8 +231,9 @@ class AuthController extends AsyncNotifier<Session?> {
 
   /// Acceso de vendedora con correo y contraseña.
   Future<void> loginEmail(String email, String password) async {
-    final session =
-        await ref.read(authRepositoryProvider).loginEmail(email, password);
+    final session = await ref
+        .read(authRepositoryProvider)
+        .loginEmail(email, password);
     await _apply(session);
   }
 
@@ -196,7 +243,7 @@ class AuthController extends AsyncNotifier<Session?> {
     final repo = ref.read(authRepositoryProvider);
     final credential = await repo.facebookAccessToken();
     _pendingFacebookCredential = credential;
-    _pendingFacebookAccountType = accountType;
+    _pendingAccountType = accountType;
     final session = await repo.facebookLogin(
       credential,
       accountType: accountType,
@@ -213,9 +260,11 @@ class AuthController extends AsyncNotifier<Session?> {
     if (credential == null) {
       throw AuthException('Vuelve a intentar con Facebook.');
     }
-    _pendingFacebookAccountType = profile.accountType;
-    _pendingFacebookBusinessName = profile.businessName;
-    _pendingFacebookCity = profile.city;
+    _pendingAccountType = profile.accountType;
+    _pendingBusinessName = profile.businessName;
+    _pendingCity = profile.city;
+    _pendingAcceptedLegal = profile.acceptedLegal;
+    _pendingLegalVersion = profile.legalVersion;
 
     try {
       final session = await ref
@@ -231,6 +280,7 @@ class AuthController extends AsyncNotifier<Session?> {
 
   Future<void> logout() async {
     final repo = ref.read(authRepositoryProvider);
+    await ref.read(pushServiceProvider).unregisterCurrentToken();
     final rt = state.asData?.value?.refreshToken;
     if (rt != null && rt.isNotEmpty) {
       await repo.revokeRefreshToken(rt);
@@ -254,18 +304,23 @@ class AuthController extends AsyncNotifier<Session?> {
     await ref.read(sessionStorageProvider).write(session);
     _clearPending();
     state = AsyncData<Session?>(session);
+    // Best-effort: registra el token de push de este dispositivo para la
+    // cuenta recién autenticada. Nunca debe tumbar el login.
+    unawaited(ref.read(pushServiceProvider).registerCurrentToken());
   }
 
   void _clearPending() {
     _pendingPhone = null;
     _pendingFirstName = null;
     _pendingLastName = null;
+    _pendingAccountType = null;
+    _pendingBusinessName = null;
+    _pendingCity = null;
+    _pendingAcceptedLegal = false;
+    _pendingLegalVersion = LegalConfig.currentVersion;
     _pendingDevMode = false;
     _needsOrderRescue = false;
     _pendingFacebookCredential = null;
-    _pendingFacebookAccountType = null;
-    _pendingFacebookBusinessName = null;
-    _pendingFacebookCity = null;
   }
 }
 

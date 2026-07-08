@@ -12,6 +12,7 @@ import '../../../core/utils/color_hex.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/segmented.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/status_chip.dart';
 import '../../../shared/widgets/store_avatar.dart';
 import '../data/orders_models.dart';
@@ -61,9 +62,7 @@ class BuyerOrdersScreen extends ConsumerWidget {
               ),
               Expanded(
                 child: feed.when(
-                  loading: () => const Center(
-                    child: CircularProgressIndicator(color: AppColors.neni),
-                  ),
+                  loading: () => const _OrdersLoading(),
                   error: (e, _) => _OrdersError(
                     onRetry: () => ref.invalidate(ordersControllerProvider),
                   ),
@@ -400,4 +399,21 @@ class _OrdersError extends StatelessWidget {
 String _formatDate(DateTime date) {
   final local = date.toLocal();
   return DateFormat("d 'de' MMM, yyyy", 'es').format(local);
+}
+
+class _OrdersLoading extends StatelessWidget {
+  const _OrdersLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: 4,
+      itemBuilder: (_, __) => const Padding(
+        padding: EdgeInsets.only(bottom: 14),
+        child: Skeleton(height: 110, borderRadius: 20),
+      ),
+    );
+  }
 }

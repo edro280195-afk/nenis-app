@@ -5,6 +5,7 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/auth/auth_controller.dart';
 import '../../../core/auth/auth_repository.dart';
+import '../../../core/legal/legal_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
@@ -15,6 +16,7 @@ import '../../../shared/widgets/nenis_logo.dart';
 import '../../../shared/widgets/password_field.dart';
 import '../../../shared/widgets/shake_widget.dart';
 import '../widgets/auth_feedback.dart';
+import '../widgets/legal_acceptance.dart';
 
 enum LoginRole { client, seller }
 
@@ -604,14 +606,7 @@ class _AuthSurface extends StatelessWidget {
                     ),
             ),
             const SizedBox(height: 18),
-            Text(
-              'Al continuar aceptas los Términos y el Aviso de privacidad.',
-              textAlign: TextAlign.center,
-              style: AppTextStyles.subtitle.copyWith(
-                fontSize: 10.5,
-                color: AppColors.ink3,
-              ),
-            ),
+            const LegalLinksCaption(),
           ],
         ),
       ),
@@ -787,7 +782,7 @@ class _ClientLoginForm extends StatelessWidget {
           key: const Key('client-phone-field'),
           controller: phone,
           label: 'Teléfono',
-          prefix: '+52',
+          prefix: '🇲🇽 +52',
           hint: '868 145 22 90',
           keyboardType: TextInputType.phone,
           textInputAction: TextInputAction.next,
@@ -827,7 +822,9 @@ class _ClientLoginForm extends StatelessWidget {
         const SizedBox(height: 13),
         Center(
           child: TextButton(
-            onPressed: loading ? null : () => context.go('/register'),
+            onPressed: loading
+                ? null
+                : () => context.go('/register?role=client'),
             style: TextButton.styleFrom(
               foregroundColor: AppColors.neniDeep,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -967,6 +964,36 @@ class _SellerLoginForm extends StatelessWidget {
           loading: loading,
           onPressed: loading ? null : onContinue,
         ),
+        const SizedBox(height: 12),
+        Center(
+          child: TextButton(
+            key: const Key('seller-register-link'),
+            onPressed: loading
+                ? null
+                : () => context.go('/register?role=seller'),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF7450A8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            child: Text.rich(
+              TextSpan(
+                text: 'Aun no tienes tienda? ',
+                style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+                children: [
+                  TextSpan(
+                    text: 'Crea tu cuenta de vendedora',
+                    style: AppTextStyles.subtitle.copyWith(
+                      color: const Color(0xFF7450A8),
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(13),
@@ -1028,6 +1055,7 @@ class _FacebookProfileSheetState extends ConsumerState<_FacebookProfileSheet> {
   late final TextEditingController _existingPassword;
 
   late bool _requiresExistingPassword;
+  bool _acceptedLegal = false;
   bool _saving = false;
   String? _error;
 
@@ -1089,6 +1117,13 @@ class _FacebookProfileSheetState extends ConsumerState<_FacebookProfileSheet> {
       setState(() => _error = 'Escribe la contraseña actual de tu cuenta.');
       return;
     }
+    if (!_acceptedLegal) {
+      setState(
+        () => _error =
+            'Acepta los Terminos y el Aviso de privacidad para continuar.',
+      );
+      return;
+    }
 
     setState(() {
       _saving = true;
@@ -1104,6 +1139,8 @@ class _FacebookProfileSheetState extends ConsumerState<_FacebookProfileSheet> {
       businessName: _isSeller ? businessName : null,
       city: _isSeller && city.isNotEmpty ? city : null,
       existingPassword: _requiresExistingPassword ? existingPassword : null,
+      acceptedLegal: _acceptedLegal,
+      legalVersion: LegalConfig.currentVersion,
     );
 
     try {
@@ -1233,7 +1270,7 @@ class _FacebookProfileSheetState extends ConsumerState<_FacebookProfileSheet> {
                   key: const Key('facebook-phone-field'),
                   controller: _phone,
                   label: 'Teléfono',
-                  prefix: '+52',
+                  prefix: '🇲🇽 +52',
                   hint: '868 145 22 90',
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.next,
@@ -1306,6 +1343,16 @@ class _FacebookProfileSheetState extends ConsumerState<_FacebookProfileSheet> {
                     ),
                   ),
                 ],
+                const SizedBox(height: 16),
+                LegalAcceptanceCheckbox(
+                  key: const Key('facebook-legal-checkbox'),
+                  value: _acceptedLegal,
+                  enabled: !_saving,
+                  onChanged: (value) => setState(() {
+                    _acceptedLegal = value;
+                    if (value) _error = null;
+                  }),
+                ),
                 if (_error != null) ...[
                   const SizedBox(height: 14),
                   AuthFeedbackBanner(

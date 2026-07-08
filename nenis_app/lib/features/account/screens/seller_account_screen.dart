@@ -11,6 +11,7 @@ import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/pill_button.dart';
+import '../data/seller_settings_models.dart';
 import '../data/seller_settings_repository.dart';
 
 class SellerAccountScreen extends ConsumerWidget {
@@ -28,6 +29,7 @@ class SellerAccountScreen extends ConsumerWidget {
 
     final accountsAsync = ref.watch(sellerPayoutAccountsProvider);
     final mercadoPagoAsync = ref.watch(sellerPaymentSettingsProvider);
+    final businessSettingsAsync = ref.watch(sellerBusinessSettingsProvider);
     final accountCount = accountsAsync.maybeWhen(
       data: (accounts) => accounts.length,
       orElse: () => 0,
@@ -37,6 +39,8 @@ class SellerAccountScreen extends ConsumerWidget {
     final paymentReadyCount =
         (accountCount > 0 ? 1 : 0) + (mercadoPagoReady ? 1 : 0);
     final paymentSubtitle = _paymentSubtitle(accountCount, mercadoPagoReady);
+    final subscription = businessSettingsAsync.value?.subscription;
+    final planSubtitle = _planSubtitle(subscription);
 
     return Scaffold(
       backgroundColor: AppColors.surfaceCream,
@@ -63,6 +67,15 @@ class SellerAccountScreen extends ConsumerWidget {
               const _SectionLabel(
                 title: 'Prioridad de hoy',
                 subtitle: 'Lo que más afecta ventas y seguimiento.',
+              ),
+              const SizedBox(height: 10),
+              _SellerMenuTile(
+                icon: Symbols.workspace_premium,
+                title: 'Mi plan',
+                subtitle: planSubtitle,
+                badge: subscription?.isLocked == true ? 'Bloqueada' : null,
+                highlighted: subscription?.isLocked == true,
+                onTap: () => context.push('/seller/plan'),
               ),
               const SizedBox(height: 10),
               _SellerMenuTile(
@@ -101,9 +114,7 @@ class SellerAccountScreen extends ConsumerWidget {
                 label: 'Cerrar sesión',
                 icon: Symbols.logout,
                 variant: PillButtonVariant.ghost,
-                onPressed: () {
-                  ref.read(authControllerProvider.notifier).logout();
-                },
+                onPressed: () => _confirmLogout(context, ref),
               ),
             ],
           ),
@@ -139,6 +150,48 @@ class SellerAccountScreen extends ConsumerWidget {
       }
     }
     return 'CUENTA VENDEDORA';
+  }
+
+  String _planSubtitle(SellerSubscriptionSettings? subscription) {
+    if (subscription == null) return 'Cargando tu plan...';
+    if (subscription.isLocked) {
+      return 'Elige un plan para seguir usando tu tienda.';
+    }
+    if (subscription.subscriptionStatus == 'Trialing') {
+      return 'Prueba ${subscription.effectivePlan} · ${subscription.daysLeft} días restantes.';
+    }
+    return 'Plan ${subscription.effectivePlan} activo.';
+  }
+
+  Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text('¿Cerrar sesión?'),
+        content: const Text(
+          'Tendrás que volver a iniciar sesión para entrar a tu negocio.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Cerrar sesión',
+              style: TextStyle(
+                color: AppColors.neniDeep,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await ref.read(authControllerProvider.notifier).logout();
   }
 }
 

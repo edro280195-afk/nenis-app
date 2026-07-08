@@ -3,6 +3,7 @@ import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/dio_provider.dart';
+import '../legal/legal_config.dart';
 import 'session.dart';
 
 /// Error de autenticación con un mensaje listo para mostrar a la usuaria.
@@ -64,6 +65,8 @@ class FacebookProfileCompletion {
     this.businessName,
     this.city,
     this.existingPassword,
+    required this.acceptedLegal,
+    this.legalVersion = LegalConfig.currentVersion,
   });
 
   final FacebookAccountType accountType;
@@ -74,6 +77,8 @@ class FacebookProfileCompletion {
   final String? businessName;
   final String? city;
   final String? existingPassword;
+  final bool acceptedLegal;
+  final String legalVersion;
 
   Map<String, dynamic> toJson(FacebookAccessCredential credential) {
     return {
@@ -84,6 +89,8 @@ class FacebookProfileCompletion {
       'lastName': lastName,
       'email': email,
       'phone': phone,
+      'acceptedLegal': acceptedLegal,
+      'legalVersion': legalVersion,
       if (businessName?.trim().isNotEmpty == true)
         'businessName': businessName!.trim(),
       if (city?.trim().isNotEmpty == true) 'city': city!.trim(),
@@ -211,6 +218,11 @@ class AuthRepository {
     required String phone,
     required String email,
     required String password,
+    required FacebookAccountType accountType,
+    required bool acceptedLegal,
+    String legalVersion = LegalConfig.currentVersion,
+    String? businessName,
+    String? city,
   }) async {
     try {
       final res = await _dio.post(
@@ -221,6 +233,12 @@ class AuthRepository {
           'phone': phone,
           'email': email,
           'password': password,
+          'accountType': accountType.apiValue,
+          'acceptedLegal': acceptedLegal,
+          'legalVersion': legalVersion,
+          if (businessName?.trim().isNotEmpty == true)
+            'businessName': businessName!.trim(),
+          if (city?.trim().isNotEmpty == true) 'city': city!.trim(),
         },
       );
       return OtpRequestResult.fromJson(res.data as Map<String, dynamic>);
@@ -238,6 +256,8 @@ class AuthRepository {
     FacebookAccountType? accountType,
     String? businessName,
     String? city,
+    bool acceptedLegal = false,
+    String legalVersion = LegalConfig.currentVersion,
   }) async {
     try {
       final res = await _dio.post(
@@ -245,6 +265,8 @@ class AuthRepository {
         data: {
           'phone': phone,
           'code': code,
+          'acceptedLegal': acceptedLegal,
+          'legalVersion': legalVersion,
           if (accountType != null) 'accountType': accountType.apiValue,
           if (businessName?.trim().isNotEmpty == true)
             'businessName': businessName!.trim(),
@@ -307,6 +329,11 @@ class AuthRepository {
     String code, {
     String? firstName,
     String? lastName,
+    required bool acceptedLegal,
+    String legalVersion = LegalConfig.currentVersion,
+    FacebookAccountType? accountType,
+    String? businessName,
+    String? city,
   }) async {
     try {
       final res = await _dio.post(
@@ -314,6 +341,12 @@ class AuthRepository {
         data: {
           'phone': phone,
           'code': code,
+          'acceptedLegal': acceptedLegal,
+          'legalVersion': legalVersion,
+          if (accountType != null) 'accountType': accountType.apiValue,
+          if (businessName?.trim().isNotEmpty == true)
+            'businessName': businessName!.trim(),
+          if (city?.trim().isNotEmpty == true) 'city': city!.trim(),
           if (firstName?.trim().isNotEmpty == true)
             'firstName': firstName!.trim(),
           if (lastName?.trim().isNotEmpty == true) 'lastName': lastName!.trim(),

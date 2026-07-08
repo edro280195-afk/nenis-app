@@ -52,6 +52,11 @@ dependencies:
   # Reemplaza al descontinuado android_play_install_referrer.
   play_install_referrer: ^0.5.0
   shared_preferences: ^2.5.5
+  firebase_core: ^4.11.0
+  firebase_messaging: ^16.4.1
+  flutter_local_notifications: ^22.0.1
+  flutter_animate: ^4.5.2
+  webview_flutter: ^4.14.1
 
 dev_dependencies:
   flutter_test:

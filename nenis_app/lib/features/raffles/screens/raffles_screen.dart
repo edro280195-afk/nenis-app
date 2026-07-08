@@ -12,6 +12,7 @@ import '../../../core/utils/color_hex.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/segmented.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../data/raffles_models.dart';
 import '../data/raffles_repository.dart';
 
@@ -29,9 +30,7 @@ class RafflesScreen extends ConsumerWidget {
         child: SafeArea(
           bottom: false,
           child: feed.when(
-            loading: () => const Center(
-              child: CircularProgressIndicator(color: AppColors.neni),
-            ),
+            loading: () => const _RafflesLoading(),
             error: (e, _) => _RafflesError(
               onRetry: () => ref.invalidate(rafflesControllerProvider),
             ),
@@ -553,4 +552,41 @@ class _RafflesError extends StatelessWidget {
 
 String _formatDate(DateTime date) {
   return DateFormat("d 'de' MMM, yyyy", 'es').format(date.toLocal());
+}
+
+class _RafflesLoading extends StatelessWidget {
+  const _RafflesLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
+      physics: const NeverScrollableScrollPhysics(),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(22, 14, 22, 14),
+          child: Row(
+            children: const [
+              Skeleton.circle(size: 32),
+              SizedBox(width: 16),
+              Skeleton.text(width: 120, height: 20),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 22),
+          child: Skeleton(height: 48, borderRadius: 14),
+        ),
+        const SizedBox(height: 20),
+        ...List.generate(
+          3,
+          (_) => const Padding(
+            padding: EdgeInsets.fromLTRB(22, 0, 22, 14),
+            child: Skeleton(height: 150, borderRadius: 24),
+          ),
+        ),
+      ],
+    );
+  }
 }
