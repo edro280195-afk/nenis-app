@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,6 +13,7 @@ import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/nenis_logo.dart';
 import '../../../shared/widgets/password_field.dart';
+import '../../../shared/widgets/shake_widget.dart';
 import '../widgets/auth_feedback.dart';
 
 enum LoginRole { client, seller }
@@ -235,10 +234,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           gradient: RadialGradient(
             center: const Alignment(0.0, -1.0),
             radius: 1.0,
-            colors: [
-              gradientColor,
-              AppColors.surfaceCream,
-            ],
+            colors: [gradientColor, AppColors.surfaceCream],
             stops: const [0.0, 1.0],
           ),
         ),
@@ -366,8 +362,12 @@ class _LoginIntro extends StatelessWidget {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        isClient ? const Color(0xFFFFE5EE) : const Color(0xFFF2ECFF),
-                        isClient ? const Color(0xFFFFD0E2) : const Color(0xFFE6DCFF),
+                        isClient
+                            ? const Color(0xFFFFE5EE)
+                            : const Color(0xFFF2ECFF),
+                        isClient
+                            ? const Color(0xFFFFD0E2)
+                            : const Color(0xFFE6DCFF),
                       ],
                     ),
                     border: Border.all(color: Colors.white.withAlpha(200)),
@@ -398,8 +398,11 @@ class _LoginIntro extends StatelessWidget {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: (isClient ? const Color(0xFFE84E83) : const Color(0xFF7450A8))
-                            .withAlpha(128),
+                        color:
+                            (isClient
+                                    ? const Color(0xFFE84E83)
+                                    : const Color(0xFF7450A8))
+                                .withAlpha(128),
                         offset: const Offset(0, 10),
                         blurRadius: 20,
                         spreadRadius: -4,
@@ -410,10 +413,7 @@ class _LoginIntro extends StatelessWidget {
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 250),
                     transitionBuilder: (child, animation) {
-                      return ScaleTransition(
-                        scale: animation,
-                        child: child,
-                      );
+                      return ScaleTransition(scale: animation, child: child);
                     },
                     child: Icon(
                       isClient ? Symbols.shopping_bag : Symbols.storefront,
@@ -431,7 +431,9 @@ class _LoginIntro extends StatelessWidget {
                   right: 35,
                   child: Icon(
                     Symbols.star,
-                    color: isClient ? const Color(0xFFF3B341) : const Color(0xFFFFB703),
+                    color: isClient
+                        ? const Color(0xFFF3B341)
+                        : const Color(0xFFFFB703),
                     size: 20,
                     fill: 1.0,
                   ),
@@ -441,7 +443,9 @@ class _LoginIntro extends StatelessWidget {
                   left: 35,
                   child: Icon(
                     Symbols.star,
-                    color: isClient ? const Color(0xFF9B7BE0) : const Color(0xFFFF6F9C),
+                    color: isClient
+                        ? const Color(0xFF9B7BE0)
+                        : const Color(0xFFFF6F9C),
                     size: 16,
                     fill: 1.0,
                   ),
@@ -572,10 +576,7 @@ class _AuthSurface extends StatelessWidget {
                     begin: const Offset(0.15, 0.0),
                     end: Offset.zero,
                   ).animate(animation),
-                  child: FadeTransition(
-                    opacity: animation,
-                    child: child,
-                  ),
+                  child: FadeTransition(opacity: animation, child: child),
                 );
               },
               child: role == LoginRole.client
@@ -1558,59 +1559,6 @@ class _SheetHandle extends StatelessWidget {
         color: AppColors.line,
         borderRadius: AppRadii.pillRadius,
       ),
-    );
-  }
-}
-
-class ShakeWidget extends StatefulWidget {
-  const ShakeWidget({
-    required this.child,
-    super.key,
-  });
-
-  final Widget child;
-
-  @override
-  State<ShakeWidget> createState() => ShakeWidgetState();
-}
-
-class ShakeWidgetState extends State<ShakeWidget>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 400),
-      vsync: this,
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void shake() {
-    _controller.forward(from: 0.0);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        final double translation = 16.0 *
-            math.sin(_controller.value * 4 * math.pi) *
-            (1.0 - _controller.value);
-
-        return Transform.translate(
-          offset: Offset(translation, 0),
-          child: widget.child,
-        );
-      },
     );
   }
 }

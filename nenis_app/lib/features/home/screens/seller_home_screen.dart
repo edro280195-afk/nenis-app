@@ -13,7 +13,6 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
 import '../../orders/data/seller_orders_models.dart';
 import '../../orders/data/seller_orders_repository.dart';
-import '../../orders/screens/seller_orders_screen.dart' show GradientText;
 import '../../orders/widgets/seller_status_chip.dart';
 
 class SellerHomeScreen extends ConsumerWidget {
@@ -845,7 +844,16 @@ class _ActivityRow extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                GradientText(money(o.total), fontSize: 14),
+                Text(
+                  money(o.total),
+                  style: AppTextStyles.h1.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.neniDeep,
+                    letterSpacing: 0,
+                    height: 1,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 _MiniStatus(status: o.status),
               ],

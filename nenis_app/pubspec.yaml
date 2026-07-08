@@ -51,6 +51,7 @@ dependencies:
   # la app se instala desde el muro /o/{token}, para deep linking diferido.
   # Requiere compileSdk 34 (forzado en android/build.gradle.kts subprojects).
   android_play_install_referrer: ^0.4.0
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:

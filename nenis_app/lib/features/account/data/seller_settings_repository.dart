@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/api/dio_provider.dart';
 import 'seller_settings_models.dart';
@@ -217,13 +218,31 @@ final sellerPayoutAccountsProvider =
 
 class SellerPreferenceSettingsController
     extends Notifier<SellerPreferenceSettings> {
+  static const _storageKey = 'seller.preference.settings.v1';
+
+  var _version = 0;
+
   @override
   SellerPreferenceSettings build() {
+    _load(_version);
     return const SellerPreferenceSettings();
   }
 
-  void set(SellerPreferenceSettings settings) {
+  Future<void> _load(int version) async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_storageKey);
+    if (raw == null || raw.trim().isEmpty || _version != version) return;
+    state = SellerPreferenceSettings.decode(raw);
+  }
+
+  Future<void> set(SellerPreferenceSettings settings) async {
+    _version++;
     state = settings;
+    final prefs = await SharedPreferences.getInstance();
+    final saved = await prefs.setString(_storageKey, settings.encode());
+    if (!saved) {
+      throw StateError('No se pudieron guardar las preferencias locales.');
+    }
   }
 }
 

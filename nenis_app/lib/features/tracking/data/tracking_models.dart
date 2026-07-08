@@ -122,6 +122,11 @@ extension TrackingStatusDisplay on TrackingStatus {
         return 3;
       case TrackingStatus.delivered:
         return 4;
+      case TrackingStatus.notDelivered:
+      case TrackingStatus.canceled:
+        return 4;
+      case TrackingStatus.postponed:
+        return 2;
       default:
         return 0;
     }
@@ -150,6 +155,11 @@ extension TrackingStatusDisplay on TrackingStatus {
         return 0.75;
       case TrackingStatus.delivered:
         return 1.0;
+      case TrackingStatus.notDelivered:
+      case TrackingStatus.canceled:
+        return 0.95;
+      case TrackingStatus.postponed:
+        return 0.45;
       default:
         return 0.10;
     }
@@ -173,12 +183,12 @@ class OrderItem {
   final double lineTotal;
 
   factory OrderItem.fromJson(Map<String, dynamic> j) => OrderItem(
-        id: (j['id'] as num).toInt(),
-        productName: (j['productName'] ?? '') as String,
-        quantity: (j['quantity'] as num?)?.toInt() ?? 0,
-        unitPrice: (j['unitPrice'] as num?)?.toDouble() ?? 0,
-        lineTotal: (j['lineTotal'] as num?)?.toDouble() ?? 0,
-      );
+    id: (j['id'] as num).toInt(),
+    productName: (j['productName'] ?? '') as String,
+    quantity: (j['quantity'] as num?)?.toInt() ?? 0,
+    unitPrice: (j['unitPrice'] as num?)?.toDouble() ?? 0,
+    lineTotal: (j['lineTotal'] as num?)?.toDouble() ?? 0,
+  );
 }
 
 /// Ubicación del repartidor en el último GET y/o en la última `LocationUpdate`.
@@ -194,11 +204,11 @@ class DriverLocation {
   final DateTime lastUpdate;
 
   factory DriverLocation.fromJson(Map<String, dynamic> j) => DriverLocation(
-        latitude: (j['latitude'] as num?)?.toDouble() ?? 0,
-        longitude: (j['longitude'] as num?)?.toDouble() ?? 0,
-        lastUpdate: DateTime.tryParse((j['lastUpdate'] ?? '') as String) ??
-            DateTime.now(),
-      );
+    latitude: (j['latitude'] as num?)?.toDouble() ?? 0,
+    longitude: (j['longitude'] as num?)?.toDouble() ?? 0,
+    lastUpdate:
+        DateTime.tryParse((j['lastUpdate'] ?? '') as String) ?? DateTime.now(),
+  );
 }
 
 /// Evaluación que la clienta deja después de la entrega.
@@ -218,13 +228,13 @@ class OrderRating {
   final DateTime createdAt;
 
   factory OrderRating.fromJson(Map<String, dynamic> j) => OrderRating(
-        id: (j['id'] as num).toInt(),
-        stars: (j['stars'] as num).toInt(),
-        reasons: (j['reasons'] as List?)?.map((e) => e as String).toList(),
-        comment: j['comment'] as String?,
-        createdAt: DateTime.tryParse((j['createdAt'] ?? '') as String) ??
-            DateTime.now(),
-      );
+    id: (j['id'] as num).toInt(),
+    stars: (j['stars'] as num).toInt(),
+    reasons: (j['reasons'] as List?)?.map((e) => e as String).toList(),
+    comment: j['comment'] as String?,
+    createdAt:
+        DateTime.tryParse((j['createdAt'] ?? '') as String) ?? DateTime.now(),
+  );
 }
 
 /// Pago registrado sobre el pedido (efectivo, transferencia, tarjeta, ...).
@@ -248,14 +258,14 @@ class OrderPayment {
   final String? notes;
 
   factory OrderPayment.fromJson(Map<String, dynamic> j) => OrderPayment(
-        id: (j['id'] as num?)?.toInt() ?? 0,
-        orderId: (j['orderId'] as num?)?.toInt() ?? 0,
-        amount: (j['amount'] as num?)?.toDouble() ?? 0,
-        method: (j['method'] ?? '') as String,
-        date: DateTime.tryParse((j['date'] ?? '') as String) ?? DateTime.now(),
-        registeredBy: (j['registeredBy'] ?? '') as String,
-        notes: j['notes'] as String?,
-      );
+    id: (j['id'] as num?)?.toInt() ?? 0,
+    orderId: (j['orderId'] as num?)?.toInt() ?? 0,
+    amount: (j['amount'] as num?)?.toDouble() ?? 0,
+    method: (j['method'] ?? '') as String,
+    date: DateTime.tryParse((j['date'] ?? '') as String) ?? DateTime.now(),
+    registeredBy: (j['registeredBy'] ?? '') as String,
+    notes: j['notes'] as String?,
+  );
 }
 
 /// Remitente de un mensaje de chat clienta ↔ chofer / admin.
@@ -293,15 +303,14 @@ class ChatMessage {
   final int? deliveryRouteId;
 
   factory ChatMessage.fromJson(Map<String, dynamic> j) => ChatMessage(
-        id: (j['id'] as num?)?.toInt() ?? 0,
-        sender: chatSenderFromString(j['sender'] as String?),
-        text: (j['text'] ?? '') as String,
-        timestamp:
-            DateTime.tryParse((j['timestamp'] ?? '') as String) ??
-                DateTime.now(),
-        deliveryId: (j['deliveryId'] as num?)?.toInt(),
-        deliveryRouteId: (j['deliveryRouteId'] as num?)?.toInt(),
-      );
+    id: (j['id'] as num?)?.toInt() ?? 0,
+    sender: chatSenderFromString(j['sender'] as String?),
+    text: (j['text'] ?? '') as String,
+    timestamp:
+        DateTime.tryParse((j['timestamp'] ?? '') as String) ?? DateTime.now(),
+    deliveryId: (j['deliveryId'] as num?)?.toInt(),
+    deliveryRouteId: (j['deliveryRouteId'] as num?)?.toInt(),
+  );
 }
 
 /// Vista pública del pedido devuelta por `GET /api/pedido/{accessToken}`.
@@ -421,60 +430,59 @@ class OrderTracking {
   }
 
   factory OrderTracking.fromJson(Map<String, dynamic> j) => OrderTracking(
-        clientId: (j['clientId'] as num?)?.toInt() ?? 0,
-        clientName: (j['clientName'] ?? 'Cliente') as String,
-        items: ((j['items'] as List?) ?? const [])
-            .map((e) => OrderItem.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        subtotal: (j['subtotal'] as num?)?.toDouble() ?? 0,
-        shippingCost: (j['shippingCost'] as num?)?.toDouble() ?? 0,
-        total: (j['total'] as num?)?.toDouble() ?? 0,
-        status: trackingStatusFromString(j['status'] as String?),
-        isCurrentDelivery: (j['isCurrentDelivery'] as bool?) ?? false,
-        amountPaid: (j['amountPaid'] as num?)?.toDouble() ?? 0,
-        balanceDue: (j['balanceDue'] as num?)?.toDouble() ?? 0,
-        clientPoints: (j['clientPoints'] as num?)?.toInt() ?? 0,
-        clientAddress: j['clientAddress'] as String?,
-        scheduledDeliveryDate: j['scheduledDeliveryDate'] != null
-            ? DateTime.tryParse(j['scheduledDeliveryDate'] as String)
-            : null,
-        driverLocation: j['driverLocation'] != null
-            ? DriverLocation.fromJson(
-                j['driverLocation'] as Map<String, dynamic>)
-            : null,
-        deliveriesAhead: (j['deliveriesAhead'] as num?)?.toInt(),
-        totalDeliveries: (j['totalDeliveries'] as num?)?.toInt(),
-        queuePosition: (j['queuePosition'] as num?)?.toInt(),
-        failureReason: j['failureReason'] as String?,
-        deliveredAt: j['deliveredAt'] != null
-            ? DateTime.tryParse(j['deliveredAt'] as String)
-            : null,
-        businessName: j['businessName'] as String?,
-        businessLogoUrl: j['businessLogoUrl'] as String?,
-        courierName: j['courierName'] as String?,
-        courierPhone: j['courierPhone'] as String?,
-        deliveryInstructions: j['deliveryInstructions'] as String?,
-        payments: ((j['payments'] as List?) ?? const [])
-            .map((e) => OrderPayment.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        evidenceUrls: (j['evidenceUrls'] as List?)
-                ?.map((e) => e as String)
-                .toList() ??
-            const [],
-        nonDeliveryEvidenceUrls: (j['nonDeliveryEvidenceUrls'] as List?)
-                ?.map((e) => e as String)
-                .toList() ??
-            const [],
-        signatureSvg: j['signatureSvg'] as String?,
-        signedByName: j['signedByName'] as String?,
-        signedAt: j['signedAt'] != null
-            ? DateTime.tryParse(j['signedAt'] as String)
-            : null,
-        mercadoPagoPublicKey: j['mercadoPagoPublicKey'] as String?,
-        rating: j['rating'] != null
-            ? OrderRating.fromJson(j['rating'] as Map<String, dynamic>)
-            : null,
-      );
+    clientId: (j['clientId'] as num?)?.toInt() ?? 0,
+    clientName: (j['clientName'] ?? 'Cliente') as String,
+    items: ((j['items'] as List?) ?? const [])
+        .map((e) => OrderItem.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    subtotal: (j['subtotal'] as num?)?.toDouble() ?? 0,
+    shippingCost: (j['shippingCost'] as num?)?.toDouble() ?? 0,
+    total: (j['total'] as num?)?.toDouble() ?? 0,
+    status: trackingStatusFromString(j['status'] as String?),
+    isCurrentDelivery: (j['isCurrentDelivery'] as bool?) ?? false,
+    amountPaid: (j['amountPaid'] as num?)?.toDouble() ?? 0,
+    balanceDue: (j['balanceDue'] as num?)?.toDouble() ?? 0,
+    clientPoints: (j['clientPoints'] as num?)?.toInt() ?? 0,
+    clientAddress: j['clientAddress'] as String?,
+    scheduledDeliveryDate: j['scheduledDeliveryDate'] != null
+        ? DateTime.tryParse(j['scheduledDeliveryDate'] as String)
+        : null,
+    driverLocation: j['driverLocation'] != null
+        ? DriverLocation.fromJson(j['driverLocation'] as Map<String, dynamic>)
+        : null,
+    deliveriesAhead: (j['deliveriesAhead'] as num?)?.toInt(),
+    totalDeliveries: (j['totalDeliveries'] as num?)?.toInt(),
+    queuePosition: (j['queuePosition'] as num?)?.toInt(),
+    failureReason: j['failureReason'] as String?,
+    deliveredAt: j['deliveredAt'] != null
+        ? DateTime.tryParse(j['deliveredAt'] as String)
+        : null,
+    businessName: j['businessName'] as String?,
+    businessLogoUrl: j['businessLogoUrl'] as String?,
+    courierName: j['courierName'] as String?,
+    courierPhone: j['courierPhone'] as String?,
+    deliveryInstructions: j['deliveryInstructions'] as String?,
+    payments: ((j['payments'] as List?) ?? const [])
+        .map((e) => OrderPayment.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    evidenceUrls:
+        (j['evidenceUrls'] as List?)?.map((e) => e as String).toList() ??
+        const [],
+    nonDeliveryEvidenceUrls:
+        (j['nonDeliveryEvidenceUrls'] as List?)
+            ?.map((e) => e as String)
+            .toList() ??
+        const [],
+    signatureSvg: j['signatureSvg'] as String?,
+    signedByName: j['signedByName'] as String?,
+    signedAt: j['signedAt'] != null
+        ? DateTime.tryParse(j['signedAt'] as String)
+        : null,
+    mercadoPagoPublicKey: j['mercadoPagoPublicKey'] as String?,
+    rating: j['rating'] != null
+        ? OrderRating.fromJson(j['rating'] as Map<String, dynamic>)
+        : null,
+  );
 
   OrderTracking copyWith({
     DriverLocation? driverLocation,
@@ -487,41 +495,40 @@ class OrderTracking {
     String? deliveryInstructions,
     List<OrderPayment>? payments,
     OrderRating? rating,
-  }) =>
-      OrderTracking(
-        clientId: clientId,
-        clientName: clientName,
-        items: items,
-        subtotal: subtotal,
-        shippingCost: shippingCost,
-        total: total,
-        status: status ?? this.status,
-        isCurrentDelivery: isCurrentDelivery ?? this.isCurrentDelivery,
-        amountPaid: amountPaid ?? this.amountPaid,
-        balanceDue: balanceDue ?? this.balanceDue,
-        clientPoints: clientPoints,
-        clientAddress: clientAddress,
-        scheduledDeliveryDate: scheduledDeliveryDate,
-        driverLocation: driverLocation ?? this.driverLocation,
-        deliveriesAhead: deliveriesAhead ?? this.deliveriesAhead,
-        totalDeliveries: totalDeliveries,
-        queuePosition: queuePosition ?? this.queuePosition,
-        failureReason: failureReason,
-        deliveredAt: deliveredAt,
-        businessName: businessName,
-        businessLogoUrl: businessLogoUrl,
-        courierName: courierName,
-        courierPhone: courierPhone,
-        deliveryInstructions: deliveryInstructions ?? this.deliveryInstructions,
-        payments: payments ?? this.payments,
-        evidenceUrls: evidenceUrls,
-        nonDeliveryEvidenceUrls: nonDeliveryEvidenceUrls,
-        signatureSvg: signatureSvg,
-        signedByName: signedByName,
-        signedAt: signedAt,
-        mercadoPagoPublicKey: mercadoPagoPublicKey,
-        rating: rating ?? this.rating,
-      );
+  }) => OrderTracking(
+    clientId: clientId,
+    clientName: clientName,
+    items: items,
+    subtotal: subtotal,
+    shippingCost: shippingCost,
+    total: total,
+    status: status ?? this.status,
+    isCurrentDelivery: isCurrentDelivery ?? this.isCurrentDelivery,
+    amountPaid: amountPaid ?? this.amountPaid,
+    balanceDue: balanceDue ?? this.balanceDue,
+    clientPoints: clientPoints,
+    clientAddress: clientAddress,
+    scheduledDeliveryDate: scheduledDeliveryDate,
+    driverLocation: driverLocation ?? this.driverLocation,
+    deliveriesAhead: deliveriesAhead ?? this.deliveriesAhead,
+    totalDeliveries: totalDeliveries,
+    queuePosition: queuePosition ?? this.queuePosition,
+    failureReason: failureReason,
+    deliveredAt: deliveredAt,
+    businessName: businessName,
+    businessLogoUrl: businessLogoUrl,
+    courierName: courierName,
+    courierPhone: courierPhone,
+    deliveryInstructions: deliveryInstructions ?? this.deliveryInstructions,
+    payments: payments ?? this.payments,
+    evidenceUrls: evidenceUrls,
+    nonDeliveryEvidenceUrls: nonDeliveryEvidenceUrls,
+    signatureSvg: signatureSvg,
+    signedByName: signedByName,
+    signedAt: signedAt,
+    mercadoPagoPublicKey: mercadoPagoPublicKey,
+    rating: rating ?? this.rating,
+  );
 }
 
 /// Etapa del timeline que se renderiza en la bottom sheet.

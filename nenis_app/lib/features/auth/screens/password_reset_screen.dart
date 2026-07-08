@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +15,7 @@ import '../../../shared/widgets/nenis_logo.dart';
 import '../../../shared/widgets/otp_cell.dart';
 import '../../../shared/widgets/password_field.dart';
 import '../../../shared/widgets/pill_button.dart';
+import '../../../shared/widgets/shake_widget.dart';
 import '../widgets/auth_feedback.dart';
 
 enum _PasswordResetStep { request, verifyOtp, newPassword, success }
@@ -116,7 +116,7 @@ class _PasswordResetScreenState extends ConsumerState<PasswordResetScreen> {
           .read(authRepositoryProvider)
           .requestPasswordReset(phone);
       if (!mounted) return;
-      
+
       setState(() {
         _otpResult = result;
         _step = _PasswordResetStep.verifyOtp;
@@ -131,7 +131,7 @@ class _PasswordResetScreenState extends ConsumerState<PasswordResetScreen> {
           _showWaToast = true;
           _waToastVisible = false;
         });
-        
+
         Future.delayed(const Duration(milliseconds: 800), () {
           if (mounted) {
             setState(() => _waToastVisible = true);
@@ -167,7 +167,7 @@ class _PasswordResetScreenState extends ConsumerState<PasswordResetScreen> {
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) setState(() => _showWaToast = false);
     });
-    
+
     // Auto advance to Step 3 (New Password) with standard delay
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) {
@@ -212,12 +212,13 @@ class _PasswordResetScreenState extends ConsumerState<PasswordResetScreen> {
       setState(() => _step = _PasswordResetStep.success);
     } on AuthException catch (error) {
       if (!mounted) return;
-      
+
       // If code error, transition back to verifyOtp step and shake
-      final isCodeError = error.message.toLowerCase().contains('código') ||
-                          error.message.toLowerCase().contains('code') ||
-                          error.message.toLowerCase().contains('incorrecto') ||
-                          error.message.toLowerCase().contains('expirado');
+      final isCodeError =
+          error.message.toLowerCase().contains('código') ||
+          error.message.toLowerCase().contains('code') ||
+          error.message.toLowerCase().contains('incorrecto') ||
+          error.message.toLowerCase().contains('expirado');
       if (isCodeError) {
         setState(() {
           _step = _PasswordResetStep.verifyOtp;
@@ -292,9 +293,14 @@ class _PasswordResetScreenState extends ConsumerState<PasswordResetScreen> {
     if (password.length < 8) return PasswordStrength.weak;
     int score = 0;
     if (password.length >= 8) score++;
-    if (password.contains(RegExp(r'[A-Z]')) || password.contains(RegExp(r'[0-9]'))) score++;
-    if (password.contains(RegExp(r'[^A-Za-z0-9]')) && password.length >= 10) score++;
-    
+    if (password.contains(RegExp(r'[A-Z]')) ||
+        password.contains(RegExp(r'[0-9]'))) {
+      score++;
+    }
+    if (password.contains(RegExp(r'[^A-Za-z0-9]')) && password.length >= 10) {
+      score++;
+    }
+
     if (score <= 1) return PasswordStrength.weak;
     if (score == 2) return PasswordStrength.medium;
     return PasswordStrength.strong;
@@ -310,7 +316,8 @@ class _PasswordResetScreenState extends ConsumerState<PasswordResetScreen> {
           child: Stack(
             children: [
               SingleChildScrollView(
-                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: const EdgeInsets.fromLTRB(22, 8, 22, 28),
                 child: Center(
                   child: ConstrainedBox(
@@ -321,7 +328,9 @@ class _PasswordResetScreenState extends ConsumerState<PasswordResetScreen> {
                         Align(
                           alignment: Alignment.centerLeft,
                           child: _step == _PasswordResetStep.success
-                              ? const SizedBox(height: 44) // No back button on success step
+                              ? const SizedBox(
+                                  height: 44,
+                                ) // No back button on success step
                               : BackIconButton(onPressed: _back),
                         ),
                         const SizedBox(height: 14),
@@ -331,22 +340,24 @@ class _PasswordResetScreenState extends ConsumerState<PasswordResetScreen> {
                           duration: const Duration(milliseconds: 300),
                           switchInCurve: Curves.easeOutCubic,
                           switchOutCurve: Curves.easeInCubic,
-                          transitionBuilder: (Widget child, Animation<double> animation) {
-                            return SlideTransition(
-                              position: Tween<Offset>(
-                                begin: const Offset(0.15, 0.0),
-                                end: Offset.zero,
-                              ).animate(animation),
-                              child: FadeTransition(
-                                opacity: animation,
-                                child: child,
-                              ),
-                            );
-                          },
+                          transitionBuilder:
+                              (Widget child, Animation<double> animation) {
+                                return SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0.15, 0.0),
+                                    end: Offset.zero,
+                                  ).animate(animation),
+                                  child: FadeTransition(
+                                    opacity: animation,
+                                    child: child,
+                                  ),
+                                );
+                              },
                           child: switch (_step) {
                             _PasswordResetStep.request => _buildRequest(),
                             _PasswordResetStep.verifyOtp => _buildVerifyOtp(),
-                            _PasswordResetStep.newPassword => _buildNewPassword(),
+                            _PasswordResetStep.newPassword =>
+                              _buildNewPassword(),
                             _PasswordResetStep.success => _buildSuccess(),
                           },
                         ),
@@ -511,13 +522,21 @@ class _PasswordResetScreenState extends ConsumerState<PasswordResetScreen> {
               : RichText(
                   textAlign: TextAlign.center,
                   text: TextSpan(
-                    style: AppTextStyles.subtitle.copyWith(fontSize: 13, color: AppColors.ink2),
+                    style: AppTextStyles.subtitle.copyWith(
+                      fontSize: 13,
+                      color: AppColors.ink2,
+                    ),
                     children: [
                       if (_seconds > 0) ...[
-                        const TextSpan(text: '¿No lo recibiste?\nReenviar código en '),
+                        const TextSpan(
+                          text: '¿No lo recibiste?\nReenviar código en ',
+                        ),
                         TextSpan(
                           text: '$_seconds s',
-                          style: const TextStyle(color: AppColors.neniDeep, fontWeight: FontWeight.w600),
+                          style: const TextStyle(
+                            color: AppColors.neniDeep,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ] else ...[
                         const TextSpan(text: '¿No lo recibiste?\n'),
@@ -661,7 +680,10 @@ class _PasswordResetScreenState extends ConsumerState<PasswordResetScreen> {
           children: [
             Text(
               'Seguridad:',
-              style: AppTextStyles.subtitle.copyWith(fontSize: 11, color: AppColors.ink2),
+              style: AppTextStyles.subtitle.copyWith(
+                fontSize: 11,
+                color: AppColors.ink2,
+              ),
             ),
             Text(
               label,
@@ -800,11 +822,7 @@ class _PasswordResetScreenState extends ConsumerState<PasswordResetScreen> {
                   ],
                 ),
                 alignment: Alignment.center,
-                child: const Icon(
-                  Symbols.chat,
-                  color: Colors.white,
-                  size: 24,
-                ),
+                child: const Icon(Symbols.chat, color: Colors.white, size: 24),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -865,10 +883,7 @@ class _StepIconBadge extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFFFF0F5),
-            Color(0xFFFFE1EB),
-          ],
+          colors: [Color(0xFFFFF0F5), Color(0xFFFFE1EB)],
         ),
         boxShadow: const [
           BoxShadow(
@@ -880,11 +895,7 @@ class _StepIconBadge extends StatelessWidget {
         ],
       ),
       alignment: Alignment.center,
-      child: Icon(
-        icon,
-        size: 28,
-        color: AppColors.neniDeep,
-      ),
+      child: Icon(icon, size: 28, color: AppColors.neniDeep),
     );
   }
 }
@@ -923,59 +934,6 @@ class _ResetActionButton extends StatelessWidget {
           color: AppColors.surface,
         ),
       ),
-    );
-  }
-}
-
-class ShakeWidget extends StatefulWidget {
-  const ShakeWidget({
-    required this.child,
-    super.key,
-  });
-
-  final Widget child;
-
-  @override
-  State<ShakeWidget> createState() => ShakeWidgetState();
-}
-
-class ShakeWidgetState extends State<ShakeWidget>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 400),
-      vsync: this,
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void shake() {
-    _controller.forward(from: 0.0);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        final double translation = 16.0 *
-            math.sin(_controller.value * 4 * math.pi) *
-            (1.0 - _controller.value);
-
-        return Transform.translate(
-          offset: Offset(translation, 0),
-          child: widget.child,
-        );
-      },
     );
   }
 }

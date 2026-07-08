@@ -35,16 +35,16 @@ class BuyerAddress {
       (latitude != null && longitude != null);
 
   factory BuyerAddress.fromJson(Map<String, dynamic> j) => BuyerAddress(
-        clientId: (j['clientId'] as num).toInt(),
-        businessId: (j['businessId'] as num).toInt(),
-        businessName: (j['businessName'] ?? '') as String,
-        brandPrimaryColor: (j['brandPrimaryColor'] ?? '#FB6F9C') as String,
-        logoUrl: j['logoUrl'] as String?,
-        address: j['address'] as String?,
-        latitude: (j['latitude'] as num?)?.toDouble(),
-        longitude: (j['longitude'] as num?)?.toDouble(),
-        deliveryInstructions: j['deliveryInstructions'] as String?,
-      );
+    clientId: (j['clientId'] as num).toInt(),
+    businessId: (j['businessId'] as num).toInt(),
+    businessName: (j['businessName'] ?? '') as String,
+    brandPrimaryColor: (j['brandPrimaryColor'] ?? '#FB6F9C') as String,
+    logoUrl: j['logoUrl'] as String?,
+    address: j['address'] as String?,
+    latitude: (j['latitude'] as num?)?.toDouble(),
+    longitude: (j['longitude'] as num?)?.toDouble(),
+    deliveryInstructions: j['deliveryInstructions'] as String?,
+  );
 }
 
 /// Body para que la compradora actualice su dirección. Solo los campos
@@ -90,4 +90,43 @@ class UpdateAddressRequest {
     }
     return json;
   }
+}
+
+String? validateAddressCoordinatesInput(String latitude, String longitude) {
+  final latText = latitude.trim();
+  final lngText = longitude.trim();
+  if (latText.isEmpty && lngText.isEmpty) return null;
+  if (latText.isEmpty || lngText.isEmpty) {
+    return 'Captura latitud y longitud, o deja ambas vacias.';
+  }
+
+  final lat = double.tryParse(latText);
+  if (lat == null) return 'La latitud debe ser un numero valido.';
+  if (lat < -90 || lat > 90) {
+    return 'La latitud debe estar entre -90 y 90.';
+  }
+
+  final lng = double.tryParse(lngText);
+  if (lng == null) return 'La longitud debe ser un numero valido.';
+  if (lng < -180 || lng > 180) {
+    return 'La longitud debe estar entre -180 y 180.';
+  }
+
+  return null;
+}
+
+double? parseAddressLatitude(String value) {
+  final text = value.trim();
+  if (text.isEmpty) return null;
+  final parsed = double.tryParse(text);
+  if (parsed == null || parsed < -90 || parsed > 90) return null;
+  return parsed;
+}
+
+double? parseAddressLongitude(String value) {
+  final text = value.trim();
+  if (text.isEmpty) return null;
+  final parsed = double.tryParse(text);
+  if (parsed == null || parsed < -180 || parsed > 180) return null;
+  return parsed;
 }

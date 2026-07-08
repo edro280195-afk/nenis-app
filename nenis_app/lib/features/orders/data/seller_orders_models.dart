@@ -124,6 +124,18 @@ class SellerPayment {
   );
 }
 
+class OrderCaptureSettings {
+  const OrderCaptureSettings({required this.defaultShippingCost});
+
+  final double defaultShippingCost;
+
+  factory OrderCaptureSettings.fromJson(Map<String, dynamic> json) {
+    return OrderCaptureSettings(
+      defaultShippingCost: _d(json['defaultShippingCost']),
+    );
+  }
+}
+
 /// Pedido de vendedora mapeado de `OrderSummaryDto`.
 class SellerOrder {
   const SellerOrder({
@@ -147,6 +159,8 @@ class SellerOrder {
     this.clientLatitude,
     this.clientLongitude,
     this.scheduledDeliveryDate,
+    this.postponedAt,
+    this.postponedNote,
     this.expiresAt,
     this.clientFacebookProfileUrl,
     this.notifiedAt,
@@ -178,6 +192,8 @@ class SellerOrder {
   final double? clientLatitude;
   final double? clientLongitude;
   final DateTime? scheduledDeliveryDate;
+  final DateTime? postponedAt;
+  final String? postponedNote;
   final DateTime? expiresAt;
   final String? clientFacebookProfileUrl;
   final DateTime? notifiedAt;
@@ -233,6 +249,10 @@ class SellerOrder {
     scheduledDeliveryDate: j['scheduledDeliveryDate'] == null
         ? null
         : DateTime.tryParse(j['scheduledDeliveryDate'] as String)?.toLocal(),
+    postponedAt: j['postponedAt'] == null
+        ? null
+        : DateTime.tryParse(j['postponedAt'] as String)?.toLocal(),
+    postponedNote: j['postponedNote'] as String?,
     expiresAt: j['expiresAt'] == null
         ? null
         : DateTime.tryParse(j['expiresAt'] as String)?.toLocal(),

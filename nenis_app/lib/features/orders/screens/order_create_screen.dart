@@ -12,14 +12,18 @@ import '../data/seller_order_capture_parser.dart';
 import '../data/seller_order_message.dart';
 import '../data/seller_orders_models.dart';
 import '../data/seller_orders_repository.dart';
-import 'seller_orders_screen.dart' show GradientText;
 
 enum _CaptureMode { quick, manual }
 
 class _CaptureWorkspace {
-  const _CaptureWorkspace({required this.clients, required this.products});
+  const _CaptureWorkspace({
+    required this.clients,
+    required this.products,
+    required this.settings,
+  });
   final List<SellerClient> clients;
   final List<CommonProduct> products;
+  final OrderCaptureSettings settings;
 }
 
 final _captureWorkspaceProvider = FutureProvider.autoDispose<_CaptureWorkspace>(
@@ -27,7 +31,12 @@ final _captureWorkspaceProvider = FutureProvider.autoDispose<_CaptureWorkspace>(
     final repo = ref.read(sellerOrdersRepositoryProvider);
     final clients = await repo.getClients();
     final products = await repo.getCommonProducts();
-    return _CaptureWorkspace(clients: clients, products: products);
+    final settings = await repo.getCaptureSettings();
+    return _CaptureWorkspace(
+      clients: clients,
+      products: products,
+      settings: settings,
+    );
   },
 );
 
@@ -126,9 +135,10 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
   }
 
   double get _manualSubtotal => _manualItems.fold(0, (s, i) => s + i.lineTotal);
-  double get _manualShipping =>
-      _manualDelivery == SellerDeliveryType.pickup ? 0 : 60;
-  double get _manualTotal => _manualSubtotal + _manualShipping;
+  double _manualShipping(double defaultShippingCost) =>
+      _manualDelivery == SellerDeliveryType.pickup ? 0 : defaultShippingCost;
+  double _manualTotal(double defaultShippingCost) =>
+      _manualSubtotal + _manualShipping(defaultShippingCost);
   double get _quickTotal => _quickQueue.fold(0, (s, i) => s + i.lineTotal);
 
   void _snack(String msg, {Color? color}) {
@@ -212,7 +222,9 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
           progress: _quickProgress,
           onDeliveryChanged: (delivery) =>
               setState(() => _quickDelivery = delivery),
-          onSubmitted: (_) => _addQuickEntry(workspace.clients),
+          onSubmitted: (_) {
+            _addQuickEntry(workspace.clients);
+          },
           onChanged: (_) => setState(() {}),
           onClearPin: () => setState(() => _pinnedProduct = null),
         ),
@@ -388,8 +400,8 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
         ),
         _ManualSummary(
           subtotal: _manualSubtotal,
-          shipping: _manualShipping,
-          total: _manualTotal,
+          shipping: _manualShipping(workspace.settings.defaultShippingCost),
+          total: _manualTotal(workspace.settings.defaultShippingCost),
           creating: _creatingManual,
           canCreate:
               _manualItems.isNotEmpty &&
@@ -606,7 +618,7 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
     _quickFocus.requestFocus();
   }
 
-  void _addQuickEntry(List<SellerClient> clients) {
+  Future<void> _addQuickEntry(List<SellerClient> clients) async {
     final input = _quickInputCtrl.text.trim();
     if (input.isEmpty) return;
 
@@ -657,7 +669,19 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
       _snack('Formato rapido: Clienta, articulo, precio');
       return;
     }
-    final draft = parsed;
+
+    final confirmed = await showDialog<QuickCaptureDraft>(
+      context: context,
+      builder: (context) => _QuickPreviewDialog(draft: parsed!),
+    );
+    if (confirmed == null) {
+      _quickFocus.requestFocus();
+      return;
+    }
+    final draft = confirmed;
+    matched =
+        _findBestClientMatch(clients, draft.clientName, exactOnly: true) ??
+        _findBestClientMatch(clients, draft.clientName);
 
     setState(() {
       _quickQueue.insert(
@@ -810,11 +834,6 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
     final today = DateTime(now.year, now.month, now.day);
     final days = DateTime.sunday - today.weekday;
     return today.add(Duration(days: days <= 0 ? days + 7 : days));
-  }
-
-  String _cleanMoney(num value) {
-    if (value % 1 == 0) return value.toInt().toString();
-    return value.toStringAsFixed(2);
   }
 
   void _goBack() {
@@ -1084,6 +1103,193 @@ class _QuickHero extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _QuickPreviewDialog extends StatefulWidget {
+  const _QuickPreviewDialog({required this.draft});
+
+  final QuickCaptureDraft draft;
+
+  @override
+  State<_QuickPreviewDialog> createState() => _QuickPreviewDialogState();
+}
+
+class _QuickPreviewDialogState extends State<_QuickPreviewDialog> {
+  late final TextEditingController _clientCtrl;
+  late final TextEditingController _productCtrl;
+  late final TextEditingController _qtyCtrl;
+  late final TextEditingController _priceCtrl;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final draft = widget.draft;
+    _clientCtrl = TextEditingController(text: draft.clientName);
+    _productCtrl = TextEditingController(text: draft.productName);
+    _qtyCtrl = TextEditingController(text: draft.quantity.toString());
+    _priceCtrl = TextEditingController(text: _cleanMoney(draft.unitPrice));
+  }
+
+  @override
+  void dispose() {
+    _clientCtrl.dispose();
+    _productCtrl.dispose();
+    _qtyCtrl.dispose();
+    _priceCtrl.dispose();
+    super.dispose();
+  }
+
+  void _confirm() {
+    final client = _clientCtrl.text.trim();
+    final product = _productCtrl.text.trim();
+    final qty = int.tryParse(_qtyCtrl.text.trim()) ?? 0;
+    final price =
+        double.tryParse(_priceCtrl.text.trim().replaceAll(',', '')) ?? 0;
+
+    if (client.isEmpty || product.isEmpty || qty < 1 || price <= 0) {
+      setState(() => _error = 'Revisa clienta, articulo, cantidad y precio.');
+      return;
+    }
+
+    Navigator.pop(
+      context,
+      QuickCaptureDraft(
+        clientName: client,
+        productName: product,
+        quantity: qty,
+        unitPrice: price,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final qty = int.tryParse(_qtyCtrl.text.trim()) ?? 0;
+    final price =
+        double.tryParse(_priceCtrl.text.trim().replaceAll(',', '')) ?? 0;
+    final total = qty > 0 && price > 0 ? qty * price : 0;
+
+    return AlertDialog(
+      title: const Text('Esto entendimos'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Corrige cualquier dato antes de agregarlo a la cola.',
+              style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+            ),
+            const SizedBox(height: 14),
+            _DialogField(
+              controller: _clientCtrl,
+              label: 'Clienta',
+              icon: Symbols.person,
+              onChanged: (_) => setState(() => _error = null),
+            ),
+            const SizedBox(height: 10),
+            _DialogField(
+              controller: _productCtrl,
+              label: 'Articulo',
+              icon: Symbols.shopping_bag,
+              onChanged: (_) => setState(() => _error = null),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _DialogField(
+                    controller: _qtyCtrl,
+                    label: 'Cantidad',
+                    icon: Symbols.numbers,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => setState(() => _error = null),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _DialogField(
+                    controller: _priceCtrl,
+                    label: 'Precio unitario',
+                    icon: Symbols.payments,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    onChanged: (_) => setState(() => _error = null),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF5FA),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.line),
+              ),
+              child: Text(
+                'Total interpretado: ${money(total)}',
+                style: AppTextStyles.body.copyWith(
+                  color: AppColors.neniDeep,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                _error!,
+                style: AppTextStyles.subtitle.copyWith(
+                  color: const Color(0xFFE11D5B),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(onPressed: _confirm, child: const Text('Agregar')),
+      ],
+    );
+  }
+}
+
+class _DialogField extends StatelessWidget {
+  const _DialogField({
+    required this.controller,
+    required this.label,
+    required this.icon,
+    this.keyboardType,
+    this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final IconData icon;
+  final TextInputType? keyboardType;
+  final ValueChanged<String>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        border: const OutlineInputBorder(),
       ),
     );
   }
@@ -1570,7 +1776,16 @@ class _SubmitBar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('TOTAL', style: AppTextStyles.eyebrow(AppColors.ink3)),
-                GradientText(money(total), fontSize: 24),
+                Text(
+                  money(total),
+                  style: AppTextStyles.h1.copyWith(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.neniDeep,
+                    letterSpacing: 0,
+                    height: 1,
+                  ),
+                ),
               ],
             ),
           ),
@@ -2393,4 +2608,9 @@ extension _FirstOrNull<T> on Iterable<T> {
     if (!iterator.moveNext()) return null;
     return iterator.current;
   }
+}
+
+String _cleanMoney(num value) {
+  if (value % 1 == 0) return value.toInt().toString();
+  return value.toStringAsFixed(2);
 }

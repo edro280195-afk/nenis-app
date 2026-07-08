@@ -79,6 +79,7 @@ class _SellerClientsScreenState extends ConsumerState<SellerClientsScreen> {
           locating: false,
           onRefresh: () => ref.invalidate(sellerClientsProvider),
           onSort: _showSortSheet,
+          onDuplicates: _showDuplicateSuggestionsSheet,
           onLocate: null,
         ),
         const SizedBox(height: 16),
@@ -128,6 +129,7 @@ class _SellerClientsScreenState extends ConsumerState<SellerClientsScreen> {
           locating: _locating,
           onRefresh: () => ref.invalidate(sellerClientsProvider),
           onSort: _showSortSheet,
+          onDuplicates: _showDuplicateSuggestionsSheet,
           onLocate: needsLocation == 0 ? null : () => _bulkGeocode(clients),
         ),
         const SizedBox(height: 14),
@@ -229,6 +231,61 @@ class _SellerClientsScreenState extends ConsumerState<SellerClientsScreen> {
     );
     if (selected == null || selected == _sort) return;
     setState(() => _sort = selected);
+  }
+
+  Future<void> _showDuplicateSuggestionsSheet() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) =>
+          _DuplicateSuggestionsSheet(onMerge: _mergeDuplicateSuggestion),
+    );
+  }
+
+  Future<void> _mergeDuplicateSuggestion(
+    SellerDuplicateSuggestion suggestion,
+    int targetId,
+  ) async {
+    final sourceId = suggestion.sourceIdForTarget(targetId);
+    final sourceName = suggestion.nameFor(sourceId);
+    final targetName = suggestion.nameFor(targetId);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Fusionar clientas'),
+        content: Text(
+          'Se moveran pedidos, puntos y alias de "$sourceName" a "$targetName". '
+          '"$sourceName" se eliminara del directorio.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Fusionar'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    try {
+      await ref
+          .read(sellerClientsRepositoryProvider)
+          .mergeClients(sourceId: sourceId, targetId: targetId);
+      ref.invalidate(sellerClientsProvider);
+      ref.invalidate(sellerClientDuplicateSuggestionsProvider);
+      ref.invalidate(sellerClientDetailProvider(sourceId));
+      ref.invalidate(sellerClientDetailProvider(targetId));
+      ref.invalidate(sellerClientAliasesProvider(targetId));
+      _snack('Clientas fusionadas.');
+    } catch (error) {
+      _snack(error.toString(), danger: true);
+    }
   }
 
   Future<void> _showClientSheet(int clientId) async {
@@ -437,6 +494,7 @@ class _Header extends StatelessWidget {
     required this.locating,
     required this.onRefresh,
     required this.onSort,
+    required this.onDuplicates,
     this.onLocate,
   });
 
@@ -445,6 +503,7 @@ class _Header extends StatelessWidget {
   final bool locating;
   final VoidCallback onRefresh;
   final VoidCallback onSort;
+  final VoidCallback onDuplicates;
   final VoidCallback? onLocate;
 
   @override
@@ -488,6 +547,12 @@ class _Header extends StatelessWidget {
           tooltip: locating ? 'Ubicando...' : 'Ubicar direcciones',
           icon: locating ? Symbols.progress_activity : Symbols.add_location_alt,
           onTap: locating ? null : onLocate,
+        ),
+        const SizedBox(width: 8),
+        _IconTile(
+          tooltip: 'Fusionar duplicadas',
+          icon: Icons.merge_type_rounded,
+          onTap: onDuplicates,
         ),
         const SizedBox(width: 8),
         _IconTile(tooltip: 'Ordenar', icon: Symbols.tune, onTap: onSort),
@@ -921,6 +986,244 @@ class _ClientCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _DuplicateSuggestionsSheet extends ConsumerWidget {
+  const _DuplicateSuggestionsSheet({required this.onMerge});
+
+  final Future<void> Function(
+    SellerDuplicateSuggestion suggestion,
+    int targetId,
+  )
+  onMerge;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.78,
+      minChildSize: 0.45,
+      maxChildSize: 0.94,
+      builder: (context, controller) {
+        final async = ref.watch(sellerClientDuplicateSuggestionsProvider);
+        return _SheetFrame(
+          child: async.when(
+            loading: () => const Center(
+              child: CircularProgressIndicator(color: AppColors.neni),
+            ),
+            error: (error, _) => ListView(
+              controller: controller,
+              padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
+              children: [
+                const _SheetHandle(),
+                _EmptyState(
+                  icon: Icons.merge_type_rounded,
+                  title: 'No pudimos revisar duplicadas',
+                  message: error.toString(),
+                  actionLabel: 'Reintentar',
+                  onAction: () =>
+                      ref.invalidate(sellerClientDuplicateSuggestionsProvider),
+                ),
+              ],
+            ),
+            data: (suggestions) => ListView(
+              controller: controller,
+              padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
+              children: [
+                const _SheetHandle(),
+                Text(
+                  'Duplicadas sugeridas',
+                  style: AppTextStyles.h1.copyWith(fontSize: 24),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Elige que perfil conservar. El otro se fusiona y se elimina.',
+                  style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+                ),
+                const SizedBox(height: 16),
+                if (suggestions.isEmpty)
+                  const _EmptyState(
+                    icon: Icons.check_circle_outline_rounded,
+                    title: 'Sin duplicadas por revisar',
+                    message:
+                        'No encontramos pares con telefono igual o nombres parecidos.',
+                  )
+                else
+                  for (final suggestion in suggestions) ...[
+                    _DuplicateSuggestionCard(
+                      suggestion: suggestion,
+                      onMerge: (targetId) => onMerge(suggestion, targetId),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _DuplicateSuggestionCard extends StatelessWidget {
+  const _DuplicateSuggestionCard({
+    required this.suggestion,
+    required this.onMerge,
+  });
+
+  final SellerDuplicateSuggestion suggestion;
+  final ValueChanged<int> onMerge;
+
+  @override
+  Widget build(BuildContext context) {
+    final recommendedTargetId = suggestion.recommendedTargetId;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadii.cardRadius,
+        border: Border.all(color: AppColors.line),
+        boxShadow: AppShadows.small,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFEAF2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.merge_type_rounded,
+                  color: AppColors.neniDeep,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '${suggestion.leftName} + ${suggestion.rightName}',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 7,
+            runSpacing: 7,
+            children: [
+              _TinyChip(
+                label: suggestion.reasonLabel,
+                color: AppColors.neniDeep,
+              ),
+              _TinyChip(
+                label: suggestion.confidenceLabel,
+                color: AppColors.statusRouteFg,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _DuplicateClientLine(
+            clientId: suggestion.leftClientId,
+            name: suggestion.leftName,
+            ordersCount: suggestion.leftOrdersCount,
+            recommended: suggestion.leftClientId == recommendedTargetId,
+          ),
+          const SizedBox(height: 8),
+          _DuplicateClientLine(
+            clientId: suggestion.rightClientId,
+            name: suggestion.rightName,
+            ordersCount: suggestion.rightOrdersCount,
+            recommended: suggestion.rightClientId == recommendedTargetId,
+          ),
+          const SizedBox(height: 13),
+          Row(
+            children: [
+              Expanded(
+                child: _SmallAction(
+                  label: 'Mantener ${_shortClientName(suggestion.leftName)}',
+                  icon: Icons.account_circle_outlined,
+                  onTap: () => onMerge(suggestion.leftClientId),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _SmallAction(
+                  label: 'Mantener ${_shortClientName(suggestion.rightName)}',
+                  icon: Icons.account_circle_outlined,
+                  onTap: () => onMerge(suggestion.rightClientId),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DuplicateClientLine extends StatelessWidget {
+  const _DuplicateClientLine({
+    required this.clientId,
+    required this.name,
+    required this.ordersCount,
+    required this.recommended,
+  });
+
+  final int clientId;
+  final String name;
+  final int ordersCount;
+  final bool recommended;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+      decoration: BoxDecoration(
+        color: recommended ? const Color(0xFFFFF5FA) : AppColors.surfaceCream,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: recommended
+              ? AppColors.neniDeep.withValues(alpha: 0.22)
+              : AppColors.lineSoft,
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              name.trim().isEmpty ? 'Sin nombre' : name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.body.copyWith(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '$ordersCount ped.',
+            style: AppTextStyles.subtitle.copyWith(fontSize: 11),
+          ),
+          if (recommended) ...[
+            const SizedBox(width: 8),
+            const Icon(Icons.star_rounded, size: 15, color: AppColors.neniDeep),
+          ],
+        ],
       ),
     );
   }
@@ -2540,6 +2843,12 @@ Color _tagColor(SellerClientTag tag) {
     SellerClientTag.vip => AppColors.gold,
     SellerClientTag.blacklist => AppColors.liveRed,
   };
+}
+
+String _shortClientName(String name) {
+  final trimmed = name.trim();
+  if (trimmed.isEmpty) return 'perfil';
+  return trimmed.split(RegExp(r'\s+')).first;
 }
 
 String _normalize(String value) {

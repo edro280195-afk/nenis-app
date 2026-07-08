@@ -45,6 +45,17 @@ class _AddressEditScreenState extends ConsumerState<AddressEditScreen> {
   Future<void> _save() async {
     final id = int.tryParse(widget.clientId);
     if (id == null) return;
+    final coordinatesError = validateAddressCoordinatesInput(
+      _latCtl.text,
+      _lngCtl.text,
+    );
+    if (coordinatesError != null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(coordinatesError)));
+      return;
+    }
+
     setState(() => _submitting = true);
     try {
       UpdateAddressRequest req;
@@ -56,8 +67,8 @@ class _AddressEditScreenState extends ConsumerState<AddressEditScreen> {
           address: _addressCtl.text.trim().isEmpty
               ? null
               : _addressCtl.text.trim(),
-          latitude: double.tryParse(_latCtl.text.trim()),
-          longitude: double.tryParse(_lngCtl.text.trim()),
+          latitude: parseAddressLatitude(_latCtl.text),
+          longitude: parseAddressLongitude(_lngCtl.text),
           deliveryInstructions: _instrCtl.text.trim().isEmpty
               ? null
               : _instrCtl.text.trim(),
@@ -66,8 +77,8 @@ class _AddressEditScreenState extends ConsumerState<AddressEditScreen> {
         // Con original: solo enviamos lo que cambió (null = no tocar).
         final newAddr = _addressCtl.text.trim();
         final newInstr = _instrCtl.text.trim();
-        final newLat = double.tryParse(_latCtl.text.trim());
-        final newLng = double.tryParse(_lngCtl.text.trim());
+        final newLat = parseAddressLatitude(_latCtl.text);
+        final newLng = parseAddressLongitude(_lngCtl.text);
 
         req = UpdateAddressRequest(
           address: newAddr == (orig.address?.trim() ?? '')

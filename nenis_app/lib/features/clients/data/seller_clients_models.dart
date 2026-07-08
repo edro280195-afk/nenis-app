@@ -317,3 +317,68 @@ class BulkGeocodeResult {
     );
   }
 }
+
+class SellerDuplicateSuggestion {
+  const SellerDuplicateSuggestion({
+    required this.leftClientId,
+    required this.leftName,
+    required this.leftOrdersCount,
+    required this.rightClientId,
+    required this.rightName,
+    required this.rightOrdersCount,
+    required this.reason,
+    required this.confidence,
+  });
+
+  final int leftClientId;
+  final String leftName;
+  final int leftOrdersCount;
+  final int rightClientId;
+  final String rightName;
+  final int rightOrdersCount;
+  final String reason;
+  final double confidence;
+
+  int get recommendedTargetId =>
+      leftOrdersCount >= rightOrdersCount ? leftClientId : rightClientId;
+
+  int sourceIdForTarget(int targetId) =>
+      targetId == leftClientId ? rightClientId : leftClientId;
+
+  String nameFor(int clientId) {
+    if (clientId == leftClientId) return leftName;
+    if (clientId == rightClientId) return rightName;
+    return '';
+  }
+
+  int ordersFor(int clientId) {
+    if (clientId == leftClientId) return leftOrdersCount;
+    if (clientId == rightClientId) return rightOrdersCount;
+    return 0;
+  }
+
+  String get reasonLabel => switch (reason) {
+    'same-phone' => 'Mismo telefono',
+    'similar-name' => 'Nombre parecido',
+    'similar-address' => 'Direccion parecida',
+    _ => 'Posible duplicada',
+  };
+
+  String get confidenceLabel {
+    final percent = (confidence * 100).clamp(0, 100).round();
+    return '$percent%';
+  }
+
+  factory SellerDuplicateSuggestion.fromJson(Map<String, dynamic> json) {
+    return SellerDuplicateSuggestion(
+      leftClientId: _i(json['leftClientId']),
+      leftName: (json['leftName'] ?? '') as String,
+      leftOrdersCount: _i(json['leftOrdersCount']),
+      rightClientId: _i(json['rightClientId']),
+      rightName: (json['rightName'] ?? '') as String,
+      rightOrdersCount: _i(json['rightOrdersCount']),
+      reason: (json['reason'] ?? '') as String,
+      confidence: _d(json['confidence']),
+    );
+  }
+}

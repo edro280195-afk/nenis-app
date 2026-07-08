@@ -142,6 +142,17 @@ class SellerOrdersRepository {
     }
   }
 
+  Future<OrderCaptureSettings> getCaptureSettings() async {
+    try {
+      final res = await _dio.get('/api/orders/capture-settings');
+      return OrderCaptureSettings.fromJson(res.data as Map<String, dynamic>);
+    } catch (e) {
+      throw SellerOrdersException(
+        _friendly(e, 'No pudimos cargar la configuracion de captura.'),
+      );
+    }
+  }
+
   Future<void> deleteOrder(int id) async {
     try {
       await _dio.delete('/api/orders/$id');
@@ -152,11 +163,21 @@ class SellerOrdersRepository {
     }
   }
 
-  Future<SellerOrder> updateStatus(int id, SellerOrderStatus status) async {
+  Future<SellerOrder> updateStatus(
+    int id,
+    SellerOrderStatus status, {
+    DateTime? postponedAt,
+    String? postponedNote,
+  }) async {
     try {
       final res = await _dio.patch(
         '/api/orders/$id/status',
-        data: {'status': status.api},
+        data: {
+          'status': status.api,
+          if (postponedAt != null) 'postponedAt': postponedAt.toIso8601String(),
+          if (postponedNote != null && postponedNote.trim().isNotEmpty)
+            'postponedNote': postponedNote.trim(),
+        },
       );
       return SellerOrder.fromJson(res.data as Map<String, dynamic>);
     } catch (e) {

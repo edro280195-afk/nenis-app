@@ -61,4 +61,29 @@ void main() {
       expect(summary.nextTierLabel, '180 pts para Diamante');
     });
   });
+
+  group('SellerDuplicateSuggestion', () {
+    test(
+      'parses API payload and recommends keeping the client with more orders',
+      () {
+        final suggestion = SellerDuplicateSuggestion.fromJson({
+          'leftClientId': 4,
+          'leftName': 'Mary',
+          'leftOrdersCount': 2,
+          'rightClientId': 8,
+          'rightName': 'Maria Lopez',
+          'rightOrdersCount': 7,
+          'reason': 'same-phone',
+          'confidence': 0.95,
+        });
+
+        expect(suggestion.reasonLabel, 'Mismo telefono');
+        expect(suggestion.confidenceLabel, '95%');
+        expect(suggestion.recommendedTargetId, 8);
+        expect(suggestion.sourceIdForTarget(8), 4);
+        expect(suggestion.nameFor(4), 'Mary');
+        expect(suggestion.ordersFor(8), 7);
+      },
+    );
+  });
 }

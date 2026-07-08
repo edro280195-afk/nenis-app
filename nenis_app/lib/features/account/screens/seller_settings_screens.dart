@@ -18,13 +18,13 @@ import '../data/seller_settings_repository.dart';
 const _configSections = [
   _ConfigSectionInfo(
     title: 'Perfil de tienda',
-    subtitle: 'Nombre, colores y vista pública.',
+    subtitle: 'Nombre, colores y vista pÃºblica.',
     route: '/seller/settings/profile',
     icon: Symbols.storefront,
     color: AppColors.neniDeep,
   ),
   _ConfigSectionInfo(
-    title: 'Métodos de pago',
+    title: 'MÃ©todos de pago',
     subtitle: 'Mercado Pago y cobros para tus clientas.',
     route: '/seller/settings/payments',
     icon: Symbols.payments,
@@ -32,14 +32,14 @@ const _configSections = [
   ),
   _ConfigSectionInfo(
     title: 'Equipo de reparto',
-    subtitle: 'Cómo trabajan tus choferes con las rutas.',
+    subtitle: 'CÃ³mo trabajan tus choferes con las rutas.',
     route: '/seller/settings/team',
     icon: Symbols.groups,
     color: AppColors.statusDeliveredFg,
   ),
   _ConfigSectionInfo(
     title: 'Preferencias',
-    subtitle: 'Alertas, mensajes y operación diaria.',
+    subtitle: 'Alertas, mensajes y operaciÃ³n diaria.',
     route: '/seller/settings/preferences',
     icon: Symbols.tune,
     color: AppColors.lavender,
@@ -53,7 +53,7 @@ class SellerSettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(sellerBusinessSettingsProvider);
     return _SettingsScaffold(
-      title: 'Configuración',
+      title: 'ConfiguraciÃ³n',
       subtitle: 'Ajusta tu tienda sin perder el ritmo de venta.',
       child: async.when(
         loading: () => const _SettingsLoading(),
@@ -190,7 +190,7 @@ class _SellerStoreProfileSettingsScreenState
                 children: [
                   AppTextField(
                     controller: _nameCtrl,
-                    label: 'Nombre público',
+                    label: 'Nombre pÃºblico',
                     hint: 'Regi Bazar',
                     prefixIcon: Symbols.storefront,
                     textInputAction: TextInputAction.next,
@@ -199,7 +199,7 @@ class _SellerStoreProfileSettingsScreenState
                   const SizedBox(height: 14),
                   _ReadOnlyInfoRow(
                     icon: Symbols.link,
-                    title: 'Ruta pública',
+                    title: 'Ruta pÃºblica',
                     value: '/${settings.slug}',
                   ),
                   if (settings.city?.trim().isNotEmpty == true) ...[
@@ -276,7 +276,7 @@ class _SellerStoreProfileSettingsScreenState
                 const SizedBox(height: 12),
                 const _InlineWarning(
                   text:
-                      'Revisa que el nombre no esté vacío y que los colores usen formato #RRGGBB.',
+                      'Revisa que el nombre no estÃ© vacÃ­o y que los colores usen formato #RRGGBB.',
                 ),
               ],
             ],
@@ -287,8 +287,6 @@ class _SellerStoreProfileSettingsScreenState
   }
 }
 
-// SellerPaymentSettingsScreen movido a payment_methods_screen.dart
-
 class SellerTeamSettingsScreen extends StatefulWidget {
   const SellerTeamSettingsScreen({super.key});
 
@@ -298,15 +296,10 @@ class SellerTeamSettingsScreen extends StatefulWidget {
 }
 
 class _SellerTeamSettingsScreenState extends State<SellerTeamSettingsScreen> {
-  var _driverCanCollect = true;
-  var _driverCanChat = true;
-  var _requireEvidence = true;
-  var _saving = false;
-
   Future<void> _copyInviteMessage() async {
     const text =
         'Hola, te voy a compartir tu enlace de ruta desde Neni. '
-        'Ábrelo en tu celular, permite ubicación y mantén la app abierta '
+        'Ãbrelo en tu celular, permite ubicaciÃ³n y mantÃ©n la app abierta '
         'mientras repartes para que las clientas vean el avance.';
     await Clipboard.setData(const ClipboardData(text: text));
     if (!mounted) return;
@@ -314,63 +307,54 @@ class _SellerTeamSettingsScreenState extends State<SellerTeamSettingsScreen> {
     HapticFeedback.selectionClick();
   }
 
-  Future<void> _save() async {
-    setState(() => _saving = true);
-    await Future<void>.delayed(const Duration(milliseconds: 350));
-    if (!mounted) return;
-    setState(() => _saving = false);
-    _snack(context, 'Preferencias de reparto guardadas en esta sesión.');
-  }
-
   @override
   Widget build(BuildContext context) {
     return _SettingsScaffold(
       title: 'Equipo de reparto',
-      subtitle: 'Prepara a tus choferes para rutas más claras.',
-      bottomBar: _SaveBar(
-        saving: _saving,
-        enabled: true,
-        label: 'Guardar reparto',
-        onPressed: _save,
-      ),
+      subtitle: 'Prepara a tus choferes para rutas mÃ¡s claras.',
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
         children: [
           const _RouteFlowCard(),
           const SizedBox(height: 18),
+          const _InlineWarning(
+            text:
+                'Estos permisos todavia no se guardan en el servidor. Por ahora solo puedes copiar el mensaje para chofer.',
+          ),
+          const SizedBox(height: 14),
           _SettingsCard(
             title: 'Permisos del chofer',
-            subtitle: 'Estos ajustes guían cómo operas cada ruta.',
+            subtitle: 'Estos ajustes guÃ­an cÃ³mo operas cada ruta.',
             children: [
               _SwitchRow(
                 title: 'Puede registrar cobros',
-                subtitle: 'Útil cuando cobra contra entrega.',
-                value: _driverCanCollect,
-                onChanged: (value) => setState(() => _driverCanCollect = value),
+                subtitle: 'Ãštil cuando cobra contra entrega.',
+                value: true,
+                onChanged: null,
               ),
               const SizedBox(height: 10),
               _SwitchRow(
                 title: 'Puede escribir a clientas',
                 subtitle: 'Activa chat operativo durante el reparto.',
-                value: _driverCanChat,
-                onChanged: (value) => setState(() => _driverCanChat = value),
+                value: true,
+                onChanged: null,
               ),
               const SizedBox(height: 10),
               _SwitchRow(
                 title: 'Pedir evidencia al entregar',
                 subtitle: 'Foto o nota cuando marca entregado.',
-                value: _requireEvidence,
-                onChanged: (value) => setState(() => _requireEvidence = value),
+                value: true,
+                onChanged: null,
               ),
             ],
           ),
           const SizedBox(height: 14),
           _SettingsCard(
             title: 'Mensaje para compartir',
-            subtitle: 'Úsalo cuando le mandes su enlace de ruta.',
+            subtitle: 'Ãšsalo cuando le mandes su enlace de ruta.',
             children: [
               Text(
-                '“Abre tu ruta, permite ubicación y marca cada entrega al terminar.”',
+                'â€œAbre tu ruta, permite ubicaciÃ³n y marca cada entrega al terminar.â€',
                 style: AppTextStyles.body.copyWith(height: 1.45),
               ),
               const SizedBox(height: 14),
@@ -401,6 +385,7 @@ class _SellerPreferencesSettingsScreenState
     extends ConsumerState<SellerPreferencesSettingsScreen> {
   late SellerPreferenceSettings _draft;
   var _saving = false;
+  var _dirty = false;
 
   @override
   void initState() {
@@ -408,21 +393,42 @@ class _SellerPreferencesSettingsScreenState
     _draft = ref.read(sellerPreferenceSettingsProvider);
   }
 
+  void _updateDraft(SellerPreferenceSettings settings) {
+    setState(() {
+      _draft = settings;
+      _dirty = true;
+    });
+  }
+
   Future<void> _save() async {
+    if (_saving) return;
     setState(() => _saving = true);
-    await Future<void>.delayed(const Duration(milliseconds: 350));
-    ref.read(sellerPreferenceSettingsProvider.notifier).set(_draft);
-    if (!mounted) return;
-    setState(() => _saving = false);
-    _snack(context, 'Preferencias guardadas.');
-    HapticFeedback.lightImpact();
+    try {
+      await ref.read(sellerPreferenceSettingsProvider.notifier).set(_draft);
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _dirty = false;
+      });
+      _snack(context, 'Preferencias guardadas.');
+      HapticFeedback.lightImpact();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      _snack(context, 'No pudimos guardar las preferencias.');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final saved = ref.watch(sellerPreferenceSettingsProvider);
+    if (!_dirty) {
+      _draft = saved;
+    }
+
     return _SettingsScaffold(
       title: 'Preferencias',
-      subtitle: 'Pequeños ajustes para vender más fluido.',
+      subtitle: 'PequeÃ±os ajustes para vender mÃ¡s fluido.',
       bottomBar: _SaveBar(
         saving: _saving,
         enabled: true,
@@ -440,51 +446,45 @@ class _SellerPreferencesSettingsScreenState
                 title: 'Pedidos nuevos',
                 subtitle: 'Avisar cuando entra una orden.',
                 value: _draft.notifyNewOrders,
-                onChanged: (value) => setState(
-                  () => _draft = _draft.copyWith(notifyNewOrders: value),
-                ),
+                onChanged: (value) =>
+                    _updateDraft(_draft.copyWith(notifyNewOrders: value)),
               ),
               const SizedBox(height: 10),
               _SwitchRow(
                 title: 'Cambios en rutas',
                 subtitle: 'Avisar si una entrega cambia de estado.',
                 value: _draft.notifyRouteChanges,
-                onChanged: (value) => setState(
-                  () => _draft = _draft.copyWith(notifyRouteChanges: value),
-                ),
+                onChanged: (value) =>
+                    _updateDraft(_draft.copyWith(notifyRouteChanges: value)),
               ),
             ],
           ),
           const SizedBox(height: 14),
           _SettingsCard(
-            title: 'Operación',
+            title: 'OperaciÃ³n',
             subtitle: 'Define el comportamiento base al capturar pedidos.',
             children: [
               _SwitchRow(
                 title: 'Copiar mensaje al crear pedido',
                 subtitle: 'Deja listo el texto para mandarlo a la clienta.',
                 value: _draft.autoCopyClientMessage,
-                onChanged: (value) => setState(
-                  () => _draft = _draft.copyWith(autoCopyClientMessage: value),
-                ),
+                onChanged: (value) =>
+                    _updateDraft(_draft.copyWith(autoCopyClientMessage: value)),
               ),
               const SizedBox(height: 10),
               _SwitchRow(
                 title: 'Pedir anticipo antes de ruta',
                 subtitle: 'Marca como recomendado cobrar antes de repartir.',
                 value: _draft.requirePaymentBeforeRoute,
-                onChanged: (value) => setState(
-                  () => _draft = _draft.copyWith(
-                    requirePaymentBeforeRoute: value,
-                  ),
+                onChanged: (value) => _updateDraft(
+                  _draft.copyWith(requirePaymentBeforeRoute: value),
                 ),
               ),
               const SizedBox(height: 14),
               _DeliveryWindowSelector(
                 value: _draft.defaultDeliveryWindow,
-                onChanged: (value) => setState(
-                  () => _draft = _draft.copyWith(defaultDeliveryWindow: value),
-                ),
+                onChanged: (value) =>
+                    _updateDraft(_draft.copyWith(defaultDeliveryWindow: value)),
               ),
             ],
           ),
@@ -604,7 +604,7 @@ class _BusinessSummaryCard extends StatelessWidget {
                     ),
                     Text(
                       settings.city?.trim().isNotEmpty == true
-                          ? '${settings.city} · /${settings.slug}'
+                          ? '${settings.city} Â· /${settings.slug}'
                           : '/${settings.slug}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -741,7 +741,7 @@ class _StorePreviewCard extends StatelessWidget {
               const Spacer(),
               _MiniPill(
                 icon: Symbols.visibility,
-                label: 'Vista pública',
+                label: 'Vista pÃºblica',
                 color: primary,
               ),
             ],
@@ -756,7 +756,7 @@ class _StorePreviewCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             city?.trim().isNotEmpty == true
-                ? '$city · nenis.app/$slug'
+                ? '$city Â· nenis.app/$slug'
                 : 'nenis.app/$slug',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -817,7 +817,7 @@ class _RouteFlowCard extends StatelessWidget {
           const _StepLine(
             number: '3',
             title: 'Monitorea entregas',
-            subtitle: 'Los estados y ubicación se actualizan en vivo.',
+            subtitle: 'Los estados y ubicaciÃ³n se actualizan en vivo.',
             isLast: true,
           ),
         ],
@@ -1003,42 +1003,46 @@ class _SwitchRow extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool value;
-  final ValueChanged<bool> onChanged;
+  final ValueChanged<bool>? onChanged;
 
   @override
   Widget build(BuildContext context) {
+    final enabled = onChanged != null;
     return InkWell(
-      onTap: () => onChanged(!value),
+      onTap: enabled ? () => onChanged!(!value) : null,
       borderRadius: BorderRadius.circular(16),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: AppTextStyles.body.copyWith(
-                      fontWeight: FontWeight.w700,
+      child: Opacity(
+        opacity: enabled ? 1 : 0.58,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTextStyles.body.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: AppTextStyles.subtitle.copyWith(fontSize: 12),
-                  ),
-                ],
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: AppTextStyles.subtitle.copyWith(fontSize: 12),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            Switch.adaptive(
-              value: value,
-              activeThumbColor: AppColors.neniDeep,
-              activeTrackColor: AppColors.neni.withValues(alpha: 0.36),
-              onChanged: onChanged,
-            ),
-          ],
+              Switch.adaptive(
+                value: value,
+                activeThumbColor: AppColors.neniDeep,
+                activeTrackColor: AppColors.neni.withValues(alpha: 0.36),
+                onChanged: onChanged,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1054,7 +1058,7 @@ class _DeliveryWindowSelector extends StatelessWidget {
   static const _options = [
     'Domingos por la tarde',
     'Entre semana',
-    'Mismo día',
+    'Mismo dÃ­a',
   ];
 
   @override
@@ -1369,7 +1373,7 @@ class _SettingsError extends StatelessWidget {
         const Icon(Symbols.cloud_off, color: AppColors.ink3, size: 46),
         const SizedBox(height: 12),
         Text(
-          'No pudimos abrir configuración',
+          'No pudimos abrir configuraciÃ³n',
           textAlign: TextAlign.center,
           style: AppTextStyles.h2,
         ),

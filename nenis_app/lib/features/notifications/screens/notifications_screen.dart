@@ -27,19 +27,51 @@ class NotificationsScreen extends ConsumerStatefulWidget {
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   NotificationsFilter _filter = NotificationsFilter.all;
+  var _markingAllAsRead = false;
+
+  void _snack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _markAsRead(BuyerNotification notification) async {
+    try {
+      await ref
+          .read(notificationsRepositoryProvider)
+          .markAsRead(notification.id);
+      if (!mounted) return;
+      ref.invalidate(notificationsFeedProvider);
+      ref.invalidate(unreadNotificationsCountProvider);
+    } catch (error) {
+      if (!mounted) return;
+      _snack(error.toString());
+    }
+  }
+
+  Future<void> _markAllAsRead() async {
+    if (_markingAllAsRead) return;
+
+    setState(() => _markingAllAsRead = true);
+    try {
+      final n = await ref.read(notificationsRepositoryProvider).markAllAsRead();
+      if (!mounted) return;
+      ref.invalidate(notificationsFeedProvider);
+      ref.invalidate(unreadNotificationsCountProvider);
+      _snack('$n notificaciones marcadas como leidas');
+    } catch (error) {
+      if (!mounted) return;
+      _snack(error.toString());
+    } finally {
+      if (mounted) setState(() => _markingAllAsRead = false);
+    }
+  }
 
   void _onTap(BuyerNotification n) async {
     // Marca como leída en backend y rehidrata el feed al confirmar.
     if (n.isUnread) {
-      unawaited(
-        ref.read(notificationsRepositoryProvider).markAsRead(n.id).whenComplete(
-          () {
-            if (!mounted) return;
-            ref.invalidate(notificationsFeedProvider);
-            ref.invalidate(unreadNotificationsCountProvider);
-          },
-        ),
-      );
+      unawaited(_markAsRead(n));
     }
     // Deep link: si la URL es interna (`/tracking/...`, `/store/...`),
     // navegamos. Si es externa, la ignoramos por ahora.
@@ -106,26 +138,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 8),
                                 child: _MarkAllBar(
-                                  onMarkAll: () async {
-                                    final n = await ref
-                                        .read(notificationsRepositoryProvider)
-                                        .markAllAsRead();
-                                    if (!mounted) return;
-                                    ref.invalidate(notificationsFeedProvider);
-                                    ref.invalidate(
-                                      unreadNotificationsCountProvider,
-                                    );
-                                    if (!context.mounted) return;
-                                    ScaffoldMessenger.of(context)
-                                      ..hideCurrentSnackBar()
-                                      ..showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            '$n notificaciones marcadas como leídas',
-                                          ),
-                                        ),
-                                      );
-                                  },
+                                  busy: _markingAllAsRead,
+                                  onMarkAll: _markAllAsRead,
                                 ),
                               );
                             }
@@ -204,12 +218,13 @@ class _Header extends StatelessWidget {
 }
 
 class _MarkAllBar extends StatelessWidget {
-  const _MarkAllBar({required this.onMarkAll});
+  const _MarkAllBar({required this.busy, required this.onMarkAll});
+  final bool busy;
   final Future<void> Function() onMarkAll;
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => onMarkAll(),
+      onTap: busy ? null : () => unawaited(onMarkAll()),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
@@ -219,7 +234,13 @@ class _MarkAllBar extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Symbols.done_all, size: 14, color: AppColors.gold),
+            if (busy)
+              const SizedBox.square(
+                dimension: 14,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              const Icon(Symbols.done_all, size: 14, color: AppColors.gold),
             const SizedBox(width: 6),
             Text(
               'Marcar todas como leídas',

@@ -40,9 +40,10 @@ class _StatusJourneyCardState extends State<StatusJourneyCard>
       vsync: this,
       duration: const Duration(milliseconds: 500),
     )..value = 1.0;
-    _titleFade = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _titleCtrl, curve: Curves.easeOut),
-    );
+    _titleFade = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _titleCtrl, curve: Curves.easeOut));
     _prevStatus = widget.order.status;
   }
 
@@ -70,7 +71,8 @@ class _StatusJourneyCardState extends State<StatusJourneyCard>
     final order = widget.order;
     final status = order.status;
     final isDelivered = status == TrackingStatus.delivered;
-    final isInRoute = status == TrackingStatus.inRoute ||
+    final isInRoute =
+        status == TrackingStatus.inRoute ||
         status == TrackingStatus.inTransit ||
         status == TrackingStatus.shipped;
 
@@ -275,8 +277,9 @@ class _LiveDotState extends State<_LiveDot>
           boxShadow: widget.pulse
               ? [
                   BoxShadow(
-                    color: const Color(0xFFE84E83)
-                        .withValues(alpha: 0.4 * _ctrl.value),
+                    color: const Color(
+                      0xFFE84E83,
+                    ).withValues(alpha: 0.4 * _ctrl.value),
                     blurRadius: 6,
                     spreadRadius: 1,
                   ),
@@ -295,7 +298,8 @@ class _EtaSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDelivered = order.status == TrackingStatus.delivered;
-    final isNegative = order.status == TrackingStatus.notDelivered ||
+    final isNegative =
+        order.status == TrackingStatus.notDelivered ||
         order.status == TrackingStatus.canceled;
 
     return Container(
@@ -304,8 +308,8 @@ class _EtaSection extends StatelessWidget {
         color: isDelivered
             ? AppColors.statusDeliveredBg
             : isNegative
-                ? const Color(0xFFFFE8EF)
-                : const Color(0xFFFFF0F5),
+            ? const Color(0xFFFFE8EF)
+            : const Color(0xFFFFF0F5),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -314,14 +318,14 @@ class _EtaSection extends StatelessWidget {
             isDelivered
                 ? Icons.celebration_rounded
                 : isNegative
-                    ? Icons.error_outline_rounded
-                    : Icons.access_time_rounded,
+                ? Icons.error_outline_rounded
+                : Icons.access_time_rounded,
             size: 18,
             color: isDelivered
                 ? AppColors.statusDeliveredFg
                 : isNegative
-                    ? AppColors.neniDeep
-                    : AppColors.statusPendingFg,
+                ? AppColors.neniDeep
+                : AppColors.statusPendingFg,
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -337,8 +341,8 @@ class _EtaSection extends StatelessWidget {
                     color: isDelivered
                         ? AppColors.statusDeliveredFg
                         : isNegative
-                            ? AppColors.neniDeep
-                            : const Color(0xFF3A2233),
+                        ? AppColors.neniDeep
+                        : const Color(0xFF3A2233),
                   ),
                 ),
                 if (order.deliveriesAhead != null &&
@@ -426,18 +430,41 @@ class OrderTimeline extends StatelessWidget {
   const OrderTimeline({super.key, required this.status});
   final TrackingStatus status;
 
-  static const _steps = [
+  static const _defaultSteps = [
     (label: 'Confirmado', icon: Icons.check_circle_outline_rounded),
     (label: 'Empacando', icon: Icons.inventory_2_outlined),
     (label: 'En ruta', icon: Icons.local_shipping_outlined),
     (label: 'Entregado', icon: Icons.celebration_outlined),
   ];
 
+  List<({String label, IconData icon})> get _steps => switch (status) {
+    TrackingStatus.notDelivered => const [
+      (label: 'Confirmado', icon: Icons.check_circle_outline_rounded),
+      (label: 'Empacando', icon: Icons.inventory_2_outlined),
+      (label: 'En ruta', icon: Icons.local_shipping_outlined),
+      (label: 'No entregado', icon: Icons.error_outline_rounded),
+    ],
+    TrackingStatus.canceled => const [
+      (label: 'Confirmado', icon: Icons.check_circle_outline_rounded),
+      (label: 'Empacando', icon: Icons.inventory_2_outlined),
+      (label: 'En ruta', icon: Icons.local_shipping_outlined),
+      (label: 'Cancelado', icon: Icons.block_rounded),
+    ],
+    TrackingStatus.postponed => const [
+      (label: 'Confirmado', icon: Icons.check_circle_outline_rounded),
+      (label: 'Pospuesto', icon: Icons.event_repeat_rounded),
+      (label: 'En ruta', icon: Icons.local_shipping_outlined),
+      (label: 'Entregado', icon: Icons.celebration_outlined),
+    ],
+    _ => _defaultSteps,
+  };
+
   @override
   Widget build(BuildContext context) {
     final step = status.timelineStep;
+    final steps = _steps;
     return Row(
-      children: List.generate(_steps.length * 2 - 1, (i) {
+      children: List.generate(steps.length * 2 - 1, (i) {
         if (i.isOdd) {
           final leftDone = (i ~/ 2) < step - 1;
           return Expanded(
@@ -454,8 +481,8 @@ class OrderTimeline extends StatelessWidget {
         final isDone = idx < step - 1;
         final isActive = idx == step - 1;
         return _TimelineStep(
-          label: _steps[idx].label,
-          icon: _steps[idx].icon,
+          label: steps[idx].label,
+          icon: steps[idx].icon,
           isDone: isDone,
           isActive: isActive,
         );
@@ -481,14 +508,14 @@ class _TimelineStep extends StatelessWidget {
     final Color fg = isDone
         ? AppColors.neniDeep
         : isActive
-            ? AppColors.neni
-            : const Color(0xFFB6A4B1);
+        ? AppColors.neni
+        : const Color(0xFFB6A4B1);
 
     final Color bg = isDone
         ? const Color(0xFFFFE8F0)
         : isActive
-            ? const Color(0xFFFFF0F5)
-            : const Color(0xFFF5EEF2);
+        ? const Color(0xFFFFF0F5)
+        : const Color(0xFFF5EEF2);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -513,11 +540,7 @@ class _TimelineStep extends StatelessWidget {
                   ]
                 : null,
           ),
-          child: Icon(
-            isDone ? Icons.check_rounded : icon,
-            size: 17,
-            color: fg,
-          ),
+          child: Icon(isDone ? Icons.check_rounded : icon, size: 17, color: fg),
         ),
         const SizedBox(height: 5),
         Text(

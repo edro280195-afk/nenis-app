@@ -75,7 +75,7 @@ class BuyerAccountScreen extends ConsumerWidget {
                     _AccountMenuCard(
                       icon: Symbols.location_on,
                       title: 'Mis direcciones',
-                      subtitle: 'Edita dónde quieres recibir tus pedidos',
+                      subtitle: 'Edita dÃ³nde quieres recibir tus pedidos',
                       onTap: () => context.push('/addresses'),
                     ),
                     _AccountMenuCard(
@@ -192,35 +192,15 @@ class _ProfileCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Row(
                   children: [
-                    const Icon(Symbols.call, size: 13, color: AppColors.ink2),
+                    const Icon(
+                      Symbols.shopping_bag,
+                      size: 13,
+                      color: AppColors.ink2,
+                    ),
                     const SizedBox(width: 5),
                     Text(
-                      '+52 ··· XX',
+                      'Perfil de compras',
                       style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      width: 4,
-                      height: 4,
-                      decoration: const BoxDecoration(
-                        color: AppColors.ink3,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    const Icon(
-                      Symbols.verified,
-                      size: 14,
-                      color: AppColors.statusDeliveredFg,
-                    ),
-                    const SizedBox(width: 3),
-                    Text(
-                      'Verificado',
-                      style: AppTextStyles.subtitle.copyWith(
-                        fontSize: 12.5,
-                        color: AppColors.statusDeliveredFg,
-                        fontWeight: FontWeight.w600,
-                      ),
                     ),
                   ],
                 ),
@@ -356,7 +336,7 @@ class _StoresEmpty extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Aún no tienes tiendas',
+                  'AÃºn no tienes tiendas',
                   style: AppTextStyles.body.copyWith(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -364,7 +344,7 @@ class _StoresEmpty extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Cuando abras un pedido desde el link de una tienda o ella registre tu número, aparecerá aquí.',
+                  'Cuando abras un pedido desde el link de una tienda o ella registre tu nÃºmero, aparecerÃ¡ aquÃ­.',
                   style: AppTextStyles.subtitle.copyWith(fontSize: 12),
                 ),
               ],
@@ -432,7 +412,7 @@ class _StoresError extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Revisa tu conexión e intenta de nuevo.',
+            'Revisa tu conexiÃ³n e intenta de nuevo.',
             style: AppTextStyles.subtitle.copyWith(fontSize: 12),
           ),
           const SizedBox(height: 12),
@@ -526,9 +506,9 @@ class _LogoutButton extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text('¿Cerrar sesión?'),
+        title: const Text('Â¿Cerrar sesiÃ³n?'),
         content: const Text(
-          'Tendrás que volver a verificar tu número para entrar.',
+          'TendrÃ¡s que volver a verificar tu nÃºmero para entrar.',
         ),
         actions: [
           TextButton(
@@ -538,7 +518,7 @@ class _LogoutButton extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(
-              'Cerrar sesión',
+              'Cerrar sesiÃ³n',
               style: TextStyle(
                 color: AppColors.neniDeep,
                 fontWeight: FontWeight.w600,
@@ -557,7 +537,7 @@ class _LogoutButton extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       child: PillButton(
-        label: 'Cerrar sesión',
+        label: 'Cerrar sesiÃ³n',
         icon: Symbols.logout,
         variant: PillButtonVariant.ghost,
         onPressed: () => _handleTap(context),

@@ -15,7 +15,7 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(authControllerProvider).asData?.value;
     final items = session != null && session.hasMembership
-        ? buildSellerNavItems()
+        ? buildSellerNavItems(includeRoutes: session.canAccessRoutes)
         : buildDefaultNavItems();
 
     return Scaffold(

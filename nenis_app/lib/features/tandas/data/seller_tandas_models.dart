@@ -212,6 +212,7 @@ class SellerTanda {
     this.startDate,
     this.createdAt,
     this.accessToken,
+    this.serverCurrentWeek,
     this.product,
   });
 
@@ -225,6 +226,7 @@ class SellerTanda {
   final String status;
   final DateTime? createdAt;
   final String? accessToken;
+  final int? serverCurrentWeek;
   final SellerTandaProduct? product;
   final List<SellerTandaParticipant> participants;
 
@@ -238,6 +240,9 @@ class SellerTanda {
       : 'Producto por definir';
 
   int get currentWeek {
+    final serverWeek = serverCurrentWeek;
+    if (serverWeek != null) return serverWeek;
+
     final start = startDate;
     if (start == null || totalWeeks <= 0) return 0;
     final today = DateTime.now().toUtc();
@@ -245,7 +250,7 @@ class SellerTanda {
     final todayUtc = DateTime.utc(today.year, today.month, today.day);
     final days = todayUtc.difference(startUtc).inDays;
     if (days < 0) return 0;
-    return ((days == 0 ? 0 : days - 1) ~/ 7) + 1;
+    return (days ~/ 7) + 1;
   }
 
   int get actionableWeek {
@@ -386,6 +391,9 @@ class SellerTanda {
           : _string(json['status']),
       createdAt: _date(json['createdAt']),
       accessToken: json['accessToken'] as String?,
+      serverCurrentWeek: json['currentWeek'] == null
+          ? null
+          : _int(json['currentWeek']),
       product: productJson is Map<String, dynamic>
           ? SellerTandaProduct.fromJson(productJson)
           : null,

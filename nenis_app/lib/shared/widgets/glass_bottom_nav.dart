@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -36,68 +34,60 @@ class GlassBottomNav extends StatelessWidget {
     return SafeArea(
       top: false,
       minimum: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-      child: ClipRRect(
-        borderRadius: AppRadii.navRadius,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-          child: Container(
-            height: 72,
-            decoration: BoxDecoration(
-              color: AppColors.glassFill,
-              borderRadius: AppRadii.navRadius,
-              border: Border.all(color: AppColors.glassBorder, width: 1),
-              boxShadow: AppShadows.nav,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: items.map((item) {
-                final isActive =
-                    currentRoute == item.route ||
-                    currentRoute.startsWith('${item.route}/');
-                final fg = isActive ? brand.primaryDeep : AppColors.ink3;
-                return Expanded(
-                  child: InkWell(
-                    onTap: () {
-                      onChanged?.call(item.route);
-                      if (currentRoute != item.route) {
-                        context.go(item.route);
-                      }
-                    },
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(14),
-                            gradient: isActive
-                                ? const LinearGradient(
-                                    colors: [
-                                      Color(0xFFFFE1EC),
-                                      Color(0xFFFFD0E2),
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  )
-                                : null,
-                          ),
-                          child: Icon(item.icon, size: 25, color: fg),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          item.label,
-                          style: AppTextStyles.nav.copyWith(color: fg),
-                        ),
-                      ],
+      child: Container(
+        height: 72,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: AppRadii.navRadius,
+          border: Border.all(color: AppColors.line, width: 1),
+          boxShadow: AppShadows.nav,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: items.map((item) {
+            final isActive =
+                currentRoute == item.route ||
+                currentRoute.startsWith('${item.route}/');
+            final fg = isActive ? brand.primaryDeep : AppColors.ink3;
+            return Expanded(
+              child: InkWell(
+                onTap: () {
+                  onChanged?.call(item.route);
+                  if (currentRoute != item.route) {
+                    context.go(item.route);
+                  }
+                },
+                borderRadius: AppRadii.navRadius,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        gradient: isActive
+                            ? const LinearGradient(
+                                colors: [Color(0xFFFFE1EC), Color(0xFFFFD0E2)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              )
+                            : null,
+                      ),
+                      child: Icon(item.icon, size: 25, color: fg),
                     ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
+                    const SizedBox(height: 3),
+                    Text(
+                      item.label,
+                      style: AppTextStyles.nav.copyWith(color: fg),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
         ),
       ),
     );
@@ -108,14 +98,21 @@ List<NavItem> buildDefaultNavItems() => const [
   NavItem(icon: Symbols.home, label: 'Inicio', route: '/home'),
   NavItem(icon: Symbols.receipt_long, label: 'Pedidos', route: '/orders'),
   NavItem(icon: Symbols.stars, label: 'Puntos', route: '/points'),
+  NavItem(icon: Symbols.groups, label: 'Tandas', route: '/tandas'),
+  NavItem(icon: Symbols.celebration, label: 'Sorteos', route: '/raffles'),
   NavItem(icon: Symbols.person, label: 'Cuenta', route: '/account'),
 ];
 
-List<NavItem> buildSellerNavItems() => const [
-  NavItem(icon: Symbols.home, label: 'Inicio', route: '/home'),
-  NavItem(icon: Symbols.receipt_long, label: 'Pedidos', route: '/orders'),
-  NavItem(icon: Symbols.group, label: 'Clientas', route: '/clients'),
-  NavItem(icon: Symbols.groups, label: 'Tandas', route: '/tandas'),
-  NavItem(icon: Symbols.directions_car, label: 'Reparto', route: '/routes'),
-  NavItem(icon: Symbols.person, label: 'Cuenta', route: '/account'),
+List<NavItem> buildSellerNavItems({bool includeRoutes = true}) => [
+  const NavItem(icon: Symbols.home, label: 'Inicio', route: '/home'),
+  const NavItem(icon: Symbols.receipt_long, label: 'Pedidos', route: '/orders'),
+  const NavItem(icon: Symbols.group, label: 'Clientas', route: '/clients'),
+  const NavItem(icon: Symbols.groups, label: 'Tandas', route: '/tandas'),
+  if (includeRoutes)
+    const NavItem(
+      icon: Symbols.directions_car,
+      label: 'Reparto',
+      route: '/routes',
+    ),
+  const NavItem(icon: Symbols.person, label: 'Cuenta', route: '/account'),
 ];

@@ -92,12 +92,12 @@ class _SellerTandasCommandScreenState
   Future<void> _copyPublicLink(SellerTanda tanda) async {
     final token = tanda.accessToken?.trim();
     if (token == null || token.isEmpty) {
-      _toast('Esta tanda no tiene enlace publico disponible.');
+      _toast('Esta tanda no tiene enlace público disponible.');
       return;
     }
     final url = '${AppConfig.apiBaseUrl}/api/public-tanda/$token';
     await Clipboard.setData(ClipboardData(text: url));
-    _toast('Enlace publico copiado.');
+    _toast('Enlace público copiado.');
   }
 
   Future<void> _createTanda(SellerTandasWorkspace workspace) async {
@@ -207,7 +207,7 @@ class _SellerTandasCommandScreenState
         onRemove: () async {
           final ok = await _confirm(
             'Retirar participante',
-            'Se eliminara a ${participant.displayName} y sus pagos de esta tanda.',
+            'Se eliminará a ${participant.displayName} y sus pagos de esta tanda.',
           );
           if (!ok) return;
           await ref
@@ -262,7 +262,7 @@ class _SellerTandasCommandScreenState
   ) async {
     final ok = await _confirm(
       'Quitar pago',
-      'Se quitara el pago registrado de esta semana.',
+      'Se quitará el pago registrado de esta semana.',
     );
     if (!ok) return;
     await _run(
@@ -1409,7 +1409,7 @@ class _WeekActionPanel extends StatelessWidget {
             ],
           if (tanda.dueParticipants.length > 4)
             Text(
-              '+${tanda.dueParticipants.length - 4} participantes mas en la lista completa.',
+              '+${tanda.dueParticipants.length - 4} participantes más en la lista completa.',
               style: AppTextStyles.subtitle.copyWith(fontSize: 11),
             ),
           const SizedBox(height: 12),
@@ -2311,7 +2311,7 @@ class _EditTandaSheetState extends State<_EditTandaSheet> {
           children: [
             const _SheetHeader(
               title: 'Editar tanda',
-              subtitle: 'Ajusta informacion general sin tocar los pagos.',
+              subtitle: 'Ajusta información general sin tocar los pagos.',
             ),
             const SizedBox(height: 16),
             _SheetTextField(
@@ -2494,7 +2494,7 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
               icon: Symbols.flag,
               title: 'No hay lugares libres',
               body:
-                  'Aumenta las semanas de la tanda antes de inscribir mas clientas.',
+                  'Aumenta las semanas de la tanda antes de inscribir más clientas.',
             )
           else ...[
             TextField(

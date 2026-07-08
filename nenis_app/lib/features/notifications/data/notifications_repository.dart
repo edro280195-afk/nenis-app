@@ -33,17 +33,30 @@ class NotificationsRepository {
   Future<void> markAsRead(String id) async {
     try {
       await _dio.post('/api/me/notifications/$id/read');
+    } on DioException catch (_) {
+      throw NotificationsException(
+        'No pudimos marcar la notificacion como leida.',
+      );
     } catch (_) {
-      // No-op: el feed se rehidrata en el próximo refresh.
+      throw NotificationsException(
+        'No pudimos marcar la notificacion como leida.',
+      );
     }
   }
 
   Future<int> markAllAsRead() async {
     try {
       final res = await _dio.post('/api/me/notifications/read-all');
-      return ((res.data as Map<String, dynamic>)['updated'] as num?)?.toInt() ?? 0;
+      return ((res.data as Map<String, dynamic>)['updated'] as num?)?.toInt() ??
+          0;
+    } on DioException catch (_) {
+      throw NotificationsException(
+        'No pudimos marcar las notificaciones como leidas.',
+      );
     } catch (_) {
-      return 0;
+      throw NotificationsException(
+        'No pudimos marcar las notificaciones como leidas.',
+      );
     }
   }
 
@@ -57,7 +70,9 @@ class NotificationsRepository {
   }
 }
 
-final notificationsRepositoryProvider = Provider<NotificationsRepository>((ref) {
+final notificationsRepositoryProvider = Provider<NotificationsRepository>((
+  ref,
+) {
   return NotificationsRepository(ref.read(dioProvider));
 });
 
@@ -66,11 +81,10 @@ final notificationsRepositoryProvider = Provider<NotificationsRepository>((ref) 
 /// `ref.invalidate` cuando se marcan como leídas.
 final notificationsFeedProvider =
     FutureProvider.autoDispose<List<BuyerNotification>>((ref) {
-  return ref.read(notificationsRepositoryProvider).getMyNotifications();
-});
+      return ref.read(notificationsRepositoryProvider).getMyNotifications();
+    });
 
 /// Contador de no leídas (lo usa el badge del icono 🔔 en el Home).
-final unreadNotificationsCountProvider =
-    FutureProvider.autoDispose<int>((ref) {
+final unreadNotificationsCountProvider = FutureProvider.autoDispose<int>((ref) {
   return ref.read(notificationsRepositoryProvider).getUnreadCount();
 });

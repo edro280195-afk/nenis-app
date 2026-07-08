@@ -165,6 +165,7 @@ class BackIconButton extends StatelessWidget {
     return PillIconButton(
       icon: Icons.adaptive.arrow_back,
       onPressed: onPressed,
+      size: 48,
     );
   }
 }

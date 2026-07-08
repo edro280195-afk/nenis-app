@@ -297,10 +297,10 @@ class _ProfileRow extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             PillButton(
-              label: 'Seguir',
-              icon: Symbols.add,
+              label: 'Seguir pronto',
+              icon: Symbols.schedule,
               expand: false,
-              variant: PillButtonVariant.brand,
+              variant: PillButtonVariant.ghost,
               onPressed: () => _soonToast(context, 'Función próximamente'),
             ),
           ],

@@ -12,7 +12,6 @@ import '../data/seller_order_message.dart';
 import '../data/seller_orders_models.dart';
 import '../data/seller_orders_repository.dart';
 import '../widgets/seller_status_chip.dart';
-import 'seller_orders_screen.dart' show GradientText;
 
 class OrderDetailScreen extends ConsumerStatefulWidget {
   const OrderDetailScreen({super.key, required this.orderId});
@@ -78,8 +77,25 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     }
   }
 
-  Future<void> _setStatus(SellerOrderStatus s) =>
-      _run(() => _repo.updateStatus(_id, s));
+  Future<void> _setStatus(SellerOrderStatus s) async {
+    if (s.requiresStatusReason) {
+      final draft = await showDialog<_StatusChangeDraft>(
+        context: context,
+        builder: (context) => _StatusChangeDialog(status: s),
+      );
+      if (draft == null) return;
+      return _run(
+        () => _repo.updateStatus(
+          _id,
+          s,
+          postponedAt: draft.postponedAt,
+          postponedNote: draft.note,
+        ),
+      );
+    }
+
+    return _run(() => _repo.updateStatus(_id, s));
+  }
 
   Future<void> _setDelivery(SellerDeliveryType t) =>
       _run(() => _repo.setOrderType(_id, t));
@@ -316,6 +332,152 @@ class _RoundButton extends StatelessWidget {
   }
 }
 
+extension _StatusChangeUi on SellerOrderStatus {
+  bool get requiresStatusReason =>
+      this == SellerOrderStatus.postponed ||
+      this == SellerOrderStatus.notDelivered ||
+      this == SellerOrderStatus.canceled;
+
+  String get dialogTitle => switch (this) {
+    SellerOrderStatus.postponed => 'Reprogramar pedido',
+    SellerOrderStatus.notDelivered => 'Marcar no entregado',
+    SellerOrderStatus.canceled => 'Cancelar pedido',
+    _ => 'Cambiar estatus',
+  };
+
+  String get noteLabel => switch (this) {
+    SellerOrderStatus.postponed => 'Motivo de la reprogramacion',
+    SellerOrderStatus.notDelivered => 'Motivo de no entrega',
+    SellerOrderStatus.canceled => 'Motivo de cancelacion',
+    _ => 'Nota',
+  };
+}
+
+class _StatusChangeDraft {
+  const _StatusChangeDraft({required this.note, this.postponedAt});
+
+  final String note;
+  final DateTime? postponedAt;
+}
+
+class _StatusChangeDialog extends StatefulWidget {
+  const _StatusChangeDialog({required this.status});
+
+  final SellerOrderStatus status;
+
+  @override
+  State<_StatusChangeDialog> createState() => _StatusChangeDialogState();
+}
+
+class _StatusChangeDialogState extends State<_StatusChangeDialog> {
+  late final TextEditingController _noteCtrl;
+  late DateTime _postponedAt;
+  bool _submitted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _noteCtrl = TextEditingController();
+    final now = DateTime.now();
+    _postponedAt = DateTime(now.year, now.month, now.day + 1);
+  }
+
+  @override
+  void dispose() {
+    _noteCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _postponedAt,
+      firstDate: DateTime(now.year, now.month, now.day),
+      lastDate: DateTime(now.year + 1, now.month, now.day),
+    );
+    if (picked != null && mounted) {
+      setState(() => _postponedAt = picked);
+    }
+  }
+
+  void _submit() {
+    setState(() => _submitted = true);
+    final note = _noteCtrl.text.trim();
+    if (note.isEmpty) return;
+
+    Navigator.pop(
+      context,
+      _StatusChangeDraft(
+        note: note,
+        postponedAt: widget.status == SellerOrderStatus.postponed
+            ? _postponedAt
+            : null,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final status = widget.status;
+    final requiresDate = status == SellerOrderStatus.postponed;
+    final noteEmpty = _submitted && _noteCtrl.text.trim().isEmpty;
+    final dateLabel = MaterialLocalizations.of(
+      context,
+    ).formatMediumDate(_postponedAt);
+
+    return AlertDialog(
+      title: Text(status.dialogTitle),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (requiresDate) ...[
+              Text(
+                'Nueva fecha',
+                style: AppTextStyles.subtitle.copyWith(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: _pickDate,
+                icon: const Icon(Symbols.event),
+                label: Text(dateLabel),
+              ),
+              const SizedBox(height: 14),
+            ],
+            TextField(
+              controller: _noteCtrl,
+              minLines: 3,
+              maxLines: 4,
+              textInputAction: TextInputAction.newline,
+              onChanged: (_) {
+                if (_submitted) setState(() {});
+              },
+              decoration: InputDecoration(
+                labelText: status.noteLabel,
+                hintText: 'Escribe una nota clara para el historial.',
+                errorText: noteEmpty ? 'La nota es obligatoria.' : null,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(onPressed: _submit, child: Text(status.label)),
+      ],
+    );
+  }
+}
+
 class _DetailHead extends StatelessWidget {
   const _DetailHead({required this.order});
   final SellerOrder order;
@@ -491,8 +653,12 @@ class _PipelineSection extends StatelessWidget {
   static const _flow = [
     SellerOrderStatus.pending,
     SellerOrderStatus.confirmed,
+    SellerOrderStatus.shipped,
     SellerOrderStatus.inRoute,
     SellerOrderStatus.delivered,
+    SellerOrderStatus.postponed,
+    SellerOrderStatus.notDelivered,
+    SellerOrderStatus.canceled,
   ];
 
   @override
@@ -1291,7 +1457,16 @@ class _FooterBar extends StatelessWidget {
                   color: AppColors.ink3,
                 ),
               ),
-              GradientText(money(order.total), fontSize: 20),
+              Text(
+                money(order.total),
+                style: AppTextStyles.h1.copyWith(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.neniDeep,
+                  letterSpacing: 0,
+                  height: 1,
+                ),
+              ),
             ],
           ),
           Material(

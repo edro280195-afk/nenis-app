@@ -184,6 +184,44 @@ class SellerClientsRepository {
       );
     }
   }
+
+  Future<List<SellerDuplicateSuggestion>> getDuplicateSuggestions({
+    int limit = 10,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/api/clients/duplicate-suggestions',
+        queryParameters: {'limit': limit},
+      );
+      return ((response.data as List?) ?? const [])
+          .map(
+            (value) => SellerDuplicateSuggestion.fromJson(
+              value as Map<String, dynamic>,
+            ),
+          )
+          .toList();
+    } catch (error) {
+      throw SellerClientsException(
+        _friendly(error, 'No pudimos cargar duplicadas sugeridas.'),
+      );
+    }
+  }
+
+  Future<void> mergeClients({
+    required int sourceId,
+    required int targetId,
+  }) async {
+    try {
+      await _dio.post(
+        '/api/clients/merge',
+        data: {'sourceId': sourceId, 'targetId': targetId},
+      );
+    } catch (error) {
+      throw SellerClientsException(
+        _friendly(error, 'No pudimos fusionar las clientas.'),
+      );
+    }
+  }
 }
 
 final sellerClientsRepositoryProvider = Provider<SellerClientsRepository>((
@@ -215,4 +253,11 @@ final sellerClientLoyaltyProvider = FutureProvider.autoDispose
 final sellerClientLoyaltyHistoryProvider = FutureProvider.autoDispose
     .family<List<SellerClientLoyaltyTransaction>, int>((ref, id) {
       return ref.read(sellerClientsRepositoryProvider).getLoyaltyHistory(id);
+    });
+
+final sellerClientDuplicateSuggestionsProvider =
+    FutureProvider.autoDispose<List<SellerDuplicateSuggestion>>((ref) {
+      return ref
+          .read(sellerClientsRepositoryProvider)
+          .getDuplicateSuggestions();
     });

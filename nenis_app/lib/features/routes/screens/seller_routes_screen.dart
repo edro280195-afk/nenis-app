@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/platform/google_maps_config.dart';
 import '../../../core/theme/app_colors.dart';
@@ -454,6 +456,28 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
               ],
             ),
             const SizedBox(height: 12),
+            if (route.driverLink.trim().isNotEmpty) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: _SmallActionButton(
+                      label: 'WhatsApp chofer',
+                      icon: Symbols.chat,
+                      onTap: () => _shareDriverLink(route),
+                    ),
+                  ),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: _SmallActionButton(
+                      label: 'Copiar link',
+                      icon: Symbols.content_copy,
+                      onTap: () => _copyDriverLink(route),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
             Row(
               children: [
                 Expanded(
@@ -696,8 +720,40 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
     });
   }
 
+  Future<void> _copyDriverLink(SellerRoute route) async {
+    final link = route.driverLink.trim();
+    if (link.isEmpty) {
+      _setError('Esta ruta no tiene enlace de chofer.', '');
+      return;
+    }
+
+    await Clipboard.setData(ClipboardData(text: link));
+    if (mounted) setState(() => _feedback = 'Enlace de chofer copiado.');
+  }
+
+  Future<void> _shareDriverLink(SellerRoute route) async {
+    final link = route.driverLink.trim();
+    if (link.isEmpty) {
+      _setError('Esta ruta no tiene enlace de chofer.', '');
+      return;
+    }
+
+    final message = Uri.encodeComponent(
+      'Hola, te comparto ${route.name} para reparto: $link',
+    );
+    final uri = Uri.parse('https://wa.me/?text=$message');
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened) {
+      _setError('No pudimos abrir WhatsApp.', '');
+    }
+  }
+
   void _setError(Object error, String fallback) {
-    final message = error is SellerRoutesException ? error.message : fallback;
+    final message = error is SellerRoutesException
+        ? error.message
+        : error is String
+        ? error
+        : fallback;
     if (mounted) setState(() => _feedback = message);
   }
 }

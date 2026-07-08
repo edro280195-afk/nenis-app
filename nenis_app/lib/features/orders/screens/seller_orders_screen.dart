@@ -24,6 +24,7 @@ class SellerOrdersScreen extends ConsumerStatefulWidget {
 class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen> {
   int _filter = 0;
   final _searchCtrl = TextEditingController();
+  final _advancingOrderIds = <int>{};
   Timer? _debounce;
 
   static const _labels = ['Todos', 'Pendientes', 'En ruta', 'Entregados'];
@@ -41,6 +42,31 @@ class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen> {
     _debounce = Timer(const Duration(milliseconds: 350), () {
       ref.read(sellerOrdersControllerProvider.notifier).setSearch(value);
     });
+  }
+
+  Future<void> _advanceOrderStatus(
+    SellerOrder order,
+    SellerOrderStatus next,
+  ) async {
+    if (_advancingOrderIds.contains(order.id)) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _advancingOrderIds.add(order.id));
+    try {
+      await ref
+          .read(sellerOrdersRepositoryProvider)
+          .updateStatus(order.id, next);
+      ref.invalidate(sellerOrdersControllerProvider);
+      ref.invalidate(sellerDashboardProvider);
+    } catch (e) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(_snack(e.toString(), color: const Color(0xFFE11D5B)));
+    } finally {
+      if (mounted) {
+        setState(() => _advancingOrderIds.remove(order.id));
+      }
+    }
   }
 
   @override
@@ -162,9 +188,16 @@ class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen> {
                                   if (i == page.items.length) {
                                     return _Pager(page: page);
                                   }
+                                  final order = page.items[i];
                                   return Padding(
                                     padding: const EdgeInsets.only(bottom: 14),
-                                    child: _OrderCard(order: page.items[i]),
+                                    child: _OrderCard(
+                                      order: order,
+                                      advancing: _advancingOrderIds.contains(
+                                        order.id,
+                                      ),
+                                      onAdvanceStatus: _advanceOrderStatus,
+                                    ),
                                   );
                                 },
                               ),
@@ -259,8 +292,15 @@ class _NewOrderFab extends StatelessWidget {
 }
 
 class _OrderCard extends ConsumerWidget {
-  const _OrderCard({required this.order});
+  const _OrderCard({
+    required this.order,
+    required this.advancing,
+    required this.onAdvanceStatus,
+  });
   final SellerOrder order;
+  final bool advancing;
+  final Future<void> Function(SellerOrder order, SellerOrderStatus next)
+  onAdvanceStatus;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -359,7 +399,11 @@ class _OrderCard extends ConsumerWidget {
                   const SizedBox(height: 13),
                   _FinancialPanel(order: o),
                   const SizedBox(height: 13),
-                  _OrderActions(order: o),
+                  _OrderActions(
+                    order: o,
+                    advancing: advancing,
+                    onAdvanceStatus: onAdvanceStatus,
+                  ),
                 ],
               ),
             ),
@@ -690,7 +734,16 @@ class _FinancialPanel extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 3),
-                    GradientText(money(o.total), fontSize: 23),
+                    Text(
+                      money(o.total),
+                      style: AppTextStyles.h1.copyWith(
+                        fontSize: 23,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.neniDeep,
+                        letterSpacing: 0,
+                        height: 1,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -782,12 +835,19 @@ class _ProgressBar extends StatelessWidget {
   }
 }
 
-class _OrderActions extends ConsumerWidget {
-  const _OrderActions({required this.order});
+class _OrderActions extends StatelessWidget {
+  const _OrderActions({
+    required this.order,
+    required this.advancing,
+    required this.onAdvanceStatus,
+  });
   final SellerOrder order;
+  final bool advancing;
+  final Future<void> Function(SellerOrder order, SellerOrderStatus next)
+  onAdvanceStatus;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final o = order;
 
     final (
@@ -814,17 +874,8 @@ class _OrderActions extends ConsumerWidget {
     };
 
     Future<void> advance() async {
-      if (next == null) return;
-      final messenger = ScaffoldMessenger.of(context);
-      try {
-        await ref.read(sellerOrdersRepositoryProvider).updateStatus(o.id, next);
-        ref.invalidate(sellerOrdersControllerProvider);
-        ref.invalidate(sellerDashboardProvider);
-      } catch (e) {
-        messenger
-          ..hideCurrentSnackBar()
-          ..showSnackBar(_snack(e.toString(), color: const Color(0xFFE11D5B)));
-      }
+      if (next == null || advancing) return;
+      await onAdvanceStatus(o, next);
     }
 
     return Column(
@@ -835,7 +886,11 @@ class _OrderActions extends ConsumerWidget {
         ),
         if (label != null) ...[
           const SizedBox(height: 9),
-          _SoftButton(label: label, icon: icon, onTap: advance),
+          _SoftButton(
+            label: advancing ? 'Actualizando...' : label,
+            icon: advancing ? Symbols.hourglass_top : icon,
+            onTap: advancing ? null : advance,
+          ),
         ],
       ],
     );
@@ -887,10 +942,11 @@ class _SoftButton extends StatelessWidget {
   });
   final String label;
   final IconData icon;
-  final Future<void> Function() onTap;
+  final Future<void> Function()? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final disabled = onTap == null;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -899,21 +955,25 @@ class _SoftButton extends StatelessWidget {
         child: Ink(
           height: 42,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: disabled ? const Color(0xFFF7F3F6) : Colors.white,
             borderRadius: BorderRadius.circular(15),
             border: Border.all(color: const Color(0x2EE84E83)),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 16, color: AppColors.neniDeep),
+              Icon(
+                icon,
+                size: 16,
+                color: disabled ? AppColors.ink3 : AppColors.neniDeep,
+              ),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: AppTextStyles.body.copyWith(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.neniDeep,
+                  color: disabled ? AppColors.ink3 : AppColors.neniDeep,
                 ),
               ),
             ],
@@ -1163,32 +1223,6 @@ class _ErrorState extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Texto con degradado rosa→lavanda (para los totales).
-class GradientText extends StatelessWidget {
-  const GradientText(this.text, {super.key, this.fontSize = 22});
-  final String text;
-  final double fontSize;
-
-  @override
-  Widget build(BuildContext context) {
-    return ShaderMask(
-      shaderCallback: (bounds) => const LinearGradient(
-        colors: [AppColors.neniDeep, Color(0xFFB15AD8)],
-      ).createShader(bounds),
-      child: Text(
-        text,
-        style: AppTextStyles.h1.copyWith(
-          fontSize: fontSize,
-          fontWeight: FontWeight.w800,
-          color: Colors.white,
-          letterSpacing: -0.5,
-          height: 1,
         ),
       ),
     );

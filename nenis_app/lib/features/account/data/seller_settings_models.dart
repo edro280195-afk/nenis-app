@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class SellerBusinessSettings {
   const SellerBusinessSettings({
     required this.id,
@@ -102,42 +104,214 @@ class MexicanBank {
   String get onPrimary => onPrimaryColor ?? '#FFFFFF';
 
   static const List<MexicanBank> all = [
-    MexicanBank(id: 'bbva', name: 'BBVA', primaryColor: '#004B93', gradientStart: '#004B93', gradientEnd: '#0066C0'),
-    MexicanBank(id: 'banorte', name: 'Banorte', primaryColor: '#C41230', gradientStart: '#C41230', gradientEnd: '#EB0029'),
-    MexicanBank(id: 'santander', name: 'Santander', primaryColor: '#EC0000', gradientStart: '#D40000', gradientEnd: '#EC0000'),
-    MexicanBank(id: 'banamex', name: 'Citibanamex', primaryColor: '#003B71', gradientStart: '#002850', gradientEnd: '#004D94'),
-    MexicanBank(id: 'hsbc', name: 'HSBC', primaryColor: '#DB0011', gradientStart: '#C0000E', gradientEnd: '#DB0011'),
-    MexicanBank(id: 'azteca', name: 'Banco Azteca', primaryColor: '#00A650', gradientStart: '#008040', gradientEnd: '#00BF5C'),
-    MexicanBank(id: 'banregio', name: 'BanRegio', primaryColor: '#FF6600', gradientStart: '#E55D00', gradientEnd: '#FF7519'),
-    MexicanBank(id: 'bancoppel', name: 'BanCoppel', primaryColor: '#F7B61A', gradientStart: '#E5A710', gradientEnd: '#FCC939', onPrimaryColor: '#3A2233'),
-    MexicanBank(id: 'scotiabank', name: 'Scotiabank', primaryColor: '#EE3124', gradientStart: '#D42018', gradientEnd: '#DC1E14'),
-    MexicanBank(id: 'inbursa', name: 'Inbursa', primaryColor: '#003B5C', gradientStart: '#002A42', gradientEnd: '#004E7A'),
-    MexicanBank(id: 'bajio', name: 'BanBajío', primaryColor: '#004B87', gradientStart: '#003560', gradientEnd: '#0063AC'),
-    MexicanBank(id: 'nubank', name: 'Nu', primaryColor: '#820AD1', gradientStart: '#6B00B0', gradientEnd: '#9A20E8'),
-    MexicanBank(id: 'hey', name: 'Hey Banco', primaryColor: '#00E5A1', gradientStart: '#00C98A', gradientEnd: '#1AFFBB', onPrimaryColor: '#3A2233'),
-    MexicanBank(id: 'spin', name: 'Spin (OXXO)', primaryColor: '#E31E25', gradientStart: '#C41A20', gradientEnd: '#F03038'),
-    MexicanBank(id: 'mercadopago', name: 'Mercado Pago', primaryColor: '#009EE3', gradientStart: '#0085C0', gradientEnd: '#20B8FF'),
-    MexicanBank(id: 'amex', name: 'American Express', primaryColor: '#006FCF', gradientStart: '#0059A8', gradientEnd: '#0088EE'),
-    MexicanBank(id: 'bienestar', name: 'Bienestar', primaryColor: '#006847', gradientStart: '#004D33', gradientEnd: '#008A5C'),
-    MexicanBank(id: 'compartamos', name: 'Compartamos', primaryColor: '#DA291C', gradientStart: '#BA2015', gradientEnd: '#E84035'),
-    MexicanBank(id: 'afirme', name: 'Afirme', primaryColor: '#003DA5', gradientStart: '#002E80', gradientEnd: '#0050CC'),
-    MexicanBank(id: 'uala', name: 'Ualá', primaryColor: '#7700FF', gradientStart: '#5E00CC', gradientEnd: '#9030FF'),
-    MexicanBank(id: 'revolut', name: 'Revolut', primaryColor: '#000000', gradientStart: '#000000', gradientEnd: '#333333'),
-    MexicanBank(id: 'klar', name: 'Klar', primaryColor: '#1A1A2E', gradientStart: '#0F0F1F', gradientEnd: '#252545'),
-    MexicanBank(id: 'cuenca', name: 'Cuenca', primaryColor: '#3A10E5', gradientStart: '#2D0CB8', gradientEnd: '#5530FF'),
-    MexicanBank(id: 'albo', name: 'Albo', primaryColor: '#6F41E1', gradientStart: '#5828C8', gradientEnd: '#8A60F0'),
-    MexicanBank(id: 'fondeadora', name: 'Fondeadora', primaryColor: '#111111', gradientStart: '#000000', gradientEnd: '#2A2A2A'),
-    MexicanBank(id: 'stori', name: 'Stori', primaryColor: '#643B9F', gradientStart: '#4E2E80', gradientEnd: '#7B50C0'),
-    MexicanBank(id: 'rappi', name: 'RappiCard', primaryColor: '#FF441F', gradientStart: '#E03514', gradientEnd: '#FF6040'),
-    MexicanBank(id: 'other', name: 'Otro banco', primaryColor: '#E8E8EC', gradientStart: '#D8D8DE', gradientEnd: '#F5F5F8', onPrimaryColor: '#3A2233'),
+    MexicanBank(
+      id: 'bbva',
+      name: 'BBVA',
+      primaryColor: '#004B93',
+      gradientStart: '#004B93',
+      gradientEnd: '#0066C0',
+    ),
+    MexicanBank(
+      id: 'banorte',
+      name: 'Banorte',
+      primaryColor: '#C41230',
+      gradientStart: '#C41230',
+      gradientEnd: '#EB0029',
+    ),
+    MexicanBank(
+      id: 'santander',
+      name: 'Santander',
+      primaryColor: '#EC0000',
+      gradientStart: '#D40000',
+      gradientEnd: '#EC0000',
+    ),
+    MexicanBank(
+      id: 'banamex',
+      name: 'Citibanamex',
+      primaryColor: '#003B71',
+      gradientStart: '#002850',
+      gradientEnd: '#004D94',
+    ),
+    MexicanBank(
+      id: 'hsbc',
+      name: 'HSBC',
+      primaryColor: '#DB0011',
+      gradientStart: '#C0000E',
+      gradientEnd: '#DB0011',
+    ),
+    MexicanBank(
+      id: 'azteca',
+      name: 'Banco Azteca',
+      primaryColor: '#00A650',
+      gradientStart: '#008040',
+      gradientEnd: '#00BF5C',
+    ),
+    MexicanBank(
+      id: 'banregio',
+      name: 'BanRegio',
+      primaryColor: '#FF6600',
+      gradientStart: '#E55D00',
+      gradientEnd: '#FF7519',
+    ),
+    MexicanBank(
+      id: 'bancoppel',
+      name: 'BanCoppel',
+      primaryColor: '#F7B61A',
+      gradientStart: '#E5A710',
+      gradientEnd: '#FCC939',
+      onPrimaryColor: '#3A2233',
+    ),
+    MexicanBank(
+      id: 'scotiabank',
+      name: 'Scotiabank',
+      primaryColor: '#EE3124',
+      gradientStart: '#D42018',
+      gradientEnd: '#DC1E14',
+    ),
+    MexicanBank(
+      id: 'inbursa',
+      name: 'Inbursa',
+      primaryColor: '#003B5C',
+      gradientStart: '#002A42',
+      gradientEnd: '#004E7A',
+    ),
+    MexicanBank(
+      id: 'bajio',
+      name: 'BanBajío',
+      primaryColor: '#004B87',
+      gradientStart: '#003560',
+      gradientEnd: '#0063AC',
+    ),
+    MexicanBank(
+      id: 'nubank',
+      name: 'Nu',
+      primaryColor: '#820AD1',
+      gradientStart: '#6B00B0',
+      gradientEnd: '#9A20E8',
+    ),
+    MexicanBank(
+      id: 'hey',
+      name: 'Hey Banco',
+      primaryColor: '#00E5A1',
+      gradientStart: '#00C98A',
+      gradientEnd: '#1AFFBB',
+      onPrimaryColor: '#3A2233',
+    ),
+    MexicanBank(
+      id: 'spin',
+      name: 'Spin (OXXO)',
+      primaryColor: '#E31E25',
+      gradientStart: '#C41A20',
+      gradientEnd: '#F03038',
+    ),
+    MexicanBank(
+      id: 'mercadopago',
+      name: 'Mercado Pago',
+      primaryColor: '#009EE3',
+      gradientStart: '#0085C0',
+      gradientEnd: '#20B8FF',
+    ),
+    MexicanBank(
+      id: 'amex',
+      name: 'American Express',
+      primaryColor: '#006FCF',
+      gradientStart: '#0059A8',
+      gradientEnd: '#0088EE',
+    ),
+    MexicanBank(
+      id: 'bienestar',
+      name: 'Bienestar',
+      primaryColor: '#006847',
+      gradientStart: '#004D33',
+      gradientEnd: '#008A5C',
+    ),
+    MexicanBank(
+      id: 'compartamos',
+      name: 'Compartamos',
+      primaryColor: '#DA291C',
+      gradientStart: '#BA2015',
+      gradientEnd: '#E84035',
+    ),
+    MexicanBank(
+      id: 'afirme',
+      name: 'Afirme',
+      primaryColor: '#003DA5',
+      gradientStart: '#002E80',
+      gradientEnd: '#0050CC',
+    ),
+    MexicanBank(
+      id: 'uala',
+      name: 'Ualá',
+      primaryColor: '#7700FF',
+      gradientStart: '#5E00CC',
+      gradientEnd: '#9030FF',
+    ),
+    MexicanBank(
+      id: 'revolut',
+      name: 'Revolut',
+      primaryColor: '#000000',
+      gradientStart: '#000000',
+      gradientEnd: '#333333',
+    ),
+    MexicanBank(
+      id: 'klar',
+      name: 'Klar',
+      primaryColor: '#1A1A2E',
+      gradientStart: '#0F0F1F',
+      gradientEnd: '#252545',
+    ),
+    MexicanBank(
+      id: 'cuenca',
+      name: 'Cuenca',
+      primaryColor: '#3A10E5',
+      gradientStart: '#2D0CB8',
+      gradientEnd: '#5530FF',
+    ),
+    MexicanBank(
+      id: 'albo',
+      name: 'Albo',
+      primaryColor: '#6F41E1',
+      gradientStart: '#5828C8',
+      gradientEnd: '#8A60F0',
+    ),
+    MexicanBank(
+      id: 'fondeadora',
+      name: 'Fondeadora',
+      primaryColor: '#111111',
+      gradientStart: '#000000',
+      gradientEnd: '#2A2A2A',
+    ),
+    MexicanBank(
+      id: 'stori',
+      name: 'Stori',
+      primaryColor: '#643B9F',
+      gradientStart: '#4E2E80',
+      gradientEnd: '#7B50C0',
+    ),
+    MexicanBank(
+      id: 'rappi',
+      name: 'RappiCard',
+      primaryColor: '#FF441F',
+      gradientStart: '#E03514',
+      gradientEnd: '#FF6040',
+    ),
+    MexicanBank(
+      id: 'other',
+      name: 'Otro banco',
+      primaryColor: '#E8E8EC',
+      gradientStart: '#D8D8DE',
+      gradientEnd: '#F5F5F8',
+      onPrimaryColor: '#3A2233',
+    ),
   ];
 
   static MexicanBank byId(String? id) {
     if (id == null) return all.last;
     return all.cast<MexicanBank?>().firstWhere(
-      (b) => b!.id == id,
-      orElse: () => null,
-    ) ?? all.last;
+          (b) => b!.id == id,
+          orElse: () => null,
+        ) ??
+        all.last;
   }
 
   static MexicanBank? tryMatchName(String? bankName) {
@@ -294,6 +468,18 @@ class SellerPreferenceSettings {
   final bool requirePaymentBeforeRoute;
   final String defaultDeliveryWindow;
 
+  factory SellerPreferenceSettings.fromJson(Map<String, dynamic> json) {
+    return SellerPreferenceSettings(
+      notifyNewOrders: json['notifyNewOrders'] as bool? ?? true,
+      notifyRouteChanges: json['notifyRouteChanges'] as bool? ?? true,
+      autoCopyClientMessage: json['autoCopyClientMessage'] as bool? ?? true,
+      requirePaymentBeforeRoute:
+          json['requirePaymentBeforeRoute'] as bool? ?? false,
+      defaultDeliveryWindow:
+          json['defaultDeliveryWindow'] as String? ?? 'Domingos por la tarde',
+    );
+  }
+
   SellerPreferenceSettings copyWith({
     bool? notifyNewOrders,
     bool? notifyRouteChanges,
@@ -311,5 +497,29 @@ class SellerPreferenceSettings {
       defaultDeliveryWindow:
           defaultDeliveryWindow ?? this.defaultDeliveryWindow,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'notifyNewOrders': notifyNewOrders,
+      'notifyRouteChanges': notifyRouteChanges,
+      'autoCopyClientMessage': autoCopyClientMessage,
+      'requirePaymentBeforeRoute': requirePaymentBeforeRoute,
+      'defaultDeliveryWindow': defaultDeliveryWindow,
+    };
+  }
+
+  String encode() => jsonEncode(toJson());
+
+  static SellerPreferenceSettings decode(String raw) {
+    try {
+      final data = jsonDecode(raw);
+      if (data is Map) {
+        return SellerPreferenceSettings.fromJson(data.cast<String, dynamic>());
+      }
+    } on FormatException {
+      return const SellerPreferenceSettings();
+    }
+    return const SellerPreferenceSettings();
   }
 }

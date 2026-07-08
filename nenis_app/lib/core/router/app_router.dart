@@ -25,7 +25,7 @@ import '../../features/tandas/screens/tandas_screen.dart';
 import '../../features/raffles/screens/raffles_screen.dart';
 import '../../features/account/screens/account_screen.dart';
 import '../../features/account/screens/seller_settings_screens.dart';
-import '../../features/account/screens/payment_methods_screen.dart';
+import '../../features/account/screens/seller_payment_settings_screen.dart';
 import '../../features/addresses/screens/address_edit_screen.dart';
 import '../../features/addresses/screens/addresses_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
@@ -111,6 +111,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       if ((loc == '/routes' || loc == '/clients') && !session.hasMembership) {
         return '/home';
       }
+      if (loc == '/routes' && !session.canAccessRoutes) return '/home';
 
       // Recién confirmada por WhatsApp y sin negocio propio -> a reclamar perfil.
       if (loc == '/confirm' && !session.hasMembership) return '/claim';

@@ -39,6 +39,9 @@ class _SellerPaymentSettingsScreenState
   var _showForm = false;
   var _submitted = false;
   var _saving = false;
+  var _savingMercadoPago = false;
+  final _deletingAccountIds = <int>{};
+  final _defaultingAccountIds = <int>{};
 
   @override
   void dispose() {
@@ -178,6 +181,12 @@ class _SellerPaymentSettingsScreenState
   }
 
   Future<void> _deleteAccount(SellerPayoutAccount account) async {
+    if (_deletingAccountIds.contains(account.id) ||
+        _defaultingAccountIds.contains(account.id)) {
+      return;
+    }
+
+    setState(() => _deletingAccountIds.add(account.id));
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -198,7 +207,11 @@ class _SellerPaymentSettingsScreenState
         ],
       ),
     );
-    if (confirm != true) return;
+    if (!mounted) return;
+    if (confirm != true) {
+      setState(() => _deletingAccountIds.remove(account.id));
+      return;
+    }
 
     try {
       await ref
@@ -211,11 +224,19 @@ class _SellerPaymentSettingsScreenState
       HapticFeedback.lightImpact();
     } catch (error) {
       if (mounted) _snack(context, error.toString(), error: true);
+    } finally {
+      if (mounted) setState(() => _deletingAccountIds.remove(account.id));
     }
   }
 
   Future<void> _setDefault(SellerPayoutAccount account) async {
-    if (account.isDefault) return;
+    if (account.isDefault ||
+        _defaultingAccountIds.contains(account.id) ||
+        _deletingAccountIds.contains(account.id)) {
+      return;
+    }
+
+    setState(() => _defaultingAccountIds.add(account.id));
     try {
       await ref
           .read(sellerSettingsRepositoryProvider)
@@ -226,6 +247,8 @@ class _SellerPaymentSettingsScreenState
       HapticFeedback.selectionClick();
     } catch (error) {
       if (mounted) _snack(context, error.toString(), error: true);
+    } finally {
+      if (mounted) setState(() => _defaultingAccountIds.remove(account.id));
     }
   }
 
@@ -242,6 +265,37 @@ class _SellerPaymentSettingsScreenState
     if (!mounted) return;
     _snack(context, 'Ficha visible copiada.');
     HapticFeedback.selectionClick();
+  }
+
+  Future<void> _configureMercadoPago(MercadoPagoSettings? settings) async {
+    if (_savingMercadoPago) return;
+
+    final result = await showModalBottomSheet<_MercadoPagoFormResult>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _MercadoPagoSettingsSheet(settings: settings),
+    );
+    if (result == null) return;
+
+    setState(() => _savingMercadoPago = true);
+    try {
+      await ref
+          .read(sellerSettingsRepositoryProvider)
+          .updatePaymentSettings(
+            publicKey: result.publicKey,
+            accessToken: result.accessToken,
+            clearAccessToken: result.clearAccessToken,
+          );
+      ref.invalidate(sellerPaymentSettingsProvider);
+      if (!mounted) return;
+      _snack(context, 'Mercado Pago actualizado.');
+      HapticFeedback.lightImpact();
+    } catch (error) {
+      if (mounted) _snack(context, error.toString(), error: true);
+    } finally {
+      if (mounted) setState(() => _savingMercadoPago = false);
+    }
   }
 
   Future<void> _refresh() async {
@@ -339,22 +393,45 @@ class _SellerPaymentSettingsScreenState
                               onAdd: () => _startNewAccount(accounts),
                             )
                           else
-                            ...accounts.map(
-                              (account) => Padding(
+                            ...accounts.map((account) {
+                              final deleting = _deletingAccountIds.contains(
+                                account.id,
+                              );
+                              final defaulting = _defaultingAccountIds.contains(
+                                account.id,
+                              );
+                              return Padding(
                                 padding: const EdgeInsets.only(bottom: 10),
                                 child: _PayoutMethodCard(
                                   account: account,
                                   editing: _editing?.id == account.id,
-                                  onTap: () => _editAccount(account),
-                                  onCopy: () => _copyAccount(account),
-                                  onMakeDefault: account.isDefault
+                                  deleting: deleting,
+                                  defaulting: defaulting,
+                                  onTap: deleting
+                                      ? null
+                                      : () => _editAccount(account),
+                                  onCopy: deleting
+                                      ? null
+                                      : () => _copyAccount(account),
+                                  onMakeDefault:
+                                      account.isDefault ||
+                                          deleting ||
+                                          defaulting
                                       ? null
                                       : () => _setDefault(account),
-                                  onDelete: () => _deleteAccount(account),
+                                  onDelete: deleting || defaulting
+                                      ? null
+                                      : () => _deleteAccount(account),
                                 ),
-                              ),
-                            ),
-                          _MercadoPagoMethodCard(ready: mercadoPagoReady),
+                              );
+                            }),
+                          _MercadoPagoMethodCard(
+                            ready: mercadoPagoReady,
+                            busy: _savingMercadoPago,
+                            onTap: _savingMercadoPago
+                                ? null
+                                : () => _configureMercadoPago(mercadoPago),
+                          ),
                           const SizedBox(height: 16),
                           _MethodNoteCard(
                             text: primary == null
@@ -830,6 +907,8 @@ class _PayoutMethodCard extends StatelessWidget {
   const _PayoutMethodCard({
     required this.account,
     required this.editing,
+    required this.deleting,
+    required this.defaulting,
     required this.onTap,
     required this.onCopy,
     required this.onMakeDefault,
@@ -838,10 +917,12 @@ class _PayoutMethodCard extends StatelessWidget {
 
   final SellerPayoutAccount account;
   final bool editing;
-  final VoidCallback onTap;
-  final VoidCallback onCopy;
+  final bool deleting;
+  final bool defaulting;
+  final VoidCallback? onTap;
+  final VoidCallback? onCopy;
   final VoidCallback? onMakeDefault;
-  final VoidCallback onDelete;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -909,14 +990,21 @@ class _PayoutMethodCard extends StatelessWidget {
                     )
                   else
                     IconButton(
-                      tooltip: 'Hacer principal',
+                      tooltip: defaulting
+                          ? 'Actualizando...'
+                          : 'Hacer principal',
                       onPressed: onMakeDefault,
                       visualDensity: VisualDensity.compact,
-                      icon: const Icon(
-                        Symbols.star_outline,
-                        color: AppColors.ink3,
-                        size: 21,
-                      ),
+                      icon: defaulting
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(
+                              Symbols.star_outline,
+                              color: AppColors.ink3,
+                              size: 21,
+                            ),
                     ),
                   Row(
                     mainAxisSize: MainAxisSize.min,
@@ -932,14 +1020,21 @@ class _PayoutMethodCard extends StatelessWidget {
                         ),
                       ),
                       IconButton(
-                        tooltip: 'Eliminar',
+                        tooltip: deleting ? 'Eliminando...' : 'Eliminar',
                         onPressed: onDelete,
                         visualDensity: VisualDensity.compact,
-                        icon: const Icon(
-                          Symbols.delete,
-                          color: AppColors.liveRed,
-                          size: 20,
-                        ),
+                        icon: deleting
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(
+                                Symbols.delete,
+                                color: AppColors.liveRed,
+                                size: 20,
+                              ),
                       ),
                     ],
                   ),
@@ -954,70 +1049,278 @@ class _PayoutMethodCard extends StatelessWidget {
 }
 
 class _MercadoPagoMethodCard extends StatelessWidget {
-  const _MercadoPagoMethodCard({required this.ready});
+  const _MercadoPagoMethodCard({
+    required this.ready,
+    required this.busy,
+    required this.onTap,
+  });
 
   final bool ready;
+  final bool busy;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.line),
-        boxShadow: AppShadows.small,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.line),
+          boxShadow: AppShadows.small,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0085C0), Color(0xFF20B8FF)],
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                'MP',
+                style: AppTextStyles.chip.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Mercado Pago link',
+                    style: AppTextStyles.body.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    ready
+                        ? 'Listo para pagos con tarjeta.'
+                        : 'Configúralo cuando quieras recibir pagos con tarjeta.',
+                    style: AppTextStyles.subtitle.copyWith(fontSize: 11.5),
+                  ),
+                ],
+              ),
+            ),
+            _StatusPill(
+              icon: ready ? Symbols.check_circle : Symbols.info,
+              label: busy
+                  ? 'Guardando'
+                  : ready
+                  ? 'Listo'
+                  : 'Falta',
+              color: ready ? AppColors.statusDeliveredFg : AppColors.gold,
+              background: ready
+                  ? AppColors.statusDeliveredBg
+                  : AppColors.statusPendingBg,
+            ),
+            const SizedBox(width: 8),
+            busy
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(
+                    Symbols.chevron_right,
+                    color: AppColors.ink3,
+                    size: 22,
+                  ),
+          ],
+        ),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF0085C0), Color(0xFF20B8FF)],
-              ),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Text(
-              'MP',
-              style: AppTextStyles.chip.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Mercado Pago link',
-                  style: AppTextStyles.body.copyWith(
-                    fontWeight: FontWeight.w800,
+    );
+  }
+}
+
+class _MercadoPagoFormResult {
+  const _MercadoPagoFormResult({
+    required this.publicKey,
+    this.accessToken,
+    this.clearAccessToken = false,
+  });
+
+  final String publicKey;
+  final String? accessToken;
+  final bool clearAccessToken;
+}
+
+class _MercadoPagoSettingsSheet extends StatefulWidget {
+  const _MercadoPagoSettingsSheet({this.settings});
+
+  final MercadoPagoSettings? settings;
+
+  @override
+  State<_MercadoPagoSettingsSheet> createState() =>
+      _MercadoPagoSettingsSheetState();
+}
+
+class _MercadoPagoSettingsSheetState extends State<_MercadoPagoSettingsSheet> {
+  late final TextEditingController _publicKeyCtrl;
+  late final TextEditingController _accessTokenCtrl;
+  var _clearAccessToken = false;
+  var _submitted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _publicKeyCtrl = TextEditingController(
+      text: widget.settings?.publicKey ?? '',
+    );
+    _accessTokenCtrl = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _publicKeyCtrl.dispose();
+    _accessTokenCtrl.dispose();
+    super.dispose();
+  }
+
+  bool get _isValid => _publicKeyCtrl.text.trim().isNotEmpty;
+
+  void _submit() {
+    setState(() => _submitted = true);
+    if (!_isValid) return;
+
+    final accessToken = _accessTokenCtrl.text.trim();
+    Navigator.of(context).pop(
+      _MercadoPagoFormResult(
+        publicKey: _publicKeyCtrl.text.trim(),
+        accessToken: accessToken.isEmpty ? null : accessToken,
+        clearAccessToken: _clearAccessToken && accessToken.isEmpty,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasToken = widget.settings?.hasAccessToken ?? false;
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
+        decoration: const BoxDecoration(
+          color: AppColors.surfaceCream,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.line,
+                    borderRadius: BorderRadius.circular(999),
                   ),
                 ),
-                const SizedBox(height: 3),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'Configurar Mercado Pago',
+                style: AppTextStyles.h2.copyWith(fontSize: 18),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                hasToken
+                    ? 'Ya hay un access token guardado. Escribe uno nuevo solo si quieres reemplazarlo.'
+                    : 'Agrega tus credenciales para activar pagos con tarjeta.',
+                style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+              ),
+              const SizedBox(height: 18),
+              AppTextField(
+                controller: _publicKeyCtrl,
+                label: 'Public key',
+                hint: 'APP_USR-...',
+                prefixIcon: Symbols.key,
+                autocorrect: false,
+                enableSuggestions: false,
+                onChanged: (_) => setState(() {}),
+              ),
+              if (_submitted && !_isValid) ...[
+                const SizedBox(height: 6),
                 Text(
-                  ready
-                      ? 'Listo para pagos con tarjeta.'
-                      : 'Configúralo cuando quieras recibir pagos con tarjeta.',
-                  style: AppTextStyles.subtitle.copyWith(fontSize: 11.5),
+                  'La public key es obligatoria.',
+                  style: AppTextStyles.subtitle.copyWith(
+                    color: AppColors.liveRed,
+                    fontSize: 11.5,
+                  ),
                 ),
               ],
-            ),
+              const SizedBox(height: 12),
+              AppTextField(
+                controller: _accessTokenCtrl,
+                label: 'Access token',
+                hint: hasToken
+                    ? 'Dejalo vacio para conservar el actual'
+                    : 'APP_USR-...',
+                prefixIcon: Symbols.lock,
+                obscureText: true,
+                autocorrect: false,
+                enableSuggestions: false,
+                onChanged: (_) {
+                  if (_accessTokenCtrl.text.trim().isNotEmpty &&
+                      _clearAccessToken) {
+                    _clearAccessToken = false;
+                  }
+                  setState(() {});
+                },
+              ),
+              if (hasToken) ...[
+                const SizedBox(height: 8),
+                CheckboxListTile(
+                  value: _clearAccessToken && _accessTokenCtrl.text.isEmpty,
+                  onChanged: _accessTokenCtrl.text.trim().isNotEmpty
+                      ? null
+                      : (value) =>
+                            setState(() => _clearAccessToken = value ?? false),
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  activeColor: AppColors.neniDeep,
+                  title: Text(
+                    'Quitar access token guardado',
+                    style: AppTextStyles.body.copyWith(fontSize: 13),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancelar'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: _submit,
+                      child: const Text('Guardar'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          _StatusPill(
-            icon: ready ? Symbols.check_circle : Symbols.info,
-            label: ready ? 'Listo' : 'Falta',
-            color: ready ? AppColors.statusDeliveredFg : AppColors.gold,
-            background: ready
-                ? AppColors.statusDeliveredBg
-                : AppColors.statusPendingBg,
-          ),
-        ],
+        ),
       ),
     );
   }
