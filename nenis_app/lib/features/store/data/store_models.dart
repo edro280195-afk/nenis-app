@@ -38,7 +38,9 @@ class BuyerStoreDetail {
     required this.isFollowing,
     required this.isVip,
     required this.isLiveNow,
+    required this.ratingsCount,
     this.liveAnnouncementTitle,
+    this.averageRating,
     this.slug,
     this.city,
     this.logoUrl,
@@ -65,6 +67,10 @@ class BuyerStoreDetail {
   final bool isVip;
   final bool isLiveNow;
   final String? liveAnnouncementTitle;
+  final double? averageRating;
+  final int ratingsCount;
+
+  bool get hasRatings => ratingsCount > 0 && averageRating != null;
 
   String get initial => name.isNotEmpty
       ? name.characters.first.toUpperCase()
@@ -95,6 +101,8 @@ class BuyerStoreDetail {
         isVip: (j['isVip'] as bool?) ?? false,
         isLiveNow: (j['isLiveNow'] as bool?) ?? false,
         liveAnnouncementTitle: j['liveAnnouncementTitle'] as String?,
+        averageRating: (j['averageRating'] as num?)?.toDouble(),
+        ratingsCount: (j['ratingsCount'] as num?)?.toInt() ?? 0,
       );
 
   BuyerStoreDetail copyWith({
@@ -121,6 +129,8 @@ class BuyerStoreDetail {
         isVip: isVip ?? this.isVip,
         isLiveNow: isLiveNow,
         liveAnnouncementTitle: liveAnnouncementTitle,
+        averageRating: averageRating,
+        ratingsCount: ratingsCount,
       );
 }
 

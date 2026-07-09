@@ -51,9 +51,13 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="app.nenisapp.com" android:pathPrefix="/o/" />
                 <data android:scheme="https" android:host="app.nenisapp.com" android:pathPrefix="/pedido/" />
+                <!-- Compartir tienda: https://app.nenisapp.com/store/{businessId}.
+                     Sin muro de instalación propio todavía (ver deep_link_service.dart) —
+                     solo navega si la app ya está instalada y con sesión. -->
+                <data android:scheme="https" android:host="app.nenisapp.com" android:pathPrefix="/store/" />
             </intent-filter>
 
-            <!-- Fallback por scheme propio (no verificado): nenis://o/{token}. -->
+            <!-- Fallback por scheme propio (no verificado): nenis://o/{token}, nenis://store/{id}. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

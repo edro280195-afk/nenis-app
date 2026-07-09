@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/dio_provider.dart';
+import '../router/app_router.dart';
 import 'pending_claim_store.dart';
 
 /// Token del pedido que llegó por deep link / referrer y que debe abrirse (y
@@ -45,6 +46,21 @@ String? extractOrderToken(Uri uri) {
   if ((uri.host == 'o' || uri.host == 'pedido') && segments.isNotEmpty) {
     final token = segments.first.trim();
     if (token.isNotEmpty) return token;
+  }
+  return null;
+}
+
+/// Extrae el `businessId` de un link "compartir tienda"
+/// (`/store/{businessId}` o `nenis://store/{businessId}`).
+int? extractStoreBusinessId(Uri uri) {
+  final segments = uri.pathSegments;
+  for (var i = 0; i < segments.length - 1; i++) {
+    if (segments[i] == 'store') {
+      return int.tryParse(segments[i + 1].trim());
+    }
+  }
+  if (uri.host == 'store' && segments.isNotEmpty) {
+    return int.tryParse(segments.first.trim());
   }
   return null;
 }
@@ -158,8 +174,22 @@ class DeepLinkService {
 
   Future<void> _handleUri(Uri uri) async {
     final token = extractOrderToken(uri);
-    if (token == null) return;
-    await _persistAndSet(token);
+    if (token != null) {
+      await _persistAndSet(token);
+      return;
+    }
+
+    // Link "compartir tienda": a diferencia del pedido, no necesita
+    // sobrevivir un login/OTP interrumpido — si ya hay sesión, navega
+    // directo; si no, se pierde (la próxima vez que abra la app entra a
+    // su home normal). Cubre el caso común: la app ya está instalada y
+    // con sesión cuando le tocan el link.
+    final businessId = extractStoreBusinessId(uri);
+    if (businessId != null) {
+      try {
+        _ref.read(routerProvider).go('/store/$businessId');
+      } catch (_) {}
+    }
   }
 
   Future<void> _persistAndSet(String token) async {

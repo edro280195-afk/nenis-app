@@ -47,6 +47,22 @@ class FollowRepository {
     }
   }
 
+  Future<FollowState> updatePreferences(
+    int businessId, {
+    required bool notifyOnPost,
+    required bool notifyOnLive,
+  }) async {
+    try {
+      final res = await _dio.put(
+        '/api/me/follow/$businessId/preferences',
+        data: {'notifyOnPost': notifyOnPost, 'notifyOnLive': notifyOnLive},
+      );
+      return FollowState.fromJson(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw FollowException(_message(e, 'No pudimos guardar tus preferencias.'));
+    }
+  }
+
   String _message(DioException e, String fallback) {
     final data = e.response?.data;
     if (data is Map && data['message'] is String) {

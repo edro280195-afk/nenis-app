@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
@@ -18,6 +19,7 @@ import '../../raffles/data/raffles_models.dart';
 import '../../raffles/data/raffles_repository.dart';
 import '../../tandas/data/tandas_models.dart';
 import '../../tandas/data/tandas_repository.dart';
+import '../data/follow_models.dart';
 import '../data/follow_repository.dart';
 import '../data/store_models.dart';
 import '../data/store_posts_models.dart';
@@ -290,8 +292,7 @@ class _StoreHeader extends StatelessWidget {
                   const SizedBox(width: 8),
                   _HeaderIcon(
                     icon: Symbols.ios_share,
-                    onPressed: () =>
-                        _soonToast(context, 'Compartir llega pronto'),
+                    onPressed: () => _shareStore(store),
                   ),
                 ],
               ),
@@ -400,6 +401,24 @@ class _ProfileRow extends ConsumerWidget {
                       ],
                     ),
                     const SizedBox(height: 2),
+                    if (store.hasRatings) ...[
+                      Row(
+                        children: [
+                          const Icon(Symbols.star, size: 14, color: AppColors.gold, fill: 1),
+                          const SizedBox(width: 3),
+                          Text(
+                            store.averageRating!.toStringAsFixed(1),
+                            style: AppTextStyles.body.copyWith(fontSize: 12, fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            '(${store.ratingsCount})',
+                            style: AppTextStyles.subtitle.copyWith(fontSize: 11.5, color: AppColors.ink3),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                    ],
                     Text(
                       _subtitle(store),
                       maxLines: 1,
@@ -414,7 +433,13 @@ class _ProfileRow extends ConsumerWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            if (store.isFollowing) ...[
+              _HeaderIcon(
+                icon: Symbols.tune,
+                onPressed: () => _openFollowPreferences(context, store.businessId),
+              ),
+              const SizedBox(width: 8),
+            ],
             PillButton(
               label: store.isFollowing ? 'Siguiendo' : 'Seguir',
               icon: store.isFollowing ? Symbols.check : Symbols.add,
@@ -443,6 +468,15 @@ class _ProfileRow extends ConsumerWidget {
     );
   }
 
+  void _openFollowPreferences(BuildContext context, int businessId) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _FollowPreferencesSheet(businessId: businessId),
+    );
+  }
+
   String _subtitle(BuyerStoreDetail s) {
     final parts = <String>[];
     if (s.city != null && s.city!.isNotEmpty) parts.add(s.city!);
@@ -453,6 +487,116 @@ class _ProfileRow extends ConsumerWidget {
       parts.add('${s.followerCount} siguen');
     }
     return parts.isEmpty ? 'Tienda en Neni\'s' : parts.join(' · ');
+  }
+}
+
+/// Hoja modal para ajustar qué avisos manda una tienda que ya sigues.
+/// Carga el estado fresco al abrir (el `FollowState` completo — con los
+/// flags granulares — no viaja en `BuyerStoreDetail`, solo `isFollowing`).
+class _FollowPreferencesSheet extends ConsumerStatefulWidget {
+  const _FollowPreferencesSheet({required this.businessId});
+  final int businessId;
+
+  @override
+  ConsumerState<_FollowPreferencesSheet> createState() => _FollowPreferencesSheetState();
+}
+
+class _FollowPreferencesSheetState extends ConsumerState<_FollowPreferencesSheet> {
+  FollowState? _state;
+  bool _loading = true;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final state = await ref.read(followRepositoryProvider).getState(widget.businessId);
+      if (mounted) setState(() { _state = state; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _update({bool? notifyOnPost, bool? notifyOnLive}) async {
+    final current = _state;
+    if (current == null || _saving) return;
+    final next = FollowState(
+      businessId: current.businessId,
+      isFollowing: current.isFollowing,
+      notifyOnPost: notifyOnPost ?? current.notifyOnPost,
+      notifyOnLive: notifyOnLive ?? current.notifyOnLive,
+      isVip: current.isVip,
+    );
+    setState(() { _state = next; _saving = true; });
+    try {
+      final saved = await ref.read(followRepositoryProvider).updatePreferences(
+            widget.businessId,
+            notifyOnPost: next.notifyOnPost,
+            notifyOnLive: next.notifyOnLive,
+          );
+      if (mounted) setState(() { _state = saved; _saving = false; });
+    } on FollowException catch (e) {
+      if (mounted) {
+        setState(() { _state = current; _saving = false; });
+        context.showPremiumToast(e.message, type: PremiumToastType.error);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(22, 14, 22, 22 + MediaQuery.of(context).padding.bottom),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(color: AppColors.line, borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text('Tus avisos de esta tienda', style: AppTextStyles.h2.copyWith(fontSize: 17)),
+          const SizedBox(height: 14),
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Center(child: CircularProgressIndicator(color: AppColors.neniDeep)),
+            )
+          else if (_state == null)
+            Text('No pudimos cargar tus preferencias.', style: AppTextStyles.subtitle)
+          else ...[
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Novedades'),
+              subtitle: const Text('Cuando publique fotos o textos nuevos.'),
+              value: _state!.notifyOnPost,
+              activeTrackColor: AppColors.neniDeep,
+              onChanged: _saving ? null : (v) => _update(notifyOnPost: v),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('En vivo'),
+              subtitle: const Text('Cuando empiece a transmitir.'),
+              value: _state!.notifyOnLive,
+              activeTrackColor: AppColors.neniDeep,
+              onChanged: _saving ? null : (v) => _update(notifyOnLive: v),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
 
@@ -1476,4 +1620,17 @@ class _EmptyTab extends StatelessWidget {
 
 void _soonToast(BuildContext context, String message) {
   context.showPremiumToast(message, type: PremiumToastType.info);
+}
+
+/// Comparte un link a la tienda. Si quien lo recibe ya tiene la app
+/// instalada y la abre con sesión, `deep_link_service.dart` la navega ahí
+/// directo; si no, el mensaje incluye el nombre de la tienda como respaldo.
+Future<void> _shareStore(BuyerStoreDetail store) async {
+  await SharePlus.instance.share(
+    ShareParams(
+      text: '¡Sígueme en Neni\'s App! Soy ${store.name} 💕\n'
+          'https://app.nenisapp.com/store/${store.businessId}',
+      subject: store.name,
+    ),
+  );
 }
