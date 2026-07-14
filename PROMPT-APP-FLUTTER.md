@@ -2,6 +2,8 @@
 
 > Pega esto como primer mensaje en una sesión nueva de Claude Code (de preferencia con el directorio en `C:\Codigos\nenis-app`). Es autocontenido.
 
+> **⚠️ Doc histórico (kickoff de la Fase 2, jun/2026).** Para el estado real y actual del proyecto —incluyendo que la app ya NO es solo compradora, ver la corrección en "Decisiones ya tomadas" abajo— usa `PROGRESO-APP-FLUTTER.md` (mismo folder). Este archivo se conserva como registro del arranque original; los Bloques 1–4+, los tokens de diseño y el método de trabajo siguen siendo válidos, pero el contexto de negocio de arriba ya avanzó bastante desde que se escribió.
+
 ---
 
 ## Contexto (léelo una vez, no asumas)
@@ -16,10 +18,10 @@ Vamos a construir la **app nativa de la CLIENTA / compradora** de **Neni's App**
 
 ## Decisiones ya tomadas (no las re-litigues)
 
-- App = **compradora** (no la vendedora, no el conductor).
+- ~~App = **compradora** (no la vendedora, no el conductor)~~ — **superado.** Desde julio/2026 la misma app Flutter también tiene una superficie completa de vendedora (`/routes`, `/clients`, `/seller/settings`, `/seller/plan`, `/seller/updates`, `/seller/vip`, etc.), gateada por `session.hasMembership`. Detalle en `PROGRESO-APP-FLUTTER.md`. Sigue siendo cierto que no hay app de conductor aparte.
 - **Estética bloqueada** para toda la app (tokens más abajo). **Tema por tienda** obligatorio.
 - Lealtad se llama **"Puntos"** (nunca "RegiPuntos").
-- Login **sin ilustración** (versión limpia aprobada). **Logo: pendiente de generar** → usa el placeholder actual (cuadro con corazón + "Neni's.").
+- Login **sin ilustración** (versión limpia aprobada). **Logo: ya existe** (`assets/branding/nenis-app-icon.png`).
 - Copy de UI en **español** (sentence case, cálido); nombres de código en **inglés**.
 
 ---

@@ -16,6 +16,7 @@ import '../../features/claim/screens/claim_order_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/store/screens/store_screen.dart';
 import '../../features/live/screens/live_screen.dart';
+import '../../features/live/screens/seller_live_screen.dart';
 import '../../features/orders/screens/orders_screen.dart';
 import '../../features/orders/screens/order_create_screen.dart';
 import '../../features/orders/screens/order_detail_screen.dart';
@@ -253,10 +254,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(
-        path: '/live/:sessionId',
+        path: '/live/:businessId',
         pageBuilder: (context, state) => _pageTransition(
           key: state.pageKey,
-          child: LiveScreen(sessionId: state.pathParameters['sessionId']!),
+          child: LiveScreen(businessId: state.pathParameters['businessId']!),
         ),
       ),
       GoRoute(
@@ -384,6 +385,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/seller/vip',
         pageBuilder: (context, state) =>
             _pageTransition(key: state.pageKey, child: const SellerVipScreen()),
+      ),
+      GoRoute(
+        path: '/seller/live',
+        pageBuilder: (context, state) =>
+            _pageTransition(key: state.pageKey, child: const SellerLiveScreen()),
       ),
       GoRoute(
         path: '/addresses',

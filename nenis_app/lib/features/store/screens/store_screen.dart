@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
@@ -234,7 +235,6 @@ class _StoreContent extends ConsumerWidget {
         _ProfileRow(store: store),
         _PtsBar(store: store),
         if (store.isLiveNow) _LiveNowBanner(store: store),
-        if (store.live != null) _LiveStrip(live: store.live!),
         _TabsRow(
           store: store,
           selected: tab,
@@ -678,102 +678,10 @@ class _PtsBar extends StatelessWidget {
   }
 }
 
-class _LiveStrip extends StatelessWidget {
-  const _LiveStrip({required this.live});
-  final BuyerLiveSummary live;
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 0, 22, 14),
-      child: GestureDetector(
-        onTap: () => context.go('/live/${live.sessionId}'),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFFF3D8B), Color(0xFFFF0072)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: AppRadii.softRadius,
-            boxShadow: AppShadows.brandPrimary(const Color(0xFFFF0072)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.22),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Symbols.sensors,
-                  color: Colors.white,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${live.title} en vivo',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.body.copyWith(
-                        fontSize: 14.5,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 1),
-                    Text(
-                      live.topics ?? 'Toca para entrar',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 11.5,
-                        color: Colors.white.withValues(alpha: 0.9),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: AppRadii.pillRadius,
-                ),
-                child: const Text(
-                  'Entrar',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.neniDeep,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Aviso en tiempo real de "está en vivo ahora" (LiveAnnouncement) —
-/// distinto de `_LiveStrip`, que muestra el pipeline post-hoc de
-/// `LiveSession` (transcripción de un vivo ya grabado). Ambos pueden
-/// coexistir; este va primero, con un punto pulsante para distinguirlo.
+/// Aviso en tiempo real de "está en vivo ahora" (`LiveAnnouncement`). Tocar
+/// el banner entra al visor en vivo dentro de la app (feed de productos
+/// anunciados + apartar); el botón "Ver en Facebook" abre el video real —
+/// las dos cosas coexisten a propósito, una no reemplaza a la otra.
 class _LiveNowBanner extends StatefulWidget {
   const _LiveNowBanner({required this.store});
   final BuyerStoreDetail store;
@@ -799,49 +707,53 @@ class _LiveNowBannerState extends State<_LiveNowBanner>
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 0, 22, 14),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.liveRed,
-          borderRadius: AppRadii.softRadius,
-          boxShadow: AppShadows.brandPrimary(AppColors.liveRed),
-        ),
-        child: Row(
-          children: [
-            FadeTransition(
-              opacity: _controller,
-              child: Container(
-                width: 12,
-                height: 12,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
+      child: GestureDetector(
+        onTap: () => context.push('/live/${widget.store.businessId}'),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.liveRed,
+            borderRadius: AppRadii.softRadius,
+            boxShadow: AppShadows.brandPrimary(AppColors.liveRed),
+          ),
+          child: Row(
+            children: [
+              FadeTransition(
+                opacity: _controller,
+                child: Container(
+                  width: 12,
+                  height: 12,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                widget.store.liveAnnouncementTitle != null
-                    ? '¡En vivo! ${widget.store.liveAnnouncementTitle}'
-                    : '¡Está en vivo ahora mismo!',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.body.copyWith(
-                  fontSize: 14,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  widget.store.liveAnnouncementTitle != null
+                      ? '¡En vivo! ${widget.store.liveAnnouncementTitle}'
+                      : '¡Está en vivo ahora mismo!',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 14,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-            ),
-            PillButton(
-              label: 'Ver en Facebook',
-              icon: Symbols.open_in_new,
-              expand: false,
-              variant: PillButtonVariant.ghost,
-              onPressed: () => _soonToast(context, 'Abre la app de Facebook para verlo'),
-            ),
-          ],
+              PillButton(
+                label: 'Ver en Facebook',
+                icon: Symbols.open_in_new,
+                expand: false,
+                variant: PillButtonVariant.ghost,
+                onPressed: () =>
+                    _openStoreFacebook(context, widget.store.facebookUrl),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -886,7 +798,7 @@ class _TabsRow extends StatelessWidget {
       case StoreTab.products:
         return 'Productos${s.products.isNotEmpty ? ' · ${s.products.length}' : ''}';
       case StoreTab.lives:
-        return 'En vivo${s.live != null ? ' · 1' : ''}';
+        return 'En vivo${s.isLiveNow ? ' · 1' : ''}';
       case StoreTab.novedades:
         return 'Novedades';
       case StoreTab.tandas:
@@ -1098,7 +1010,7 @@ class _LiveTabContent extends StatelessWidget {
   final BuyerStoreDetail store;
   @override
   Widget build(BuildContext context) {
-    if (store.live == null) {
+    if (!store.isLiveNow) {
       return _EmptyTab(
         icon: Symbols.sensors,
         iconColor: AppColors.ink2,
@@ -1107,11 +1019,13 @@ class _LiveTabContent extends StatelessWidget {
         body: '${store.name} avisará por aquí cuando empiece un live.',
       );
     }
-    final live = store.live!;
+    final subtitle = store.hasCurrentLiveProduct
+        ? 'Mostrando: ${store.liveCurrentProductName}'
+        : 'Toca para ver qué está mostrando';
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 8, 22, 0),
       child: GestureDetector(
-        onTap: () => context.go('/live/${live.sessionId}'),
+        onTap: () => context.push('/live/${store.businessId}'),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -1145,14 +1059,16 @@ class _LiveTabContent extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          live.title,
+                          store.liveAnnouncementTitle?.isNotEmpty == true
+                              ? store.liveAnnouncementTitle!
+                              : 'En vivo ahora',
                           style: AppTextStyles.body.copyWith(
                             fontSize: 15.5,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                         Text(
-                          live.topics ?? 'Live reciente',
+                          subtitle,
                           style: AppTextStyles.subtitle.copyWith(
                             fontSize: 12,
                             color: AppColors.ink2,
@@ -1620,6 +1536,25 @@ class _EmptyTab extends StatelessWidget {
 
 void _soonToast(BuildContext context, String message) {
   context.showPremiumToast(message, type: PremiumToastType.info);
+}
+
+/// Abre el Facebook de la tienda (`Business.FacebookUrl`) en el navegador o
+/// la app de Facebook. Si la vendedora todavía no lo configuró, avisa en
+/// vez de fingir que existe.
+Future<void> _openStoreFacebook(BuildContext context, String? facebookUrl) async {
+  if (facebookUrl == null || facebookUrl.isEmpty) {
+    _soonToast(context, 'Esta tienda aún no agregó su Facebook.');
+    return;
+  }
+  final uri = Uri.tryParse(facebookUrl);
+  final opened = uri != null &&
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+  if (!opened && context.mounted) {
+    context.showPremiumToast(
+      'No pudimos abrir Facebook.',
+      type: PremiumToastType.error,
+    );
+  }
 }
 
 /// Comparte un link a la tienda. Si quien lo recibe ya tiene la app

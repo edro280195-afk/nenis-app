@@ -12,6 +12,7 @@ import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/store_avatar.dart';
 import '../../../shared/widgets/skeleton.dart';
+import '../../../shared/widgets/slow_load_hint.dart';
 import '../data/points_models.dart';
 import '../data/points_repository.dart';
 
@@ -565,6 +566,15 @@ class _PointsLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        _skeletonList(),
+        const SlowLoadHint(),
+      ],
+    );
+  }
+
+  Widget _skeletonList() {
     return ListView(
       padding: const EdgeInsets.only(bottom: 24),
       physics: const NeverScrollableScrollPhysics(),

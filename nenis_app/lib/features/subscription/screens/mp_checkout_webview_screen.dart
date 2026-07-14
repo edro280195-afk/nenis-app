@@ -38,22 +38,50 @@ class _MpCheckoutWebViewScreenState
   @override
   void initState() {
     super.initState();
-    final uri = Uri.parse('${AppConfig.webAdminBaseUrl}/admin/subscription/checkout').replace(
-      queryParameters: {
-        'plan': widget.planTier,
-        'periodicity': widget.periodicity,
-      },
-    );
+    final uri =
+        Uri.parse(
+          '${AppConfig.webAdminBaseUrl}/admin/subscription/checkout',
+        ).replace(
+          queryParameters: {
+            'plan': widget.planTier,
+            'periodicity': widget.periodicity,
+          },
+        );
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
+          onNavigationRequest: (request) {
+            return _isAllowedCheckoutNavigation(request.url)
+                ? NavigationDecision.navigate
+                : NavigationDecision.prevent;
+          },
           onPageFinished: (_) {
             if (mounted) setState(() => _loading = false);
           },
         ),
       )
       ..loadRequest(uri);
+  }
+
+  bool _isAllowedCheckoutNavigation(String rawUrl) {
+    final uri = Uri.tryParse(rawUrl);
+    if (uri == null) return false;
+
+    final base = Uri.parse(AppConfig.webAdminBaseUrl);
+    final host = uri.host.toLowerCase();
+    if (uri.scheme == base.scheme && host == base.host.toLowerCase()) {
+      return true;
+    }
+
+    if (uri.scheme != 'https') return false;
+
+    return host == 'mercadopago.com' ||
+        host.endsWith('.mercadopago.com') ||
+        host == 'mercadopago.com.mx' ||
+        host.endsWith('.mercadopago.com.mx') ||
+        host == 'mercadolibre.com' ||
+        host.endsWith('.mercadolibre.com');
   }
 
   Future<void> _close() async {
@@ -79,7 +107,10 @@ class _MpCheckoutWebViewScreenState
             icon: const Icon(Symbols.close, color: AppColors.ink),
             onPressed: _close,
           ),
-          title: Text('Pagar suscripción', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+          title: Text(
+            'Pagar suscripción',
+            style: AppTextStyles.h2.copyWith(fontSize: 16),
+          ),
         ),
         body: Stack(
           children: [

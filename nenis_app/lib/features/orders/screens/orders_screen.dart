@@ -13,6 +13,7 @@ import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/segmented.dart';
 import '../../../shared/widgets/skeleton.dart';
+import '../../../shared/widgets/slow_load_hint.dart';
 import '../../../shared/widgets/status_chip.dart';
 import '../../../shared/widgets/store_avatar.dart';
 import '../data/orders_models.dart';
@@ -406,14 +407,19 @@ class _OrdersLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: 4,
-      itemBuilder: (_, __) => const Padding(
-        padding: EdgeInsets.only(bottom: 14),
-        child: Skeleton(height: 110, borderRadius: 20),
-      ),
+    return Stack(
+      children: [
+        ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: 4,
+          itemBuilder: (_, __) => const Padding(
+            padding: EdgeInsets.only(bottom: 14),
+            child: Skeleton(height: 110, borderRadius: 20),
+          ),
+        ),
+        const SlowLoadHint(),
+      ],
     );
   }
 }

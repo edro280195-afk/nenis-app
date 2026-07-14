@@ -104,6 +104,13 @@ class SellerAccountScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 10),
               _SellerMenuTile(
+                icon: Symbols.sensors,
+                title: 'Anunciar en vivo',
+                subtitle: 'Toca un producto mientras transmites y aparece al instante en la app.',
+                onTap: () => context.push('/seller/live'),
+              ),
+              const SizedBox(height: 10),
+              _SellerMenuTile(
                 icon: Symbols.workspace_premium,
                 title: 'Grupo VIP',
                 subtitle: 'Elige a tus seguidoras favoritas para novedades exclusivas.',

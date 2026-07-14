@@ -14,6 +14,7 @@ import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/status_chip.dart';
 import '../../../shared/widgets/store_avatar.dart';
 import '../../../shared/widgets/skeleton.dart';
+import '../../../shared/widgets/slow_load_hint.dart';
 import '../../../shared/widgets/interactive_bounce.dart';
 import '../../notifications/data/notifications_repository.dart';
 import '../data/home_models.dart';
@@ -737,6 +738,15 @@ class _BuyerHomeSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        _skeletonList(),
+        const SlowLoadHint(),
+      ],
+    );
+  }
+
+  Widget _skeletonList() {
     return ListView(
       padding: const EdgeInsets.only(bottom: 24),
       physics: const NeverScrollableScrollPhysics(),
