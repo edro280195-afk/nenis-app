@@ -86,7 +86,10 @@ QuickCaptureDraft? parseQuickProductCapture({
     clientName: resolvedClientName,
     productName: capitalizeWords(productWords.join(' ')),
     quantity: quantity,
-    unitPrice: price / quantity,
+    // U13: el precio que escribe la vendedora es el UNITARIO (lo más natural:
+    // "blusa 100" = $100 c/u). Antes se dividía entre la cantidad, así que
+    // "2 blusas 100" daba $50 c/u aunque ella pensara $100.
+    unitPrice: price,
   );
 }
 
@@ -124,43 +127,45 @@ String capitalizeWords(String text) {
 
 QuickCaptureDraft? _parseCommaCapture(List<String> chunks) {
   final clientName = capitalizeWords(chunks.first);
-  var price = 0.0;
-  var quantity = 1;
-  final productChunks = [...chunks.skip(1)];
+  // B6: antes, si un chunk tenía el precio pegado al producto (ej. "blusa 100"
+  // en "Maria, blusa 100"), se eliminaba el chunk entero y se perdía "blusa".
+  // Ahora unimos todo el texto de producto y extraemos solo el número.
+  final productText = chunks.skip(1).join(' ').trim();
+  if (productText.isEmpty) return null;
 
-  for (var i = productChunks.length - 1; i >= 0; i--) {
-    final numbers = RegExp(r'\d+(?:[.,]\d+)?')
-        .allMatches(
-          productChunks[i].replaceAll(
-            RegExp(r'pesos?', caseSensitive: false),
-            '',
-          ),
-        )
-        .map((m) => _parseMoney(m.group(0) ?? ''))
-        .where((n) => n > 0)
-        .toList();
-    if (numbers.isNotEmpty) {
-      price = numbers.last;
-      final qtyMatch = RegExp(r'^(\d+)\s+').firstMatch(productChunks[i]);
-      final qty = qtyMatch == null ? null : int.tryParse(qtyMatch.group(1)!);
-      if (qty != null && qty > 0 && qty <= 20) quantity = qty;
-      productChunks.removeAt(i);
-      break;
-    }
-  }
+  // Quitamos la palabra "peso/pesos" para que no la confunda con un número.
+  final cleaned = productText.replaceAll(
+    RegExp(r'pesos?', caseSensitive: false),
+    '',
+  );
+
+  // Buscamos todos los números (incluye separadores MXN) y nos quedamos con
+  // el último como precio.
+  final priceRegex = RegExp(r'\d[\d.,]*\d|\d');
+  final matches = priceRegex.allMatches(cleaned).toList();
+  if (matches.isEmpty) return null;
+  final lastMatch = matches.last;
+  final price = _parseMoney(lastMatch.group(0)!);
   if (price <= 0) return null;
 
-  var productName = productChunks.join(' ').trim();
-  final productWords = productName
+  // El nombre del producto es el texto sin el número del precio.
+  var productName = (cleaned.substring(0, lastMatch.start) +
+          cleaned.substring(lastMatch.end))
+      .trim();
+
+  // Cantidad al inicio del producto (ej. "2 blusas" → qty=2, "blusas").
+  final words = productName
       .split(RegExp(r'\s+'))
       .where((w) => w.isNotEmpty)
       .toList();
-  final productQuantity = productWords.isEmpty
-      ? null
-      : _parseQuantity(productWords.first);
-  if (quantity == 1 && productQuantity != null && productQuantity <= 20) {
-    quantity = productQuantity;
-    productName = productWords.skip(1).join(' ');
+  var quantity = 1;
+  if (words.isNotEmpty) {
+    final firstQty = _parseQuantity(words.first);
+    if (firstQty != null && firstQty > 0 && firstQty <= 20) {
+      quantity = firstQty;
+      words.removeAt(0);
+      productName = words.join(' ');
+    }
   }
   if (productName.isEmpty) productName = 'Articulo';
 
@@ -168,15 +173,39 @@ QuickCaptureDraft? _parseCommaCapture(List<String> chunks) {
     clientName: clientName,
     productName: capitalizeWords(productName),
     quantity: quantity,
-    unitPrice: price / quantity,
+    // U13: precio unitario, no total/cantidad.
+    unitPrice: price,
   );
 }
 
 double _parseMoney(String value) {
-  final clean = value
-      .replaceAll(RegExp(r'[\$,]'), '')
+  var clean = value
+      .replaceAll(RegExp(r'\$'), '')
       .replaceAll(RegExp(r'pesos?', caseSensitive: false), '')
       .trim();
+  // U12: convención mexicana — "." separa miles, "," separa decimales.
+  //   "1.000"      → 1000
+  //   "10.500"     → 10500
+  //   "1.000.000"  → 1000000
+  //   "1,5"        → 1.5
+  //   "1,50"       → 1.50
+  //   "1.50"       → 1.50 (2 decimales → decimal, no miles)
+  //   "1.234,5"    → 1234.5 (formato completo MXN)
+  if (clean.contains(',') && clean.contains('.')) {
+    clean = clean.replaceAll('.', '').replaceAll(',', '.');
+  } else if (clean.contains(',')) {
+    clean = clean.replaceAll(',', '.');
+  } else if (clean.contains('.')) {
+    final parts = clean.split('.');
+    if (parts.length > 2) {
+      // "1.000.000" → miles múltiples.
+      clean = parts.join('');
+    } else if (parts.length == 2 && parts[1].length == 3) {
+      // "1.000" → 1000 (3 dígitos tras el punto = miles).
+      clean = parts.join('');
+    }
+    // else: "1.5" / "1.50" / "1.99" → decimal, double.tryParse lo resuelve.
+  }
   return double.tryParse(clean) ?? 0;
 }
 

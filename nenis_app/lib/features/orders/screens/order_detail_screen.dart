@@ -9,6 +9,7 @@ import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/skeleton.dart';
+import '../../../shared/widgets/slow_load_hint.dart';
 import '../data/seller_order_message.dart';
 import '../data/seller_orders_models.dart';
 import '../data/seller_orders_repository.dart';
@@ -78,6 +79,17 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     }
   }
 
+  // D6: orden del flujo de entrega. Se usa para detectar "rebajas" de
+  // estatus (ej. marcar como Pendiente algo ya Entregado) y pedir confirmación
+  // antes de revertir el avance.
+  static const _deliveryFlow = [
+    SellerOrderStatus.pending,
+    SellerOrderStatus.confirmed,
+    SellerOrderStatus.shipped,
+    SellerOrderStatus.inRoute,
+    SellerOrderStatus.delivered,
+  ];
+
   Future<void> _setStatus(SellerOrderStatus s) async {
     if (s.requiresStatusReason) {
       final draft = await showDialog<_StatusChangeDraft>(
@@ -95,19 +107,89 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       );
     }
 
+    // Confirmar rebajas en el flujo de entrega (ej. Entregado → Pendiente).
+    final current =
+        ref.read(sellerOrderDetailProvider(_id)).asData?.value.status;
+    if (current != null && _isStatusDowngrade(current, s)) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text('¿Cambiar a un est anterior?'),
+          content: Text(
+            'El pedido está "${current.label}" y lo vas a pasar a '
+            '"${s.label}". ¿Lo confirmas?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Sí, cambiar'),
+            ),
+          ],
+        ),
+      );
+      if (ok != true) return;
+    }
+
     return _run(() => _repo.updateStatus(_id, s));
+  }
+
+  bool _isStatusDowngrade(SellerOrderStatus from, SellerOrderStatus to) {
+    final fromIdx = _deliveryFlow.indexOf(from);
+    final toIdx = _deliveryFlow.indexOf(to);
+    if (fromIdx < 0 || toIdx < 0) return false;
+    return toIdx < fromIdx;
   }
 
   Future<void> _setDelivery(SellerDeliveryType t) =>
       _run(() => _repo.setOrderType(_id, t));
 
-  Future<void> _changeQty(SellerOrderItem it, int qty) => _run(() async {
+  Future<void> _changeQty(SellerOrderItem it, int qty) async {
+    // D1: antes, bajar a 0 eliminaba el artículo sin confirmar. La vendedora
+    // tocaba "-" esperando llegar a 0 y perdía el item sin aviso. Ahora se
+    // pide confirmación antes de quitarlo.
     if (qty < 1) {
-      await _repo.removeItem(_id, it.id);
-    } else {
-      await _repo.updateItem(_id, it.id, it.productName, qty, it.unitPrice);
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text('¿Quitar artículo?'),
+          content: Text(
+            'Se eliminará "${it.productName}" del pedido #$_id.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(
+                'Quitar',
+                style: TextStyle(color: const Color(0xFFE11D5B)),
+              ),
+            ),
+          ],
+        ),
+      );
+      if (ok != true) return;
     }
-  });
+    return _run(() async {
+      if (qty < 1) {
+        await _repo.removeItem(_id, it.id);
+      } else {
+        await _repo.updateItem(_id, it.id, it.productName, qty, it.unitPrice);
+      }
+    });
+  }
 
   Future<void> _addItem() async {
     final name = _newItemName.text.trim();
@@ -141,6 +223,37 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       _snack('Escribe un monto válido');
       return;
     }
+    // D3: advertir si el cobro excede el restante. Podría ser un abono a
+    // cuenta (válido), pero conviene confirmar para evitar capturas
+    // equivocadas que dejen saldo negativo.
+    final balance = ref.read(sellerOrderDetailProvider(_id)).asData?.value.balanceDue ?? 0;
+    if (amount > balance + 0.01) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text('El cobro excede el restante'),
+          content: Text(
+            'El restante es ${money(balance)} pero vas a cobrar '
+            '${money(amount)} (excede ${money(amount - balance)}). '
+            '¿Lo confirmas?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Sí, cobrar'),
+            ),
+          ],
+        ),
+      );
+      if (ok != true) return;
+    }
     await _run(() => _repo.addPayment(_id, amount, method));
     _amountCtrl.clear();
     if (mounted) {
@@ -159,15 +272,22 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       return;
     }
     await Clipboard.setData(ClipboardData(text: buildSellerOrderMessage(o)));
-    _snack('Mensaje para la clienta copiado', color: const Color(0xFF7C5AC9));
-
+    // D4: antes se marcaba `setNotified(true)` silenciosamente. Ahora el
+    // mensaje del snack lo hace transparente para que la vendedora sepa
+    // que copiar implica marcar como notificado.
     if (!o.isNotified) {
       try {
         await _repo.setNotified(o.id, true);
         _invalidate();
+        _snack(
+          'Mensaje copiado · pedido marcado como notificado',
+          color: const Color(0xFF7C5AC9),
+        );
       } catch (_) {
-        // El mensaje ya quedo copiado; esta marca no debe bloquear el flujo.
+        _snack('Mensaje para la clienta copiado', color: const Color(0xFF7C5AC9));
       }
+    } else {
+      _snack('Mensaje para la clienta copiado', color: const Color(0xFF7C5AC9));
     }
   }
 
@@ -1180,10 +1300,17 @@ class _MiniField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // D5: si es numérico, filtrar a solo dígitos y punto (igual que el campo
+    // de monto de cobros). Antes se podía teclear "1.2.3" o "abc".
+    final isNumeric =
+        keyboard == TextInputType.number || keyboard == TextInputType.phone;
     return TextField(
       controller: controller,
       keyboardType: keyboard,
       textAlign: center ? TextAlign.center : TextAlign.start,
+      inputFormatters: isNumeric
+          ? [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))]
+          : null,
       style: AppTextStyles.body.copyWith(fontSize: 12.5),
       decoration: InputDecoration(
         isDense: true,
@@ -1513,21 +1640,35 @@ class _OrderDetailLoading extends StatelessWidget {
       children: [
         _TopBar(title: 'Pedido', onBack: onBack),
         Expanded(
-          child: SingleChildScrollView(
-            physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: const [
-                Skeleton(height: 76, borderRadius: 20),
-                SizedBox(height: 18),
-                Skeleton(height: 94, borderRadius: 20),
-                SizedBox(height: 18),
-                Skeleton(height: 160, borderRadius: 20),
-                SizedBox(height: 18),
-                Skeleton(height: 110, borderRadius: 20),
-              ],
-            ),
+          child: Stack(
+            children: [
+              SingleChildScrollView(
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 22,
+                  vertical: 12,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: const [
+                    Skeleton(height: 76, borderRadius: 20),
+                    SizedBox(height: 18),
+                    Skeleton(height: 94, borderRadius: 20),
+                    SizedBox(height: 18),
+                    Skeleton(height: 160, borderRadius: 20),
+                    SizedBox(height: 18),
+                    Skeleton(height: 110, borderRadius: 20),
+                  ],
+                ),
+              ),
+              const Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: 24),
+                  child: SlowLoadHint(),
+                ),
+              ),
+            ],
           ),
         ),
       ],

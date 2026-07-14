@@ -8,6 +8,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
+import '../../../shared/widgets/slow_load_hint.dart';
 import '../data/seller_order_capture_parser.dart';
 import '../data/seller_order_message.dart';
 import '../data/seller_orders_models.dart';
@@ -99,6 +100,8 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
 
   final _manualClientFocus = FocusNode();
   final _manualProductFocus = FocusNode();
+  final _manualPriceFocus = FocusNode();
+  final _manualQtyFocus = FocusNode();
   final _quickFocus = FocusNode();
 
   _CaptureMode _mode = _CaptureMode.quick;
@@ -130,6 +133,8 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
     _pinPriceCtrl.dispose();
     _manualClientFocus.dispose();
     _manualProductFocus.dispose();
+    _manualPriceFocus.dispose();
+    _manualQtyFocus.dispose();
     _quickFocus.dispose();
     super.dispose();
   }
@@ -258,13 +263,10 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
           onRemove: (id) =>
               setState(() => _quickQueue.removeWhere((i) => i.id == id)),
           onQuantityChanged: (item, quantity) {
-            setState(() {
-              if (quantity < 1) {
-                _quickQueue.remove(item);
-              } else {
-                item.quantity = quantity;
-              }
-            });
+            // U8: el stepper no elimina al llegar a 0 (para eso está el botón
+            // X de `onRemove`). Antes, bajar a 0 quitaba el item sin confirmar.
+            if (quantity < 1) return;
+            setState(() => item.quantity = quantity);
           },
         ),
       ],
@@ -376,6 +378,8 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
                 price: _manualItemPriceCtrl,
                 qty: _manualItemQtyCtrl,
                 focusNode: _manualProductFocus,
+                priceFocusNode: _manualPriceFocus,
+                qtyFocusNode: _manualQtyFocus,
                 suggestions: productSuggestions,
                 onPickProduct: _pickManualProduct,
                 onAdd: _addManualItem,
@@ -386,13 +390,9 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
                 items: _manualItems,
                 onRemove: (item) => setState(() => _manualItems.remove(item)),
                 onQuantityChanged: (item, quantity) {
-                  setState(() {
-                    if (quantity < 1) {
-                      _manualItems.remove(item);
-                    } else {
-                      item.quantity = quantity;
-                    }
-                  });
+                  // U8: el stepper no elimina al llegar a 0 (botón X lo hace).
+                  if (quantity < 1) return;
+                  setState(() => item.quantity = quantity);
                 },
               ),
             ],
@@ -444,15 +444,15 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
     final exact = clients
         .where((c) => normalizeCaptureText(c.name) == typed)
         .firstOrNull;
+    // B5/U15/U16: NO autorellenamos teléfono/dirección/instrucciones aquí.
+    // Antes, al romperse el match exacto (escribir "Ana L" tras "Ana"), los
+    // campos de "Ana" quedaban pegados y se enviaban para una clienta nueva.
+    // El autorellenado solo ocurre vía _selectManualClient (click explícito en
+    // la sugerencia), que es una acción intencional. Aquí solo recordamos el
+    // clientId matcheado para que el backend reutilice la clienta existente.
     setState(() {
       _manualClient = exact;
-      if (exact != null) {
-        _manualFrequent = exact.isFrequent;
-        _manualPhoneCtrl.text = exact.phone ?? _manualPhoneCtrl.text;
-        _manualAddressCtrl.text = exact.address ?? '';
-        _manualInstructionsCtrl.text = exact.deliveryInstructions ?? '';
-        _manualAddressOnlyForOrder = false;
-      }
+      _manualFrequent = exact?.isFrequent ?? false;
     });
   }
 
@@ -530,12 +530,20 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
       return;
     }
 
+    // B4: bloqueamos el doble tap ANTES del await del diálogo. Antes el guard
+    // solo servía después de elegir, así que dos toques rápidos abrían dos
+    // hojas y creaban dos pedidos.
+    setState(() => _creatingManual = true);
+
     // ¿Creamos un pedido nuevo o agregamos a uno abierto? Solo preguntamos si la
     // clienta ya tiene pedidos abiertos (no cancelados).
     final choice = await _askOpenOrderChoice(clientName, _manualClient?.id);
-    if (choice == null) return; // Cancelo el dialogo
+    if (choice == null) {
+      // Canceló el diálogo: libera el guard y sale sin crear nada.
+      if (mounted) setState(() => _creatingManual = false);
+      return;
+    }
 
-    setState(() => _creatingManual = true);
     try {
       final address = _manualAddressCtrl.text.trim();
       final order = await ref
@@ -591,13 +599,20 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
     }
     if (open.isEmpty) return (forceNew: false, targetOrderId: null);
     if (!mounted) return null;
+    final newItemsCount = _manualItems.length;
+    final newItemsTotal =
+        _manualItems.fold(0.0, (s, i) => s + i.lineTotal);
     return showModalBottomSheet<({bool forceNew, int? targetOrderId})>(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => _OpenOrderSheet(openOrders: open),
+      builder: (ctx) => _OpenOrderSheet(
+        openOrders: open,
+        newItemsCount: newItemsCount,
+        newItemsTotal: newItemsTotal,
+      ),
     );
   }
 
@@ -803,8 +818,14 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
       _quickProgress = null;
     });
     var successCount = 0;
+    // B3: trackeamos las clientas cuyos pedidos se crearon bien. Al final
+    // quitamos solo esos items de la cola; los fallidos se quedan para que la
+    // vendedora corrija y reintente. Antes se limpiaba TODO si successCount>0,
+    // perdiendo los items del grupo que falló.
+    final createdKeys = <String>{};
 
     for (var i = 0; i < groups.length; i++) {
+      if (!mounted) return;
       final group = groups[i];
       setState(
         () => _quickProgress = '${group.clientName} ${i + 1}/${groups.length}',
@@ -821,6 +842,11 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
               clientId: group.clientId ?? client?.id,
               type: (client?.isFrequent ?? false) ? 'Frecuente' : 'Nueva',
               orderType: _quickDelivery,
+              // U17: modo rápido = cada captura es un pedido NUEVO. Así no
+              // hay auto-merge silencioso (la vendedora podría terminar
+              // agregando items a un pedido que no quería tocar). Si quiere
+              // agregar a uno existente, usa el modo manual que sí pregunta.
+              forceNew: true,
               items: group.items
                   .map(
                     (i) => DraftOrderItem(
@@ -832,28 +858,47 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
                   .toList(),
             );
         successCount++;
+        createdKeys.add(group.key);
         _afterOrderCreated(order);
       } catch (e) {
+        if (!mounted) break;
         _snack(
           'Error con ${group.clientName}: $e',
           color: const Color(0xFFE11D5B),
         );
       }
+      if (!mounted) break;
     }
 
+    if (!mounted) return;
     setState(() {
       _submittingQuick = false;
       _quickProgress = null;
-      if (successCount > 0) _quickQueue.clear();
+      if (createdKeys.isNotEmpty) {
+        _quickQueue.removeWhere(
+          (item) => createdKeys.contains(normalizeCaptureText(item.clientName)),
+        );
+      }
     });
     if (successCount > 0) {
       _snack('$successCount pedido(s) creados', color: const Color(0xFF12A150));
     }
+    if (createdKeys.length < groups.length) {
+      _snack(
+        'Algunos pedidos no se crearon: quedan en la cola para reintentar',
+        color: const Color(0xFFB5730A),
+      );
+    }
   }
 
   void _afterOrderCreated(SellerOrder order) {
+    // B2: si la pantalla ya no está montada (la vendedora salió tras crear),
+    // no tocamos el state. Antes, el setState lanzaba dentro del try de
+    // _createManualOrder y el catch lo trataba como error de la API, aunque
+    // el pedido SÍ se creó.
     ref.invalidate(sellerOrdersControllerProvider);
     ref.invalidate(sellerDashboardProvider);
+    if (!mounted) return;
     setState(() => _createdOrders.insert(0, order));
   }
 
@@ -1430,9 +1475,26 @@ class _PinProductCard extends StatelessWidget {
           ),
           if (products.isNotEmpty) ...[
             const SizedBox(height: 10),
-            _ProductChips(
-              products: products.take(6).toList(),
-              onPick: onPickProduct,
+            // U14: los chips ahora filtran por lo que la vendedora escribe en
+            // el campo "Producto". Antes mostraban `products.take(6)` fijos.
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: name,
+              builder: (context, value, _) {
+                final query = normalizeCaptureText(value.text);
+                final filtered = query.isEmpty
+                    ? products.take(6).toList()
+                    : products
+                        .where(
+                          (p) => normalizeCaptureText(p.name).contains(query),
+                        )
+                        .take(6)
+                        .toList();
+                if (filtered.isEmpty) return const SizedBox.shrink();
+                return _ProductChips(
+                  products: filtered,
+                  onPick: onPickProduct,
+                );
+              },
             ),
           ],
         ],
@@ -1659,6 +1721,8 @@ class _ManualAddItemForm extends StatelessWidget {
     required this.price,
     required this.qty,
     required this.focusNode,
+    required this.priceFocusNode,
+    required this.qtyFocusNode,
     required this.suggestions,
     required this.onPickProduct,
     required this.onAdd,
@@ -1669,6 +1733,8 @@ class _ManualAddItemForm extends StatelessWidget {
   final TextEditingController price;
   final TextEditingController qty;
   final FocusNode focusNode;
+  final FocusNode priceFocusNode;
+  final FocusNode qtyFocusNode;
   final List<CommonProduct> suggestions;
   final ValueChanged<CommonProduct> onPickProduct;
   final VoidCallback onAdd;
@@ -1709,11 +1775,17 @@ class _ManualAddItemForm extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 9),
+          // U7: focus chain. Antes, Enter en cualquier campo disparaba "Agregar"
+          // (fallaba porque faltaban datos). Ahora:
+          //  Nombre → "Siguiente" avanza a Precio.
+          //  Precio → "Siguiente" avanza a Cantidad.
+          //  Cantidad → "Hecho" agrega el artículo.
           _MiniField(
             controller: name,
             focusNode: focusNode,
             hint: 'Nombre del producto',
-            onSubmitted: (_) => onAdd(),
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) => priceFocusNode.requestFocus(),
           ),
           if (suggestions.isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -1725,11 +1797,13 @@ class _ManualAddItemForm extends StatelessWidget {
               Expanded(
                 child: _MiniField(
                   controller: price,
+                  focusNode: priceFocusNode,
                   hint: 'Precio',
                   keyboard: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
-                  onSubmitted: (_) => onAdd(),
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => qtyFocusNode.requestFocus(),
                 ),
               ),
               const SizedBox(width: 8),
@@ -1737,9 +1811,11 @@ class _ManualAddItemForm extends StatelessWidget {
                 width: 66,
                 child: _MiniField(
                   controller: qty,
+                  focusNode: qtyFocusNode,
                   hint: 'Cant.',
                   center: true,
                   keyboard: TextInputType.number,
+                  textInputAction: TextInputAction.done,
                   onSubmitted: (_) => onAdd(),
                 ),
               ),
@@ -2240,6 +2316,10 @@ class _Field extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // U6: filtrar a solo dígitos y punto si el campo es numérico (precio/
+    // cantidad). Antes se podía teclear "1.2.3" o "abc".
+    final isNumeric =
+        keyboard == TextInputType.number || keyboard == TextInputType.phone;
     return TextField(
       controller: controller,
       focusNode: focusNode,
@@ -2247,6 +2327,9 @@ class _Field extends StatelessWidget {
       textInputAction: textInputAction,
       maxLines: maxLines,
       onChanged: onChanged,
+      inputFormatters: isNumeric
+          ? [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))]
+          : null,
       style: AppTextStyles.body.copyWith(fontSize: 13.5),
       decoration: InputDecoration(
         isDense: true,
@@ -2279,6 +2362,7 @@ class _MiniField extends StatelessWidget {
     this.focusNode,
     this.keyboard,
     this.center = false,
+    this.textInputAction,
     this.onSubmitted,
   });
 
@@ -2287,17 +2371,23 @@ class _MiniField extends StatelessWidget {
   final String hint;
   final TextInputType? keyboard;
   final bool center;
+  final TextInputAction? textInputAction;
   final ValueChanged<String>? onSubmitted;
 
   @override
   Widget build(BuildContext context) {
+    final isNumeric =
+        keyboard == TextInputType.number || keyboard == TextInputType.phone;
     return TextField(
       controller: controller,
       focusNode: focusNode,
       keyboardType: keyboard,
       textAlign: center ? TextAlign.center : TextAlign.start,
-      textInputAction: TextInputAction.done,
+      textInputAction: textInputAction,
       onSubmitted: onSubmitted,
+      inputFormatters: isNumeric
+          ? [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))]
+          : null,
       style: AppTextStyles.body.copyWith(fontSize: 12.5),
       decoration: InputDecoration(
         isDense: true,
@@ -2607,19 +2697,31 @@ class _CaptureLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(18, 8, 18, 30),
+    return Stack(
       children: [
-        for (var i = 0; i < 4; i++)
-          Container(
-            height: i == 0 ? 54 : 132,
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.62),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: AppColors.line),
-            ),
+        ListView(
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 30),
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            for (var i = 0; i < 4; i++)
+              Container(
+                height: i == 0 ? 54 : 132,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.62),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: AppColors.line),
+                ),
+              ),
+          ],
+        ),
+        const Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: EdgeInsets.only(bottom: 24),
+            child: SlowLoadHint(),
           ),
+        ),
       ],
     );
   }
@@ -2663,8 +2765,10 @@ String _cleanMoney(num value) {
 /// Hoja inferior que pregunta si se crea un pedido nuevo o se agregan los
 /// articulos a un pedido abierto existente.
 class _OpenOrderSheet extends StatelessWidget {
-  const _OpenOrderSheet({required this.openOrders});
+  const _OpenOrderSheet({required this.openOrders, required this.newItemsCount, required this.newItemsTotal});
   final List<SellerOrder> openOrders;
+  final int newItemsCount;
+  final double newItemsTotal;
 
   @override
   Widget build(BuildContext context) {
@@ -2698,8 +2802,29 @@ class _OpenOrderSheet extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 4),
+            // U19: mostrar qué se va a agregar para que la decisión sea
+            // informada, no a ciegas.
+            Container(
+              margin: const EdgeInsets.only(top: 8, bottom: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF0F5),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                'Vas a agregar $newItemsCount '
+                '${newItemsCount == 1 ? 'artículo' : 'artículos'} · '
+                '${money(newItemsTotal)}',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.neniDeep,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
             Text(
-              '¿Creas un pedido nuevo o agregas los articulos a uno existente?',
+              '¿Creas un pedido nuevo o agregas a uno existente?',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall,
             ),

@@ -54,7 +54,21 @@ class AuthController extends AsyncNotifier<Session?> {
       return null;
     }
     if (session == null) return null;
-    if (!session.isExpired) return session;
+    if (!session.isExpired) {
+      // Multi-tienda sin negocio activo: autoselecciona el primero y persiste
+      // para que el próximo arranque sea estable (y el header X-Business-Id
+      // se envíe desde el primer hit).
+      if (session.activeBusinessId == null && session.memberships.isNotEmpty) {
+        final normalized = _withDefaultBusiness(session);
+        unawaited(
+          storage
+              .write(normalized)
+              .timeout(const Duration(seconds: 5), onTimeout: () {}),
+        );
+        return normalized;
+      }
+      return session;
+    }
     // JWT expirado: renovar con el refresh token (o limpiar si ya no sirve).
     return _refreshOrClear(session);
   }
@@ -68,15 +82,16 @@ class AuthController extends AsyncNotifier<Session?> {
     }
     try {
       final refreshed = await ref.read(authRepositoryProvider).refresh(rt);
+      final normalized = _withDefaultBusiness(refreshed);
       // El `write` va fire-and-forget con timeout: si el keystore se cuelga,
       // el `build()` igual retorna y el `state` se setea (evitamos splash
       // infinito). La sesión vive en memoria; se persiste en background.
       unawaited(
         storage
-            .write(refreshed)
+            .write(normalized)
             .timeout(const Duration(seconds: 5), onTimeout: () {}),
       );
-      return refreshed;
+      return normalized;
     } catch (_) {
       await _safeClear(storage);
       return null;
@@ -94,6 +109,17 @@ class AuthController extends AsyncNotifier<Session?> {
     }
   }
 
+  /// Garantiza que la sesión tenga un `activeBusinessId` cuando la cuenta
+  /// tiene memberships. Si tiene varias tiendas y ninguna seleccionada,
+  /// autoselecciona la primera. Sin esto, el header `X-Business-Id` no se
+  /// envía y el backend cae a `DefaultBusinessId = 1`, que puede no
+  /// pertenecer a la vendedora → vería los datos de otro negocio.
+  Session _withDefaultBusiness(Session s) {
+    if (s.activeBusinessId != null) return s;
+    if (s.memberships.isEmpty) return s;
+    return s.copyWith(activeBusinessId: s.memberships.first.businessId);
+  }
+
   // ── Renovación reactiva (la usa el interceptor Dio ante un 401) ──
 
   Future<bool>? _refreshing;
@@ -108,15 +134,16 @@ class AuthController extends AsyncNotifier<Session?> {
     if (rt == null || rt.isEmpty) return false;
     try {
       final refreshed = await ref.read(authRepositoryProvider).refresh(rt);
+      final normalized = _withDefaultBusiness(refreshed);
       // El `state` se actualiza síncrono: aunque el storage tarde, la app ya
       // tiene la sesión nueva en memoria y las llamadas en cola pueden
       // reintentar. El `write` va con timeout para no colgar el `_refreshing`
       // compartido (que todas las llamadas 401 esperan).
-      state = AsyncData<Session?>(refreshed);
+      state = AsyncData<Session?>(normalized);
       unawaited(
         ref
             .read(sessionStorageProvider)
-            .write(refreshed)
+            .write(normalized)
             .timeout(const Duration(seconds: 5), onTimeout: () {}),
       );
       return true;
@@ -378,15 +405,16 @@ class AuthController extends AsyncNotifier<Session?> {
 
   /// Guarda la sesión (con su refresh token) y limpia el estado pendiente.
   Future<void> _apply(Session session) async {
+    final normalized = _withDefaultBusiness(session);
     _clearPending();
     // El `state` se setea síncrono para que el router redirija a /home al
     // instante. El persistir en storage va en background con timeout: si el
     // keystore se cuelga, no bloqueamos el login (la sesión vive en memoria).
-    state = AsyncData<Session?>(session);
+    state = AsyncData<Session?>(normalized);
     unawaited(
       ref
           .read(sessionStorageProvider)
-          .write(session)
+          .write(normalized)
           .timeout(const Duration(seconds: 5), onTimeout: () {}),
     );
     // Best-effort: registra el token de push de este dispositivo para la

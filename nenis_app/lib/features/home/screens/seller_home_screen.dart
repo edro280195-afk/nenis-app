@@ -7,10 +7,13 @@ import 'package:intl/intl.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/auth/auth_controller.dart';
+import '../../../core/auth/session.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
+import '../../../shared/widgets/slow_load_hint.dart';
+import '../../notifications/data/notifications_repository.dart';
 import '../../orders/data/seller_orders_models.dart';
 import '../../orders/data/seller_orders_repository.dart';
 import '../../orders/widgets/seller_status_chip.dart';
@@ -24,6 +27,8 @@ class SellerHomeScreen extends ConsumerWidget {
     final async = ref.watch(sellerDashboardProvider);
 
     final firstName = (session?.displayName ?? '').trim().split(' ').first;
+    final hasMultipleBusinesses =
+        session != null && session.memberships.length > 1;
     String businessName = 'Mi tienda';
     if (session != null && session.memberships.isNotEmpty) {
       final active = session.activeBusinessId;
@@ -55,19 +60,17 @@ class SellerHomeScreen extends ConsumerWidget {
                   slivers: [
                     SliverToBoxAdapter(
                       child: _AppBar(
+                        session: session,
                         businessName: businessName,
                         logoInitial: logoInitial,
+                        hasMultipleBusinesses: hasMultipleBusinesses,
                         onBell: () => context.push('/notifications'),
                       ),
                     ),
                     async.when(
                       loading: () => const SliverFillRemaining(
                         hasScrollBody: false,
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.neni,
-                          ),
-                        ),
+                        child: _SellerHomeLoading(),
                       ),
                       error: (e, _) => SliverFillRemaining(
                         hasScrollBody: false,
@@ -115,72 +118,120 @@ class SellerHomeScreen extends ConsumerWidget {
   }
 }
 
-class _AppBar extends StatelessWidget {
+class _AppBar extends ConsumerWidget {
   const _AppBar({
+    required this.session,
     required this.businessName,
     required this.logoInitial,
+    required this.hasMultipleBusinesses,
     required this.onBell,
   });
+  final Session? session;
   final String businessName;
   final String logoInitial;
+  final bool hasMultipleBusinesses;
   final VoidCallback onBell;
 
+  Future<void> _openBusinessPicker(BuildContext context, WidgetRef ref) async {
+    final session = this.session;
+    if (session == null) return;
+    final chosen = await showModalBottomSheet<Membership>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => _BusinessPickerSheet(memberships: session.memberships),
+    );
+    if (chosen == null) return;
+    ref.read(authControllerProvider.notifier).setActiveBusiness(chosen.businessId);
+    // Al cambiar de negocio, los providers cacheados con el header anterior
+    // quedan stale. Invalidamos el dashboard (lo que muestra esta pantalla);
+    // el resto de pantallas son autoDispose y se recargan al navegar.
+    ref.invalidate(sellerDashboardProvider);
+    await ref.read(sellerDashboardProvider.future);
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unread = ref.watch(unreadNotificationsCountProvider).asData?.value ?? 0;
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 6, 18, 0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.neni, AppColors.neniDeep],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+          GestureDetector(
+            onTap: hasMultipleBusinesses
+                ? () => _openBusinessPicker(context, ref)
+                : null,
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppColors.neni, AppColors.neniDeep],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: AppShadows.brandSmall(AppColors.neniDeep),
                   ),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: AppShadows.brandSmall(AppColors.neniDeep),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  logoInitial,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 19,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 11),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    businessName,
-                    style: AppTextStyles.body.copyWith(
-                      fontSize: 14.5,
+                  alignment: Alignment.center,
+                  child: Text(
+                    logoInitial,
+                    style: const TextStyle(
+                      color: Colors.white,
                       fontWeight: FontWeight.w800,
+                      fontSize: 19,
                     ),
                   ),
-                  Text(
-                    'VENDEDORA',
-                    style: TextStyle(
-                      fontSize: 8.5,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.3,
-                      color: AppColors.lavender,
+                ),
+                const SizedBox(width: 11),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 150),
+                          child: Text(
+                            businessName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.body.copyWith(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        if (hasMultipleBusinesses) ...[
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Symbols.expand_more,
+                            size: 18,
+                            color: AppColors.ink3,
+                          ),
+                        ],
+                      ],
                     ),
-                  ),
-                ],
-              ),
-            ],
+                    Text(
+                      'VENDEDORA',
+                      style: TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.3,
+                        color: AppColors.lavender,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
           Stack(
+            clipBehavior: Clip.none,
             children: [
               Material(
                 color: Colors.transparent,
@@ -203,22 +254,161 @@ class _AppBar extends StatelessWidget {
                   ),
                 ),
               ),
-              Positioned(
-                top: 9,
-                right: 9,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: AppColors.neni,
-                    shape: BoxShape.circle,
+              if (unread > 0)
+                Positioned(
+                  top: -3,
+                  right: -3,
+                  child: Container(
+                    constraints: const BoxConstraints(
+                      minWidth: 18,
+                      minHeight: 18,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.liveRed,
+                      borderRadius: BorderRadius.circular(99),
+                      border: Border.all(color: AppColors.surface, width: 2),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      unread > 9 ? '9+' : '$unread',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ],
       ),
+    );
+  }
+}
+
+class _BusinessPickerSheet extends StatelessWidget {
+  const _BusinessPickerSheet({required this.memberships});
+  final List<Membership> memberships;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.black12,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Text(
+              'Cambiar tienda',
+              style: Theme.of(context).textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 14),
+            for (final m in memberships) ...[
+              InkWell(
+                onTap: () => Navigator.of(context).pop(m),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.black12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [AppColors.neni, AppColors.neniDeep],
+                          ),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: Text(
+                          m.businessName.trim().isEmpty
+                              ? '?'
+                              : m.businessName.trim()[0].toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 11),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              m.businessName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              m.role,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Symbols.chevron_right,
+                        color: AppColors.ink3,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancelar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SellerHomeLoading extends StatelessWidget {
+  const _SellerHomeLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        const CircularProgressIndicator(color: AppColors.neni),
+        const Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: EdgeInsets.only(bottom: 24),
+            child: SlowLoadHint(),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -672,7 +862,8 @@ class _ChartPainter extends CustomPainter {
     }
 
     final points = <Offset>[];
-    final step = data.length == 1 ? size.width : size.width / (data.length - 1);
+    // Aquí data.length siempre es >= 2 (el guard de `paint` ya retornó antes).
+    final step = size.width / (data.length - 1);
     for (var i = 0; i < data.length; i++) {
       final x = step * i;
       final y =

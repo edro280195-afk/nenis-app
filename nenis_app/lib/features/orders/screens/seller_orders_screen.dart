@@ -11,6 +11,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/segmented.dart';
 import '../../../shared/widgets/skeleton.dart';
+import '../../../shared/widgets/slow_load_hint.dart';
 import '../data/seller_orders_models.dart';
 import '../data/seller_orders_repository.dart';
 import '../widgets/seller_status_chip.dart';
@@ -23,13 +24,25 @@ class SellerOrdersScreen extends ConsumerStatefulWidget {
 }
 
 class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen> {
-  int _filter = 0;
+  String _filter = '';
   final _searchCtrl = TextEditingController();
   final _advancingOrderIds = <int>{};
   Timer? _debounce;
 
-  static const _labels = ['Todos', 'Pendientes', 'En ruta', 'Entregados'];
-  static const _statuses = ['', 'Pending', 'InRoute', 'Delivered'];
+  // Un filtro por cada estado real del backend. Así ningún pedido queda
+  // "huérfano" (antes Confirmed/Shipped/NotDelivered/Canceled/Postponed solo
+  // aparecían en "Todos" y la vendedora los perdía de vista).
+  static const _filters = <(String label, String status)>[
+    ('Todos', ''),
+    ('Pendientes', 'Pending'),
+    ('Confirmados', 'Confirmed'),
+    ('Empacados', 'Shipped'),
+    ('En ruta', 'InRoute'),
+    ('Entregados', 'Delivered'),
+    ('No entregados', 'NotDelivered'),
+    ('Pospuestos', 'Postponed'),
+    ('Cancelados', 'Canceled'),
+  ];
 
   @override
   void dispose() {
@@ -125,17 +138,27 @@ class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen> {
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(22, 12, 22, 0),
-                    child: SegmentedControl(
-                      items: _labels
-                          .map((l) => SegmentedItem(label: l))
-                          .toList(),
-                      selectedIndex: _filter,
-                      onChanged: (i) {
-                        setState(() => _filter = i);
-                        ref
-                            .read(sellerOrdersControllerProvider.notifier)
-                            .setStatus(_statuses[i]);
-                      },
+                    child: SizedBox(
+                      height: 40,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _filters.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 8),
+                        itemBuilder: (context, i) {
+                          final (label, status) = _filters[i];
+                          final isActive = _filter == status;
+                          return TabChip(
+                            label: label,
+                            isActive: isActive,
+                            onTap: () {
+                              setState(() => _filter = status);
+                              ref
+                                  .read(sellerOrdersControllerProvider.notifier)
+                                  .setStatus(status);
+                            },
+                          );
+                        },
+                      ),
                     ),
                   ),
                   Padding(
@@ -218,10 +241,35 @@ class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen> {
   }
 }
 
-class _SearchField extends StatelessWidget {
+class _SearchField extends StatefulWidget {
   const _SearchField({required this.controller, required this.onChanged});
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
+
+  @override
+  State<_SearchField> createState() => _SearchFieldState();
+}
+
+class _SearchFieldState extends State<_SearchField> {
+  bool _hasText = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _hasText = widget.controller.text.isNotEmpty;
+    widget.controller.addListener(_onChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onChanged);
+    super.dispose();
+  }
+
+  void _onChanged() {
+    final has = widget.controller.text.isNotEmpty;
+    if (has != _hasText) setState(() => _hasText = has);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -233,8 +281,8 @@ class _SearchField extends StatelessWidget {
         boxShadow: AppShadows.small,
       ),
       child: TextField(
-        controller: controller,
-        onChanged: onChanged,
+        controller: widget.controller,
+        onChanged: widget.onChanged,
         style: AppTextStyles.body.copyWith(fontSize: 13.5),
         decoration: InputDecoration(
           isCollapsed: true,
@@ -244,6 +292,25 @@ class _SearchField extends StatelessWidget {
             size: 20,
             color: AppColors.ink3,
           ),
+          suffixIcon: _hasText
+              ? IconButton(
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 36,
+                    minHeight: 36,
+                  ),
+                  icon: const Icon(
+                    Symbols.close,
+                    size: 18,
+                    color: AppColors.ink3,
+                  ),
+                  onPressed: () {
+                    widget.controller.clear();
+                    widget.onChanged('');
+                  },
+                )
+              : null,
           hintText: 'Buscar clienta, artículo o #folio…',
           hintStyle: AppTextStyles.fieldPlaceholder.copyWith(fontSize: 13.5),
           border: InputBorder.none,
@@ -1233,14 +1300,25 @@ class _SellerOrdersLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: 4,
-      itemBuilder: (_, __) => const Padding(
-        padding: EdgeInsets.only(bottom: 14),
-        child: Skeleton(height: 120, borderRadius: 20),
-      ),
+    return Stack(
+      children: [
+        ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: 4,
+          itemBuilder: (_, _) => const Padding(
+            padding: EdgeInsets.only(bottom: 14),
+            child: Skeleton(height: 120, borderRadius: 20),
+          ),
+        ),
+        const Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: EdgeInsets.only(bottom: 24),
+            child: SlowLoadHint(),
+          ),
+        ),
+      ],
     );
   }
 }
