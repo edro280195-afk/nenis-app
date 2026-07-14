@@ -59,7 +59,11 @@ class PushService {
         (message) => handlePushNavigation(_ref, message.data['url'] as String?),
       );
 
-      final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+      // `getInitialMessage` puede colgarse si Firebase no está configurado
+      // nativamente; timeout corto para no trabar el arranque.
+      final initialMessage = await FirebaseMessaging.instance
+          .getInitialMessage()
+          .timeout(const Duration(seconds: 5), onTimeout: () => null);
       if (initialMessage != null) {
         handlePushNavigation(_ref, initialMessage.data['url'] as String?);
       }
@@ -101,7 +105,7 @@ class PushService {
       final settings = await messaging.requestPermission();
       if (settings.authorizationStatus == AuthorizationStatus.denied) return;
 
-      final token = await messaging.getToken();
+      final token = await _readFcmToken(messaging);
       if (token != null && token.isNotEmpty) {
         await _ref.read(deviceRepositoryProvider).registerDevice(
               token,
@@ -124,12 +128,24 @@ class PushService {
   /// a una cuenta que ya cerró sesión en este dispositivo.
   Future<void> unregisterCurrentToken() async {
     try {
-      final token = await FirebaseMessaging.instance.getToken();
+      final token = await _readFcmToken(FirebaseMessaging.instance);
       if (token == null) return;
       await _ref.read(deviceRepositoryProvider).unregisterDevice(token);
     } catch (_) {
       // Sin Firebase configurado, no hay nada que des-registrar.
     }
+  }
+
+  /// Obtiene el token FCM con un timeout duro. `FirebaseMessaging.getToken()`
+  /// no tiene timeout propio y puede colgarse indefinidamente si Firebase no
+  /// está configurado nativamente, si no hay red, o si la app acaba de abrir.
+  /// Eso bloqueaba el `logout()` (la usuaria no salía) y el `init()`. Con 10s
+  /// de margen es suficiente para un dispositivo sano; si no responde, se
+  /// devuelve `null` y el flujo (login/logout) sigue sin trabarse.
+  Future<String?> _readFcmToken(FirebaseMessaging messaging) {
+    return messaging
+        .getToken()
+        .timeout(const Duration(seconds: 10), onTimeout: () => null);
   }
 
   String get _platform =>

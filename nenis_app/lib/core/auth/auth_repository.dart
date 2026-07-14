@@ -362,10 +362,18 @@ class AuthRepository {
 
   /// Renueva la sesión con el refresh token (lo rota). Lanza si es
   /// inválido/expirado para que la app pida entrar de nuevo.
+  ///
+  /// El backend (Render Free) puede estar dormido y tardar hasta ~60s en
+  /// despertar al primer hit. Como el refresh es un POST con rotación
+  /// one-time-use, NO se puede reintentar a ciegas: si el primer POST llegó
+  /// al backend pero la respuesta se perdió, reintentarlo con el mismo token
+  /// (ya revocado) dispara la detección de robo y revoca TODOS los tokens de
+  /// la cuenta. Por eso le damos un `receiveTimeout` amplio en lugar de retry.
   Future<Session> refresh(String refreshToken) async {
     final res = await _dio.post(
       '/api/auth/refresh',
       data: {'refreshToken': refreshToken},
+      options: Options(receiveTimeout: const Duration(seconds: 60)),
     );
     return Session.fromLoginJson(res.data as Map<String, dynamic>);
   }

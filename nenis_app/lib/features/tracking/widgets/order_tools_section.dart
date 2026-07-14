@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -861,10 +862,7 @@ class _EvidenceThumb extends StatelessWidget {
 
   String _apiBase() {
     // Las evidencias vienen como rutas relativas (/uploads/...) sobre la API.
-    const base = String.fromEnvironment('API_BASE_URL', defaultValue: '');
-    if (base.isNotEmpty) return base.replaceAll(RegExp(r'/+$'), '');
-    // Fallback al host del propio endpoint público (mismo origen que la API).
-    return 'https://sellgeneral-api.onrender.com';
+    return AppConfig.apiBaseUrl.replaceAll(RegExp(r'/+$'), '');
   }
 }
 

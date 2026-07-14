@@ -42,7 +42,17 @@ class AuthController extends AsyncNotifier<Session?> {
   @override
   Future<Session?> build() async {
     final storage = ref.read(sessionStorageProvider);
-    final session = await storage.read();
+    // Timeout defensivo: `flutter_secure_storage` puede bloquearse si el
+    // keystore de Android está bloqueado (tras mucho tiempo sin abrir la app
+    // o un reinicio del dispositivo). Sin esto, el `build()` nunca termina y
+    // la app se queda en el splash para siempre. Mejor salir a login.
+    final Session? session;
+    try {
+      session = await storage.read().timeout(const Duration(seconds: 5));
+    } catch (_) {
+      await _safeClear(storage);
+      return null;
+    }
     if (session == null) return null;
     if (!session.isExpired) return session;
     // JWT expirado: renovar con el refresh token (o limpiar si ya no sirve).
@@ -53,16 +63,34 @@ class AuthController extends AsyncNotifier<Session?> {
     final storage = ref.read(sessionStorageProvider);
     final rt = stale.refreshToken;
     if (rt == null || rt.isEmpty) {
-      await storage.clear();
+      await _safeClear(storage);
       return null;
     }
     try {
       final refreshed = await ref.read(authRepositoryProvider).refresh(rt);
-      await storage.write(refreshed);
+      // El `write` va fire-and-forget con timeout: si el keystore se cuelga,
+      // el `build()` igual retorna y el `state` se setea (evitamos splash
+      // infinito). La sesión vive en memoria; se persiste en background.
+      unawaited(
+        storage
+            .write(refreshed)
+            .timeout(const Duration(seconds: 5), onTimeout: () {}),
+      );
       return refreshed;
     } catch (_) {
-      await storage.clear();
+      await _safeClear(storage);
       return null;
+    }
+  }
+
+  Future<void> _safeClear(SessionStorage storage) async {
+    try {
+      await storage
+          .clear()
+          .timeout(const Duration(seconds: 3), onTimeout: () {});
+    } catch (_) {
+      // Si ni siquiera podemos borrar, no bloqueamos: el state en null igual
+      // manda a la usuaria a login.
     }
   }
 
@@ -80,11 +108,20 @@ class AuthController extends AsyncNotifier<Session?> {
     if (rt == null || rt.isEmpty) return false;
     try {
       final refreshed = await ref.read(authRepositoryProvider).refresh(rt);
-      await ref.read(sessionStorageProvider).write(refreshed);
+      // El `state` se actualiza síncrono: aunque el storage tarde, la app ya
+      // tiene la sesión nueva en memoria y las llamadas en cola pueden
+      // reintentar. El `write` va con timeout para no colgar el `_refreshing`
+      // compartido (que todas las llamadas 401 esperan).
       state = AsyncData<Session?>(refreshed);
+      unawaited(
+        ref
+            .read(sessionStorageProvider)
+            .write(refreshed)
+            .timeout(const Duration(seconds: 5), onTimeout: () {}),
+      );
       return true;
     } catch (_) {
-      await ref.read(sessionStorageProvider).clear();
+      await _safeClear(ref.read(sessionStorageProvider));
       state = const AsyncData<Session?>(null);
       return false;
     }
@@ -279,16 +316,56 @@ class AuthController extends AsyncNotifier<Session?> {
   }
 
   Future<void> logout() async {
-    final repo = ref.read(authRepositoryProvider);
-    await ref.read(pushServiceProvider).unregisterCurrentToken();
+    // 1. Capturamos lo necesario ANTES de tocar el estado.
     final rt = state.asData?.value?.refreshToken;
-    if (rt != null && rt.isNotEmpty) {
-      await repo.revokeRefreshToken(rt);
-    }
-    await repo.facebookLogout();
-    await ref.read(sessionStorageProvider).clear();
+    final repo = ref.read(authRepositoryProvider);
+    final push = ref.read(pushServiceProvider);
+    final storage = ref.read(sessionStorageProvider);
+
+    // 2. Logout LOCAL inmediato e incondicional: limpiamos estado pendiente,
+    //    storage y `state`. Esto dispara el redirect a /login al instante, sin
+    //    esperar a Firebase ni al backend. Si la red está caída o Firebase no
+    //    responde, la usuaria sale igual. El `state = null` es lo que importa.
     _clearPending();
     state = const AsyncData<Session?>(null);
+    await _safeClear(storage);
+
+    // 3. Cleanup del backend "fire and forget": revocar el refresh token,
+    //    desregistrar el push y cerrar Facebook. Ninguno debe bloquear el
+    //    logout (ya ocurrió) ni fallar de forma visible. El timeout protege
+    //    contra `FirebaseMessaging.getToken()`, que no tiene timeout propio y
+    //    puede colgarse indefinidamente.
+    unawaited(
+      _cleanupAfterLogout(repo: repo, push: push, refreshToken: rt),
+    );
+  }
+
+  Future<void> _cleanupAfterLogout({
+    required AuthRepository repo,
+    required PushService push,
+    required String? refreshToken,
+  }) async {
+    try {
+      await Future.any([
+        _doCleanup(repo: repo, push: push, refreshToken: refreshToken),
+        Future<void>.delayed(const Duration(seconds: 8)),
+      ]);
+    } catch (_) {
+      // Silencioso: el logout local ya ocurrió.
+    }
+  }
+
+  Future<void> _doCleanup({
+    required AuthRepository repo,
+    required PushService push,
+    required String? refreshToken,
+  }) async {
+    await Future.wait([
+      if (refreshToken != null && refreshToken.isNotEmpty)
+        repo.revokeRefreshToken(refreshToken),
+      push.unregisterCurrentToken(),
+      repo.facebookLogout(),
+    ]);
   }
 
   void setActiveBusiness(int businessId) {
@@ -301,9 +378,17 @@ class AuthController extends AsyncNotifier<Session?> {
 
   /// Guarda la sesión (con su refresh token) y limpia el estado pendiente.
   Future<void> _apply(Session session) async {
-    await ref.read(sessionStorageProvider).write(session);
     _clearPending();
+    // El `state` se setea síncrono para que el router redirija a /home al
+    // instante. El persistir en storage va en background con timeout: si el
+    // keystore se cuelga, no bloqueamos el login (la sesión vive en memoria).
     state = AsyncData<Session?>(session);
+    unawaited(
+      ref
+          .read(sessionStorageProvider)
+          .write(session)
+          .timeout(const Duration(seconds: 5), onTimeout: () {}),
+    );
     // Best-effort: registra el token de push de este dispositivo para la
     // cuenta recién autenticada. Nunca debe tumbar el login.
     unawaited(ref.read(pushServiceProvider).registerCurrentToken());

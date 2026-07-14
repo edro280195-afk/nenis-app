@@ -23,6 +23,37 @@ void _applyAuthHeaders(RequestOptions options, Session? session) {
   }
 }
 
+/// El backend de pruebas (Render, plan Free) se duerme tras ~15 min sin uso y
+/// el próximo hit tarda hasta ~60s en despertar (ver DEPLOY.md). Sin retry,
+/// eso se ve exactamente igual que un backend caído: el timeout salta a los
+/// 15-20s y la pantalla muestra "No pudimos cargar..." aunque el servidor
+/// hubiera respondido bien unos segundos después. Solo aplica a GET
+/// (idempotente): un POST/PUT/DELETE puede haber llegado a procesarse en el
+/// servidor aunque la respuesta no volviera a tiempo, así que reintentarlo
+/// a ciegas podría duplicar la acción.
+bool _isColdStartRetryable(DioException e) {
+  if (e.requestOptions.method.toUpperCase() != 'GET') return false;
+  switch (e.type) {
+    case DioExceptionType.connectionTimeout:
+    case DioExceptionType.sendTimeout:
+    case DioExceptionType.receiveTimeout:
+    case DioExceptionType.connectionError:
+      return true;
+    case DioExceptionType.badResponse:
+      final status = e.response?.statusCode;
+      return status != null && status >= 502 && status <= 504;
+    default:
+      return false;
+  }
+}
+
+/// Configuración de cada reintento de cold-start. El backend de Render Free
+/// tarda hasta ~60s en despertar, así que el último intento deja un margen
+/// amplio de `receiveTimeout`. Los delays crecen para no saturar al servidor
+/// recién despierto.
+const _coldStartRetryDelays = [Duration(seconds: 2), Duration(seconds: 5)];
+const _coldStartRetryReceive = [Duration(seconds: 45), Duration(seconds: 60)];
+
 /// Cliente HTTP hacia `sellgeneral-api`. Inyecta el `Bearer` + `X-Business-Id`
 /// en las peticiones autenticadas y, ante un 401 (JWT vencido), renueva la
 /// sesión con el refresh token y reintenta la petición una sola vez.
@@ -53,6 +84,26 @@ final dioProvider = Provider<Dio>((ref) {
         final options = e.requestOptions;
         final isAuthEndpoint = options.path.contains('/api/auth/');
         final alreadyRetried = options.extra['__retried'] == true;
+
+        // Cold start del backend: hasta 2 reintentos con delays y timeouts
+        // crecientes (ver `_coldStartRetry*`). Solo GET idempotente.
+        if (_isColdStartRetryable(e)) {
+          final attempts =
+              (options.extra['__coldStartAttempts'] as int?) ?? 0;
+          if (attempts < _coldStartRetryDelays.length) {
+            options.extra['__coldStartAttempts'] = attempts + 1;
+            options.receiveTimeout = _coldStartRetryReceive[attempts];
+            await Future<void>.delayed(_coldStartRetryDelays[attempts]);
+            try {
+              final response = await dio.fetch<dynamic>(options);
+              return handler.resolve(response);
+            } on DioException catch (retryError) {
+              // Reentramos `onError` con el error del reintento: puede
+              // tentar otro cold-start o caer al manejo de 401/402.
+              return handler.next(retryError);
+            }
+          }
+        }
 
         // 401 en una petición autenticada: intentar renovar y reintentar 1 vez.
         if (e.response?.statusCode == 401 &&
