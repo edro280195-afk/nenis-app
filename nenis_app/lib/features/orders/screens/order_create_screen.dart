@@ -530,6 +530,11 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
       return;
     }
 
+    // ¿Creamos un pedido nuevo o agregamos a uno abierto? Solo preguntamos si la
+    // clienta ya tiene pedidos abiertos (no cancelados).
+    final choice = await _askOpenOrderChoice(clientName, _manualClient?.id);
+    if (choice == null) return; // Cancelo el dialogo
+
     setState(() => _creatingManual = true);
     try {
       final address = _manualAddressCtrl.text.trim();
@@ -543,19 +548,59 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
             deliveryInstructions: _manualInstructionsCtrl.text.trim(),
             scheduledDeliveryDate: _manualScheduledDate,
             clientId: _manualClient?.id,
+            targetOrderId: choice.targetOrderId,
+            forceNew: choice.forceNew,
             type: _manualFrequent ? 'Frecuente' : 'Nueva',
             orderType: _manualDelivery,
             items: _manualItems,
           );
       _afterOrderCreated(order);
       _resetManual();
-      _snack('Pedido #${order.id} creado', color: const Color(0xFF12A150));
+      final msg = choice.targetOrderId != null
+          ? 'Articulos agregados al pedido #${order.id}'
+          : 'Pedido #${order.id} creado';
+      _snack(msg, color: const Color(0xFF12A150));
     } catch (e) {
       _snack(e.toString(), color: const Color(0xFFE11D5B));
     } finally {
       if (mounted) setState(() => _creatingManual = false);
     }
   }
+
+  /// Pregunta a la dueña si crea un pedido nuevo o agrega los articulos a un
+  /// pedido abierto. Devuelve:
+  /// - `null` si cancelo el dialogo (abortar la creacion).
+  /// - `(forceNew: false, targetOrderId: null)` si no hay abiertos o procede con
+  ///   el auto-merge legacy (modos IA/Excel que no preguntan).
+  /// - `(forceNew: true, targetOrderId: null)` si eligio "pedido nuevo".
+  /// - `(forceNew: false, targetOrderId: X)` si eligio agregar al pedido #X.
+  Future<({bool forceNew, int? targetOrderId})?> _askOpenOrderChoice(
+    String clientName,
+    int? clientId,
+  ) async {
+    final repo = ref.read(sellerOrdersRepositoryProvider);
+    List<SellerOrder> open;
+    try {
+      open = await repo.getOpenOrders(
+        clientId: clientId,
+        name: clientId == null ? clientName : null,
+      );
+    } catch (_) {
+      // Si no podemos cargar los abiertos, no bloqueamos: procede auto-merge.
+      return (forceNew: false, targetOrderId: null);
+    }
+    if (open.isEmpty) return (forceNew: false, targetOrderId: null);
+    if (!mounted) return null;
+    return showModalBottomSheet<({bool forceNew, int? targetOrderId})>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => _OpenOrderSheet(openOrders: open),
+    );
+  }
+
 
   void _resetManual() {
     setState(() {
@@ -2613,4 +2658,186 @@ extension _FirstOrNull<T> on Iterable<T> {
 String _cleanMoney(num value) {
   if (value % 1 == 0) return value.toInt().toString();
   return value.toStringAsFixed(2);
+}
+
+/// Hoja inferior que pregunta si se crea un pedido nuevo o se agregan los
+/// articulos a un pedido abierto existente.
+class _OpenOrderSheet extends StatelessWidget {
+  const _OpenOrderSheet({required this.openOrders});
+  final List<SellerOrder> openOrders;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          12,
+          16,
+          16 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.black12,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Text(
+              'Esta clienta ya tiene pedidos abiertos',
+              style: theme.textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '¿Creas un pedido nuevo o agregas los articulos a uno existente?',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 14),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context).pop(
+                (forceNew: true, targetOrderId: null),
+              ),
+              icon: const Icon(Symbols.add_circle),
+              label: const Text('Crear pedido nuevo'),
+            ),
+            const SizedBox(height: 14),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Agregar a un pedido existente',
+                style: theme.textTheme.labelMedium,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(context).height * 0.4,
+              ),
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: openOrders.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
+                itemBuilder: (ctx, i) {
+                  final o = openOrders[i];
+                  return _OpenOrderTile(
+                    order: o,
+                    onTap: () => Navigator.of(context).pop(
+                      (forceNew: false, targetOrderId: o.id),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(null),
+              child: const Text('Cancelar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OpenOrderTile extends StatelessWidget {
+  const _OpenOrderTile({required this.order, required this.onTap});
+  final SellerOrder order;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final itemsText = order.items
+        .map((i) => '${i.productName} x${i.quantity}')
+        .join(', ');
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.black12),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  '#${order.id}',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _statusColor(order.status).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _statusLabel(order.status),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: _statusColor(order.status),
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  money(order.total),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            if (itemsText.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                itemsText,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  static String _statusLabel(SellerOrderStatus s) => switch (s) {
+        SellerOrderStatus.pending => 'Pendiente',
+        SellerOrderStatus.confirmed => 'Confirmado',
+        SellerOrderStatus.shipped => 'Enviado',
+        SellerOrderStatus.inRoute => 'En ruta',
+        SellerOrderStatus.delivered => 'Entregado',
+        SellerOrderStatus.notDelivered => 'No entregado',
+        SellerOrderStatus.postponed => 'Pospuesto',
+        SellerOrderStatus.canceled => 'Cancelado',
+      };
+
+  static Color _statusColor(SellerOrderStatus s) => switch (s) {
+        SellerOrderStatus.pending => const Color(0xFFB7791F),
+        SellerOrderStatus.confirmed => const Color(0xFF2563EB),
+        SellerOrderStatus.shipped => const Color(0xFF2563EB),
+        SellerOrderStatus.inRoute => const Color(0xFF2563EB),
+        SellerOrderStatus.delivered => const Color(0xFF12A150),
+        SellerOrderStatus.notDelivered => const Color(0xFFE11D5B),
+        SellerOrderStatus.postponed => const Color(0xFFB7791F),
+        SellerOrderStatus.canceled => const Color(0xFFE11D5B),
+      };
 }
