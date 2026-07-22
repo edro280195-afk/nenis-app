@@ -84,6 +84,8 @@ class Session {
   bool get canAccessRoutes =>
       hasActiveBusinessRole(const {'Owner', 'Admin', 'Driver'});
 
+  bool get canManageLabels => hasActiveBusinessRole(const {'Owner', 'Admin'});
+
   /// Construye desde el `LoginResponse` del backend (camelCase).
   factory Session.fromLoginJson(Map<String, dynamic> j) {
     final memberships = ((j['memberships'] as List?) ?? const [])

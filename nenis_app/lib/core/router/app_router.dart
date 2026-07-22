@@ -20,6 +20,11 @@ import '../../features/live/screens/seller_live_screen.dart';
 import '../../features/orders/screens/orders_screen.dart';
 import '../../features/orders/screens/order_create_screen.dart';
 import '../../features/orders/screens/order_detail_screen.dart';
+import '../../features/labels/screens/label_batch_print_screen.dart';
+import '../../features/labels/screens/label_template_editor_screen.dart';
+import '../../features/labels/data/label_print_models.dart';
+import '../../features/labels/data/label_template_models.dart';
+import '../../features/inventory/screens/inventory_screen.dart';
 import '../../features/tracking/screens/tracking_screen.dart';
 import '../../features/tracking/screens/order_link_screen.dart';
 import '../../features/points/screens/points_screen.dart';
@@ -60,6 +65,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.listen(authControllerProvider, (_, _) => refresh.value++);
   // Un pedido que llega por deep link también dispara re-evaluación de rutas.
   ref.listen(pendingDeepLinkProvider, (_, _) => refresh.value++);
+  ref.listen(pendingInventoryDeepLinkProvider, (_, _) => refresh.value++);
 
   return GoRouter(
     initialLocation: '/splash',
@@ -84,6 +90,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final pendingToken = ref.read(pendingDeepLinkProvider);
       final hasPending = pendingToken != null && pendingToken.isNotEmpty;
+      final pendingInventory = ref.read(pendingInventoryDeepLinkProvider);
 
       // Cargando la sesión persistida -> splash (el pendiente se conserva).
       if (auth.isLoading || !auth.hasValue) {
@@ -113,11 +120,35 @@ final routerProvider = Provider<GoRouter>((ref) {
         return loc == target ? null : target;
       }
 
+      if (pendingInventory != null) {
+        final ownsBusiness = session.memberships.any(
+          (membership) => membership.businessId == pendingInventory.businessId,
+        );
+        if (!ownsBusiness) return '/home';
+        if (session.activeBusinessId != pendingInventory.businessId) {
+          ref
+              .read(authControllerProvider.notifier)
+              .setActiveBusiness(pendingInventory.businessId);
+        }
+        final target =
+            '/seller/inventory?tag=${Uri.encodeComponent(pendingInventory.token)}';
+        final isTarget =
+            loc == '/seller/inventory' &&
+            state.uri.queryParameters['tag'] == pendingInventory.token;
+        return isTarget ? null : target;
+      }
+
       // Restringir rutas de gestión solo a vendedoras (miembros de negocio).
-      if ((loc == '/routes' || loc == '/clients') && !session.hasMembership) {
+      if ((loc == '/routes' ||
+              loc == '/clients' ||
+              loc.startsWith('/seller/')) &&
+          !session.hasMembership) {
         return '/home';
       }
       if (loc == '/routes' && !session.canAccessRoutes) return '/home';
+      if (loc == '/seller/labels/editor' && !session.canManageLabels) {
+        return '/seller/inventory';
+      }
 
       // Recién confirmada por WhatsApp y sin negocio propio -> a reclamar perfil.
       if (loc == '/confirm' && !session.hasMembership) return '/claim';
@@ -331,6 +362,34 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        path: '/seller/labels',
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: const LabelBatchPrintScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/seller/labels/editor',
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: LabelTemplateEditorScreen(
+            kind: LabelTemplateKind.fromApi(
+              state.uri.queryParameters['kind'] ?? 'OrderPackage',
+            ),
+            mediaSize: LabelMediaSize.fromApi(
+              state.uri.queryParameters['mediaSize'] ?? 'Shipping4x6',
+            ),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/seller/inventory',
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: InventoryScreen(tagToken: state.uri.queryParameters['tag']),
+        ),
+      ),
+      GoRoute(
         path: '/seller/settings/profile',
         pageBuilder: (context, state) => _pageTransition(
           key: state.pageKey,
@@ -388,8 +447,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/seller/live',
-        pageBuilder: (context, state) =>
-            _pageTransition(key: state.pageKey, child: const SellerLiveScreen()),
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: const SellerLiveScreen(),
+        ),
       ),
       GoRoute(
         path: '/addresses',

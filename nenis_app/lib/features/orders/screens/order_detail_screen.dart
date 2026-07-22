@@ -10,6 +10,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/slow_load_hint.dart';
+import '../../labels/screens/order_label_section.dart';
 import '../data/seller_order_message.dart';
 import '../data/seller_orders_models.dart';
 import '../data/seller_orders_repository.dart';
@@ -348,6 +349,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                       _DetailHead(order: o),
                       _PipelineSection(order: o, onTap: _setStatus),
                       _DeliverySection(order: o, onChange: _setDelivery),
+                      OrderLabelSection(orderId: _id),
                       _ProductsSection(
                         order: o,
                         showAddItem: _showAddItem,

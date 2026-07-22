@@ -99,31 +99,60 @@ class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.fromLTRB(22, 6, 22, 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
-                        RichText(
-                          text: TextSpan(
-                            style: AppTextStyles.h1.copyWith(fontSize: 27),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const TextSpan(text: 'Pedidos '),
-                              TextSpan(
-                                text: 'recibidos',
-                                style: AppTextStyles.h1.copyWith(
-                                  fontSize: 27,
-                                  color: AppColors.neniDeep,
-                                  fontStyle: FontStyle.italic,
-                                  fontWeight: FontWeight.w600,
+                              RichText(
+                                text: TextSpan(
+                                  style: AppTextStyles.h1.copyWith(
+                                    fontSize: 27,
+                                  ),
+                                  children: [
+                                    const TextSpan(text: 'Pedidos '),
+                                    TextSpan(
+                                      text: 'recibidos',
+                                      style: AppTextStyles.h1.copyWith(
+                                        fontSize: 27,
+                                        color: AppColors.neniDeep,
+                                        fontStyle: FontStyle.italic,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Gestiona entregas y cobros de tu negocio.',
+                                style: AppTextStyles.subtitle.copyWith(
+                                  fontSize: 12.5,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Gestiona entregas y cobros de tu negocio.',
-                          style: AppTextStyles.subtitle.copyWith(
-                            fontSize: 12.5,
+                        const SizedBox(width: 10),
+                        Tooltip(
+                          message: 'Imprimir etiquetas',
+                          child: Material(
+                            color: AppColors.surface,
+                            shape: const CircleBorder(),
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: () => context.push('/seller/labels'),
+                              child: const SizedBox(
+                                width: 44,
+                                height: 44,
+                                child: Icon(
+                                  Symbols.print,
+                                  size: 21,
+                                  color: AppColors.neniDeep,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ],

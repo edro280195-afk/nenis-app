@@ -43,6 +43,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NFCReaderUsageDescription</key>
+	<string>Usamos NFC para abrir y vincular cajas de tu inventario.</string>
 	<key>FacebookAppID</key>
 	<string>1427323549158529</string>
 	<key>FacebookClientToken</key>

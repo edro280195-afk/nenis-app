@@ -31,6 +31,32 @@ class PendingDeepLink extends Notifier<String?> {
 final pendingDeepLinkProvider =
     NotifierProvider<PendingDeepLink, String?>(PendingDeepLink.new);
 
+/// Destino de una tarjeta NFC de bodega. El token es opaco y el negocio se
+/// incluye para seleccionar la tienda correcta antes de consultar la caja.
+class PendingInventoryTag {
+  const PendingInventoryTag({required this.businessId, required this.token});
+
+  final int businessId;
+  final String token;
+}
+
+class PendingInventoryDeepLink extends Notifier<PendingInventoryTag?> {
+  @override
+  PendingInventoryTag? build() => null;
+
+  void set(PendingInventoryTag link) {
+    if (link.token.isEmpty) return;
+    state = link;
+  }
+
+  void clear() => state = null;
+}
+
+final pendingInventoryDeepLinkProvider =
+    NotifierProvider<PendingInventoryDeepLink, PendingInventoryTag?>(
+      PendingInventoryDeepLink.new,
+    );
+
 /// Extrae el `accessToken` de una URL de pedido. Soporta el short-link
 /// `/o/{token}` y la ruta larga `/pedido/{token}`, con o sin dominio y con el
 /// scheme propio `nenis://o/{token}`.
@@ -61,6 +87,29 @@ int? extractStoreBusinessId(Uri uri) {
   }
   if (uri.host == 'store' && segments.isNotEmpty) {
     return int.tryParse(segments.first.trim());
+  }
+  return null;
+}
+
+/// Extrae `/caja/{businessId}/{token}` y `nenis://caja/{businessId}/{token}`.
+/// El identificador físico NFC nunca es parte de este enlace: sólo se envía al
+/// servidor durante la vinculación para impedir que una tarjeta se reasigne.
+PendingInventoryTag? extractInventoryTag(Uri uri) {
+  final segments = uri.pathSegments;
+  for (var i = 0; i < segments.length - 2; i++) {
+    if (segments[i] != 'caja') continue;
+    final businessId = int.tryParse(segments[i + 1].trim());
+    final token = segments[i + 2].trim();
+    if (businessId != null && businessId > 0 && token.isNotEmpty) {
+      return PendingInventoryTag(businessId: businessId, token: token);
+    }
+  }
+  if (uri.host == 'caja' && segments.length >= 2) {
+    final businessId = int.tryParse(segments[0].trim());
+    final token = segments[1].trim();
+    if (businessId != null && businessId > 0 && token.isNotEmpty) {
+      return PendingInventoryTag(businessId: businessId, token: token);
+    }
   }
   return null;
 }
@@ -176,6 +225,12 @@ class DeepLinkService {
     final token = extractOrderToken(uri);
     if (token != null) {
       await _persistAndSet(token);
+      return;
+    }
+
+    final inventoryTag = extractInventoryTag(uri);
+    if (inventoryTag != null) {
+      _ref.read(pendingInventoryDeepLinkProvider.notifier).set(inventoryTag);
       return;
     }
 

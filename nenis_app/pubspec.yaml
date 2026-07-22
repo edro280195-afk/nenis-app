@@ -59,6 +59,11 @@ dependencies:
   webview_flutter: ^4.14.1
   image_picker: ^1.2.3
   share_plus: ^13.2.0
+  barcode: ^2.2.9
+  pdf: ^3.13.0
+  printing: ^5.15.0
+  nfc_manager: ^4.2.1
+  nfc_manager_ndef: ^1.1.0
 
 dev_dependencies:
   flutter_test:
@@ -85,6 +90,8 @@ flutter:
 
   assets:
     - assets/branding/nenis-mark.png
+    - assets/fonts/Poppins-Regular.ttf
+    - assets/fonts/Poppins-Bold.ttf
 
 flutter_launcher_icons:
   android: true
