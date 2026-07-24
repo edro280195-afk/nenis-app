@@ -61,10 +61,14 @@ String buildSellerOrderMessage(SellerOrder order) {
 
   lines
     ..add('')
-    ..add('Cualquier duda quedamos al pendiente. \u{2764}\u{FE0F}\u{2728}');
+    ..add('📲 *Rastrea tu paquete y descarga la App de Clientas:*')
+    ..add(link)
+    ..add('')
+    ..add('Cualquier duda quedamos al pendiente. ❤️✨');
 
   return lines.join('\n');
 }
+
 
 String? _formatSpanishDate(DateTime? date) {
   if (date == null) return null;

@@ -97,7 +97,8 @@ class _SellerTandasCommandScreenState
       _toast('Esta tanda no tiene enlace público disponible.');
       return;
     }
-    final url = '${AppConfig.apiBaseUrl}/api/public-tanda/$token';
+    final url = '${AppConfig.webAdminBaseUrl}/tanda-view/$token';
+
     await Clipboard.setData(ClipboardData(text: url));
     _toast('Enlace público copiado.');
   }
@@ -2522,14 +2523,17 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
 
   Future<void> _submit() async {
     final client = _selectedClient;
+    final customName = _searchCtrl.text.trim();
     final turn = _selectedTurn;
-    if (client == null || turn == null) return;
+    if (client == null && customName.isEmpty) return;
+    if (turn == null) return;
     setState(() => _saving = true);
     try {
       await widget.onSubmit(
         AddTandaParticipantRequest(
           tandaId: widget.tanda.id,
-          customerId: client.id,
+          customerId: client?.id ?? 0,
+          customerName: client == null ? customName : null,
           assignedTurn: turn,
           variant: _variantCtrl.text.trim().isEmpty
               ? null
@@ -2545,6 +2549,14 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
   @override
   Widget build(BuildContext context) {
     final openTurns = _openTurns;
+    final customSearchName = _searchCtrl.text.trim();
+    final canSubmitCustom = _selectedClient == null && customSearchName.isNotEmpty;
+    final submitLabel = _saving
+        ? 'Inscribiendo...'
+        : canSubmitCustom
+            ? 'Crear e inscribir a "$customSearchName"'
+            : 'Inscribir clienta';
+
     return _SheetScaffold(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -2567,7 +2579,7 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
               controller: _searchCtrl,
               onChanged: (_) => setState(() {}),
               decoration: _inputDecoration(
-                hint: 'Buscar clienta',
+                hint: 'Buscar o escribir nombre de clienta',
                 prefixIcon: const Icon(Symbols.search, size: 20),
               ),
             ),
@@ -2582,11 +2594,23 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
                     selected: client.id == _selectedClient?.id,
                     onSelected: (_) => setState(() => _selectedClient = client),
                   ),
+                if (customSearchName.isNotEmpty &&
+                    !_availableClients.any((c) =>
+                        c.label.toLowerCase() == customSearchName.toLowerCase()))
+                  ActionChip(
+                    avatar: const Icon(Symbols.person_add, size: 16),
+                    label: Text('+ Crear "$customSearchName"'),
+                    backgroundColor: AppColors.lavender.withValues(alpha: 0.15),
+                    onPressed: () => setState(() {
+                      _selectedClient = null;
+                    }),
+                  ),
               ],
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<int>(
               initialValue: _selectedTurn,
+
               decoration: _inputDecoration(),
               items: openTurns
                   .map(
@@ -2613,9 +2637,9 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
             ),
             const SizedBox(height: 18),
             PillButton(
-              label: _saving ? 'Inscribiendo...' : 'Inscribir clienta',
+              label: submitLabel,
               icon: Symbols.person_add,
-              onPressed: _saving || _selectedClient == null ? null : _submit,
+              onPressed: _saving || (_selectedClient == null && customSearchName.isEmpty) ? null : _submit,
             ),
           ],
         ],
