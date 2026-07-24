@@ -222,6 +222,7 @@ class RouteCandidate {
     this.latitude,
     this.longitude,
     this.badge,
+    this.packageCount = 0,
   });
 
   final String key;
@@ -236,6 +237,7 @@ class RouteCandidate {
   final double? longitude;
   final double total;
   final String? badge;
+  final int packageCount;
 
   bool get hasCoordinates => latitude != null && longitude != null;
   bool get isOrder => orderId != null;
@@ -261,6 +263,7 @@ class RouteCandidate {
       longitude: _dn(j['clientLongitude']),
       total: _d(j['total']),
       badge: j['type'] as String?,
+      packageCount: _i(j['packageCount'] ?? j['totalPackages']),
     );
   }
 

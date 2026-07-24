@@ -141,83 +141,12 @@ class _OrderLabelSectionState extends ConsumerState<OrderLabelSection> {
   }
 
   Future<int?> _askPackageCount() async {
-    final controller = TextEditingController(text: '1');
-    final count = await showModalBottomSheet<int>(
+    return showModalBottomSheet<int>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (sheetContext) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
-        ),
-        child: SafeArea(
-          top: false,
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(22, 10, 22, 24),
-            decoration: const BoxDecoration(
-              color: AppColors.surfaceCream,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 38,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.line,
-                      borderRadius: AppRadii.pillRadius,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  '¿Cuántas bolsas lleva?',
-                  style: AppTextStyles.h1.copyWith(fontSize: 22),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  'Crearemos bolsas reales; cada una tendrá su propio QR.',
-                  style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
-                ),
-                const SizedBox(height: 18),
-                TextField(
-                  controller: controller,
-                  autofocus: true,
-                  keyboardType: TextInputType.number,
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.h1.copyWith(fontSize: 26),
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: AppColors.surface,
-                    hintText: '1',
-                    border: OutlineInputBorder(
-                      borderRadius: AppRadii.fieldRadius,
-                      borderSide: const BorderSide(color: AppColors.lineSoft),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                PillButton(
-                  label: 'Crear bolsas',
-                  icon: Symbols.inventory_2,
-                  onPressed: () {
-                    final value = int.tryParse(controller.text.trim());
-                    if (value != null && value > 0 && value <= 100) {
-                      Navigator.of(sheetContext).pop(value);
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      builder: (_) => const _PackageCountSheet(),
     );
-    controller.dispose();
-    return count;
   }
 
   @override
@@ -266,6 +195,94 @@ class _OrderLabelSectionState extends ConsumerState<OrderLabelSection> {
       ),
     );
   }
+}
+
+class _PackageCountSheet extends StatefulWidget {
+  const _PackageCountSheet();
+
+  @override
+  State<_PackageCountSheet> createState() => _PackageCountSheetState();
+}
+
+class _PackageCountSheetState extends State<_PackageCountSheet> {
+  final TextEditingController _controller = TextEditingController(text: '1');
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final value = int.tryParse(_controller.text.trim());
+    if (value == null || value < 1 || value > 100) return;
+    Navigator.of(context).pop(value);
+  }
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+    child: SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(22, 10, 22, 24),
+        decoration: const BoxDecoration(
+          color: AppColors.surfaceCream,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 38,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.line,
+                  borderRadius: AppRadii.pillRadius,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              '¿Cuántas bolsas lleva?',
+              style: AppTextStyles.h1.copyWith(fontSize: 22),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              'Crearemos bolsas reales; cada una tendrá su propio QR.',
+              style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+            ),
+            const SizedBox(height: 18),
+            TextField(
+              controller: _controller,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.h1.copyWith(fontSize: 26),
+              onSubmitted: (_) => _submit(),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: AppColors.surface,
+                hintText: '1',
+                border: OutlineInputBorder(
+                  borderRadius: AppRadii.fieldRadius,
+                  borderSide: const BorderSide(color: AppColors.lineSoft),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            PillButton(
+              label: 'Crear bolsas',
+              icon: Symbols.inventory_2,
+              onPressed: _submit,
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _PackagesContent extends StatelessWidget {

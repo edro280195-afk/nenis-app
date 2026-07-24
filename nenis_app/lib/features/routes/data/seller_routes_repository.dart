@@ -136,6 +136,22 @@ class SellerRoutesRepository {
     }
   }
 
+  Future<void> generatePackages({
+    required int orderId,
+    required int count,
+  }) async {
+    try {
+      await _dio.post(
+        '/api/orders/$orderId/packages/generate',
+        data: {'count': count},
+      );
+    } catch (e) {
+      throw SellerRoutesException(
+        _friendly(e, 'No pudimos crear las bolsas del pedido.'),
+      );
+    }
+  }
+
   bool _isRouteEligibleOrder(Map<String, dynamic> order) {
     final status = (order['status'] ?? '').toString().toLowerCase();
     final orderType = (order['orderType'] ?? '').toString().toLowerCase();

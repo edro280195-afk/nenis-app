@@ -5,6 +5,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/platform/google_maps_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
@@ -14,6 +15,15 @@ import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/segmented.dart';
 import '../data/seller_routes_models.dart';
 import '../data/seller_routes_repository.dart';
+
+enum _RouteCandidateFilter {
+  all,
+  selected,
+  noPackages,
+  noCoords,
+  orders,
+  tandas,
+}
 
 class SellerRoutesScreen extends ConsumerStatefulWidget {
   const SellerRoutesScreen({super.key});
@@ -35,12 +45,24 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
   int? _optimizingRouteId;
   int? _savingOrderRouteId;
   String? _feedback;
+  final _candidateSearchController = TextEditingController();
+  String _candidateQuery = '';
+  _RouteCandidateFilter _candidateFilter = _RouteCandidateFilter.all;
+  int? _addingPackagesOrderId;
+  int? _generatingPackagesOrderId;
+  int _packagesToAdd = 1;
 
   final List<SegmentedItem> _tabs = const [
     SegmentedItem(label: 'Armar', icon: Symbols.add_road),
     SegmentedItem(label: 'Rutas', icon: Symbols.map),
     SegmentedItem(label: 'Historial', icon: Symbols.history),
   ];
+
+  @override
+  void dispose() {
+    _candidateSearchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -204,20 +226,28 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
   Widget _buildBuilder(SellerRoutesWorkspace workspace) {
     final selected = _selectedCandidates(workspace);
     final noCoords = selected.where((c) => !c.hasCoordinates).length;
+    final visibleCandidates = _visibleCandidates(workspace);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SectionTitle(
-          title: 'Pedidos y tandas disponibles',
+          title: 'Elige a quién entregar',
           trailing: TextButton.icon(
-            onPressed: workspace.candidates.isEmpty
+            onPressed: visibleCandidates.isEmpty
                 ? null
-                : () => _selectAllCandidates(workspace),
+                : () => _selectVisibleCandidates(visibleCandidates),
             icon: const Icon(Symbols.checklist, size: 18),
-            label: const Text('Seleccionar'),
+            label: const Text('Visibles'),
           ),
         ),
+        Text(
+          'Busca una clienta y agrega únicamente sus pedidos. Las bolsas se preparan sin salir de esta pantalla.',
+          style: AppTextStyles.subtitle.copyWith(fontSize: 12),
+        ),
+        const SizedBox(height: 12),
+        _buildCandidateFilters(workspace),
+        const SizedBox(height: 12),
         if (workspace.candidates.isEmpty)
           const _EmptyState(
             icon: Symbols.inventory_2,
@@ -225,8 +255,14 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
             message:
                 'Cuando haya pedidos o tandas disponibles aparecerán aquí.',
           )
+        else if (visibleCandidates.isEmpty)
+          const _EmptyState(
+            icon: Symbols.person_search,
+            title: 'No encontramos clientas',
+            message: 'Prueba con otro nombre, teléfono o filtro.',
+          )
         else
-          ...workspace.candidates.map(_buildCandidateCard),
+          ...visibleCandidates.map(_buildCandidateCard),
         const SizedBox(height: 10),
         _BuilderActionBar(
           selectedCount: selected.length,
@@ -247,6 +283,116 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
         ],
       ],
     );
+  }
+
+  Widget _buildCandidateFilters(SellerRoutesWorkspace workspace) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: _candidateSearchController,
+          onChanged: (value) => setState(() => _candidateQuery = value),
+          textInputAction: TextInputAction.search,
+          decoration: InputDecoration(
+            hintText: 'Buscar clienta, teléfono o pedido',
+            prefixIcon: const Icon(Symbols.search),
+            suffixIcon: _candidateQuery.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Limpiar búsqueda',
+                    icon: const Icon(Symbols.close),
+                    onPressed: () {
+                      _candidateSearchController.clear();
+                      setState(() => _candidateQuery = '');
+                    },
+                  ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _candidateFilterChip(
+                label: 'Todas (${workspace.candidates.length})',
+                filter: _RouteCandidateFilter.all,
+              ),
+              _candidateFilterChip(
+                label: 'Elegidas (${_selectedCandidateKeys.length})',
+                filter: _RouteCandidateFilter.selected,
+              ),
+              _candidateFilterChip(
+                label: 'Sin bolsas',
+                filter: _RouteCandidateFilter.noPackages,
+              ),
+              _candidateFilterChip(
+                label: 'Sin ubicación',
+                filter: _RouteCandidateFilter.noCoords,
+              ),
+              _candidateFilterChip(
+                label: 'Pedidos',
+                filter: _RouteCandidateFilter.orders,
+              ),
+              _candidateFilterChip(
+                label: 'Tandas',
+                filter: _RouteCandidateFilter.tandas,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _candidateFilterChip({
+    required String label,
+    required _RouteCandidateFilter filter,
+  }) {
+    final selected = _candidateFilter == filter;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        label: Text(label),
+        selected: selected,
+        onSelected: (_) => setState(() => _candidateFilter = filter),
+        labelStyle: AppTextStyles.chip.copyWith(
+          color: selected ? AppColors.surface : AppColors.ink2,
+        ),
+        selectedColor: AppColors.neniDeep,
+        backgroundColor: AppColors.surface,
+        side: BorderSide(color: selected ? AppColors.neniDeep : AppColors.line),
+      ),
+    );
+  }
+
+  List<RouteCandidate> _visibleCandidates(SellerRoutesWorkspace workspace) {
+    final query = _candidateQuery.trim().toLowerCase();
+    return workspace.candidates
+        .where((candidate) {
+          final matchesFilter = switch (_candidateFilter) {
+            _RouteCandidateFilter.all => true,
+            _RouteCandidateFilter.selected => _selectedCandidateKeys.contains(
+              candidate.key,
+            ),
+            _RouteCandidateFilter.noPackages =>
+              candidate.isOrder && candidate.packageCount == 0,
+            _RouteCandidateFilter.noCoords => !candidate.hasCoordinates,
+            _RouteCandidateFilter.orders => candidate.isOrder,
+            _RouteCandidateFilter.tandas => !candidate.isOrder,
+          };
+          if (!matchesFilter) return false;
+          if (query.isEmpty) return true;
+
+          final searchable = [
+            candidate.clientName,
+            candidate.phone,
+            candidate.address,
+            candidate.subtitle,
+            candidate.orderId?.toString(),
+          ].whereType<String>().join(' ').toLowerCase();
+          return searchable.contains(query);
+        })
+        .toList(growable: false);
   }
 
   Widget _buildCandidateCard(RouteCandidate candidate) {
@@ -335,6 +481,99 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
                       ),
                   ],
                 ),
+                if (candidate.isOrder) ...[
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Icon(
+                        Symbols.shopping_bag,
+                        size: 16,
+                        color: candidate.packageCount > 0
+                            ? AppColors.statusDeliveredFg
+                            : AppColors.ink3,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          candidate.packageCount == 0
+                              ? 'Aún no tiene bolsas preparadas'
+                              : '${candidate.packageCount} ${candidate.packageCount == 1 ? 'bolsa lista' : 'bolsas listas'}',
+                          style: AppTextStyles.subtitle.copyWith(
+                            fontSize: 11.5,
+                          ),
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => _openPackageAdder(candidate),
+                        icon: const Icon(Symbols.add, size: 16),
+                        label: Text(
+                          candidate.packageCount == 0
+                              ? 'Crear bolsas'
+                              : 'Agregar',
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_addingPackagesOrderId == candidate.orderId)
+                    Container(
+                      margin: const EdgeInsets.only(top: 6),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.lavender.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(AppRadii.smallTile),
+                        border: Border.all(
+                          color: AppColors.lavender.withValues(alpha: 0.26),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            tooltip: 'Quitar una bolsa',
+                            onPressed:
+                                _packagesToAdd <= 1 ||
+                                    _generatingPackagesOrderId ==
+                                        candidate.orderId
+                                ? null
+                                : () => setState(() => _packagesToAdd--),
+                            icon: const Icon(Symbols.remove),
+                          ),
+                          Text(
+                            _packagesToAdd.toString(),
+                            style: AppTextStyles.h2.copyWith(fontSize: 16),
+                          ),
+                          IconButton(
+                            tooltip: 'Agregar una bolsa',
+                            onPressed:
+                                _generatingPackagesOrderId == candidate.orderId
+                                ? null
+                                : () => setState(() => _packagesToAdd++),
+                            icon: const Icon(Symbols.add),
+                          ),
+                          const Spacer(),
+                          TextButton(
+                            onPressed:
+                                _generatingPackagesOrderId == candidate.orderId
+                                ? null
+                                : () => setState(
+                                    () => _addingPackagesOrderId = null,
+                                  ),
+                            child: const Text('Cancelar'),
+                          ),
+                          FilledButton(
+                            onPressed:
+                                _generatingPackagesOrderId == candidate.orderId
+                                ? null
+                                : () => _addPackages(candidate),
+                            child: Text(
+                              _generatingPackagesOrderId == candidate.orderId
+                                  ? 'Creando...'
+                                  : 'Agregar',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
                 if (address != null && address.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   Row(
@@ -456,7 +695,7 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            if (route.driverLink.trim().isNotEmpty) ...[
+            if (_driverLink(route).isNotEmpty) ...[
               Row(
                 children: [
                   Expanded(
@@ -515,7 +754,11 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
             ),
             if (expanded) ...[
               const SizedBox(height: 13),
-              _RouteMapCard(route: route, depot: _depot),
+              _RouteMapCard(
+                route: route,
+                depot: _depot,
+                showRouteLine: route.status != SellerRouteStatus.completed,
+              ),
               const SizedBox(height: 13),
               ...List.generate(
                 draft.length,
@@ -582,13 +825,48 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
     });
   }
 
-  void _selectAllCandidates(SellerRoutesWorkspace workspace) {
+  void _selectVisibleCandidates(Iterable<RouteCandidate> candidates) {
     setState(() {
-      _selectedCandidateKeys
-        ..clear()
-        ..addAll(workspace.candidates.map((c) => c.key));
+      _selectedCandidateKeys.addAll(
+        candidates.map((candidate) => candidate.key),
+      );
       _preview = null;
     });
+  }
+
+  void _openPackageAdder(RouteCandidate candidate) {
+    final orderId = candidate.orderId;
+    if (orderId == null) return;
+    setState(() {
+      _addingPackagesOrderId = orderId;
+      _packagesToAdd = 1;
+    });
+  }
+
+  Future<void> _addPackages(RouteCandidate candidate) async {
+    final orderId = candidate.orderId;
+    if (orderId == null) return;
+
+    setState(() {
+      _generatingPackagesOrderId = orderId;
+      _feedback = null;
+    });
+    try {
+      await ref
+          .read(sellerRoutesRepositoryProvider)
+          .generatePackages(orderId: orderId, count: _packagesToAdd);
+      ref.invalidate(sellerRoutesWorkspaceProvider);
+      if (!mounted) return;
+      setState(() {
+        _addingPackagesOrderId = null;
+        _feedback =
+            '${_packagesToAdd == 1 ? 'Bolsa creada' : '$_packagesToAdd bolsas creadas'} para ${candidate.clientName}.';
+      });
+    } catch (error) {
+      _setError(error, 'No pudimos crear las bolsas del pedido.');
+    } finally {
+      if (mounted) setState(() => _generatingPackagesOrderId = null);
+    }
   }
 
   void _clearSelection() {
@@ -721,7 +999,7 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
   }
 
   Future<void> _copyDriverLink(SellerRoute route) async {
-    final link = route.driverLink.trim();
+    final link = _driverLink(route);
     if (link.isEmpty) {
       _setError('Esta ruta no tiene enlace de chofer.', '');
       return;
@@ -732,7 +1010,7 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
   }
 
   Future<void> _shareDriverLink(SellerRoute route) async {
-    final link = route.driverLink.trim();
+    final link = _driverLink(route);
     if (link.isEmpty) {
       _setError('Esta ruta no tiene enlace de chofer.', '');
       return;
@@ -748,6 +1026,21 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
     }
   }
 
+  String _driverLink(SellerRoute route) {
+    final link = route.driverLink.trim();
+    if (link.isNotEmpty && !_isLegacyRegiBazarLink(link)) return link;
+
+    final token = route.driverToken.trim();
+    return token.isEmpty
+        ? link
+        : '${AppConfig.webAdminBaseUrl}/repartidor/${Uri.encodeComponent(token)}';
+  }
+
+  bool _isLegacyRegiBazarLink(String link) {
+    final host = Uri.tryParse(link)?.host.toLowerCase() ?? '';
+    return host == 'regibazar.com' || host.endsWith('.regibazar.com');
+  }
+
   void _setError(Object error, String fallback) {
     final message = error is SellerRoutesException
         ? error.message
@@ -759,11 +1052,17 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
 }
 
 class _RouteMapCard extends ConsumerWidget {
-  const _RouteMapCard({required this.depot, this.preview, this.route});
+  const _RouteMapCard({
+    required this.depot,
+    this.preview,
+    this.route,
+    this.showRouteLine = true,
+  });
 
   final LatLng depot;
   final RoutePreview? preview;
   final SellerRoute? route;
+  final bool showRouteLine;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -793,7 +1092,9 @@ class _RouteMapCard extends ConsumerWidget {
       ),
     };
 
-    final polylinePoints = _polylinePoints(points);
+    final polylinePoints = showRouteLine
+        ? _polylinePoints(points)
+        : const <LatLng>[];
     final mapsConfigured = ref.watch(googleMapsConfiguredProvider);
     return mapsConfigured.when(
       loading: () => const _MapConfigState(
@@ -913,8 +1214,11 @@ class _GoogleRouteMap extends StatelessWidget {
           },
           myLocationButtonEnabled: false,
           mapToolbarEnabled: false,
-          zoomControlsEnabled: false,
-          liteModeEnabled: true,
+          zoomControlsEnabled: true,
+          zoomGesturesEnabled: true,
+          scrollGesturesEnabled: true,
+          rotateGesturesEnabled: true,
+          liteModeEnabled: false,
         ),
       ),
     );
