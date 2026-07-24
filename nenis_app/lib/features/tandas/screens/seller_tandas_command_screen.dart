@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
@@ -304,6 +306,45 @@ class _SellerTandasCommandScreenState
     );
   }
 
+  Future<void> _sendWhatsAppReminder(
+    SellerTanda tanda,
+    SellerTandaParticipant participant,
+  ) async {
+    try {
+      final repo = ref.read(sellerTandasRepositoryProvider);
+      final reminder = await repo.getWhatsAppReminder(participant.id);
+      final url = reminder['whatsAppUrl'] as String?;
+      if (url == null || url.isEmpty) {
+        _toast('No fue posible generar el enlace de WhatsApp.');
+        return;
+      }
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        final text = reminder['messageText'] as String? ?? '';
+        await Clipboard.setData(ClipboardData(text: text));
+        _toast('Mensaje copiado al portapapeles.');
+      }
+    } catch (e) {
+      _toast(e.toString());
+    }
+  }
+
+  Future<void> _drawTurns(SellerTanda tanda) async {
+    final ok = await _confirm(
+      '🎲 Sorteo de Turnos',
+      '¿Deseas realizar la rifa de turnos para "${tanda.displayName}"? Esto asignará números aleatorios a todas las participantes.',
+    );
+    if (!ok) return;
+    await _run(
+      () => ref
+          .read(sellerTandasControllerProvider.notifier)
+          .drawTurns(tanda),
+      success: '✨ ¡Sorteo de turnos completado exitosamente!',
+    );
+  }
+
   Future<void> _selectTanda(String id, {required bool openDetail}) async {
     final controller = ref.read(sellerTandasControllerProvider.notifier);
     unawaited(controller.selectTanda(id));
@@ -329,9 +370,11 @@ class _SellerTandasCommandScreenState
                 onEditTanda: _editTanda,
                 onAddParticipant: (tanda) => _addParticipant(workspace, tanda),
                 onReorder: _reorderParticipants,
+                onDrawTurns: _drawTurns,
                 onPay: _payParticipant,
                 onUndoPay: _deletePayment,
                 onDeliver: _confirmDelivery,
+                onWhatsApp: _sendWhatsAppReminder,
                 onProcessPenalties: _processPenalties,
                 onEditParticipant: _editParticipant,
               ),
@@ -342,6 +385,7 @@ class _SellerTandasCommandScreenState
       ),
     );
   }
+
 
   List<SellerTanda> _visibleTandas(SellerTandasWorkspace workspace) {
     final query = _searchCtrl.text.trim().toLowerCase();
@@ -1009,9 +1053,11 @@ class _DetailPanel extends StatelessWidget {
     required this.onEditTanda,
     required this.onAddParticipant,
     required this.onReorder,
+    this.onDrawTurns,
     required this.onPay,
     required this.onUndoPay,
     required this.onDeliver,
+    this.onWhatsApp,
     required this.onProcessPenalties,
     required this.onEditParticipant,
   });
@@ -1021,9 +1067,11 @@ class _DetailPanel extends StatelessWidget {
   final ValueChanged<SellerTanda> onEditTanda;
   final ValueChanged<SellerTanda> onAddParticipant;
   final ValueChanged<SellerTanda> onReorder;
+  final ValueChanged<SellerTanda>? onDrawTurns;
   final Future<void> Function(SellerTanda, SellerTandaParticipant) onPay;
   final Future<void> Function(SellerTanda, SellerTandaParticipant) onUndoPay;
   final Future<void> Function(SellerTanda, SellerTandaParticipant) onDeliver;
+  final Future<void> Function(SellerTanda, SellerTandaParticipant)? onWhatsApp;
   final Future<void> Function(SellerTanda) onProcessPenalties;
   final Future<void> Function(SellerTanda, SellerTandaParticipant)
   onEditParticipant;
@@ -1075,6 +1123,7 @@ class _DetailPanel extends StatelessWidget {
               onEdit: () => onEditTanda(tanda),
               onAddParticipant: () => onAddParticipant(tanda),
               onReorder: () => onReorder(tanda),
+              onDrawTurns: onDrawTurns != null ? () => onDrawTurns!(tanda) : null,
             ),
             const SizedBox(height: 14),
             _TandaScoreboard(tanda: tanda),
@@ -1106,6 +1155,7 @@ class _DetailPanel extends StatelessWidget {
                   onPay: () => onPay(tanda, participant),
                   onUndoPay: () => onUndoPay(tanda, participant),
                   onDeliver: () => onDeliver(tanda, participant),
+                  onWhatsApp: onWhatsApp != null ? () => onWhatsApp!(tanda, participant) : null,
                   onEdit: () => onEditParticipant(tanda, participant),
                 ),
                 const SizedBox(height: 10),
@@ -1187,6 +1237,7 @@ class _DetailHeader extends StatelessWidget {
     required this.onEdit,
     required this.onAddParticipant,
     required this.onReorder,
+    this.onDrawTurns,
   });
 
   final SellerTanda tanda;
@@ -1194,6 +1245,7 @@ class _DetailHeader extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onAddParticipant;
   final VoidCallback onReorder;
+  final VoidCallback? onDrawTurns;
 
   @override
   Widget build(BuildContext context) {
@@ -1253,6 +1305,11 @@ class _DetailHeader extends StatelessWidget {
               tooltip: 'Inscribir clienta',
               icon: Symbols.person_add,
               onTap: onAddParticipant,
+            ),
+            _RoundAction(
+              tooltip: 'Sortear turnos 🎲',
+              icon: Symbols.casino,
+              onTap: onDrawTurns,
             ),
             _RoundAction(
               tooltip: 'Reordenar turnos',
@@ -1548,6 +1605,7 @@ class _ParticipantLedgerRow extends StatelessWidget {
     required this.onPay,
     required this.onUndoPay,
     required this.onDeliver,
+    this.onWhatsApp,
     required this.onEdit,
   });
 
@@ -1556,6 +1614,7 @@ class _ParticipantLedgerRow extends StatelessWidget {
   final VoidCallback onPay;
   final VoidCallback onUndoPay;
   final VoidCallback onDeliver;
+  final VoidCallback? onWhatsApp;
   final VoidCallback onEdit;
 
   @override
@@ -1646,6 +1705,12 @@ class _ParticipantLedgerRow extends StatelessWidget {
                 onTap: canDeliver ? onDeliver : null,
                 muted: !canDeliver,
               ),
+              if (onWhatsApp != null)
+                _MiniPillAction(
+                  label: 'WhatsApp 💬',
+                  icon: Symbols.send,
+                  onTap: onWhatsApp,
+                ),
             ],
           ),
         ],
@@ -1653,6 +1718,7 @@ class _ParticipantLedgerRow extends StatelessWidget {
     );
   }
 }
+
 
 class _WeekStrip extends StatelessWidget {
   const _WeekStrip({required this.tanda, required this.participant});

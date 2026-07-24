@@ -25,6 +25,20 @@ enum _RouteCandidateFilter {
   tandas,
 }
 
+class _CandidateGroup {
+  const _CandidateGroup({
+    required this.key,
+    required this.clientName,
+    required this.phone,
+    required this.candidates,
+  });
+
+  final String key;
+  final String clientName;
+  final String? phone;
+  final List<RouteCandidate> candidates;
+}
+
 class SellerRoutesScreen extends ConsumerStatefulWidget {
   const SellerRoutesScreen({super.key});
 
@@ -51,6 +65,7 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
   int? _addingPackagesOrderId;
   int? _generatingPackagesOrderId;
   int _packagesToAdd = 1;
+  final Set<String> _expandedClientGroups = <String>{};
 
   final List<SegmentedItem> _tabs = const [
     SegmentedItem(label: 'Armar', icon: Symbols.add_road),
@@ -129,8 +144,6 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
       children: [
         _buildHeader(),
         const SizedBox(height: 14),
-        _buildSummary(workspace),
-        const SizedBox(height: 12),
         SegmentedControl(
           items: _tabs,
           selectedIndex: _selectedIndex,
@@ -159,10 +172,10 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Rutas de reparto', style: AppTextStyles.display),
+              Text('Rutas', style: AppTextStyles.display),
               const SizedBox(height: 4),
               Text(
-                'Arma, optimiza y revisa recorridos con datos del API.',
+                'Planea, prepara y comparte cada entrega con claridad.',
                 style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
               ),
             ],
@@ -176,61 +189,17 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
     );
   }
 
-  Widget _buildSummary(SellerRoutesWorkspace workspace) {
-    final selected = _selectedCandidates(workspace);
-    final withCoords = workspace.candidates
-        .where((c) => c.hasCoordinates)
-        .length;
-    final pendingMoney = workspace.candidates.fold<double>(
-      0,
-      (sum, c) => sum + c.total,
-    );
-
-    return Row(
-      children: [
-        Expanded(
-          child: _KpiTile(
-            label: 'Candidatos',
-            value: workspace.candidates.length.toString(),
-            color: AppColors.neniDeep,
-          ),
-        ),
-        const SizedBox(width: 9),
-        Expanded(
-          child: _KpiTile(
-            label: 'Con mapa',
-            value: withCoords.toString(),
-            color: AppColors.statusDeliveredFg,
-          ),
-        ),
-        const SizedBox(width: 9),
-        Expanded(
-          child: _KpiTile(
-            label: 'Elegidos',
-            value: selected.length.toString(),
-            color: AppColors.statusRouteFg,
-          ),
-        ),
-        const SizedBox(width: 9),
-        Expanded(
-          child: _KpiTile(
-            label: 'Por ruta',
-            value: routeMoney(pendingMoney),
-            color: AppColors.gold,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildBuilder(SellerRoutesWorkspace workspace) {
     final selected = _selectedCandidates(workspace);
     final noCoords = selected.where((c) => !c.hasCoordinates).length;
     final visibleCandidates = _visibleCandidates(workspace);
+    final groups = _groupVisibleCandidates(visibleCandidates);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _RouteBuildProgress(activeStep: _preview == null ? 1 : 2),
+        const SizedBox(height: 18),
         _SectionTitle(
           title: 'Elige a quién entregar',
           trailing: TextButton.icon(
@@ -262,17 +231,20 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
             message: 'Prueba con otro nombre, teléfono o filtro.',
           )
         else
-          ...visibleCandidates.map(_buildCandidateCard),
+          ...groups.map(_buildCandidateGroup),
         const SizedBox(height: 10),
         _BuilderActionBar(
           selectedCount: selected.length,
           noCoordsCount: noCoords,
+          hasPreview: _preview != null,
           previewing: _previewing,
           saving: _savingRoute,
           onPreview: selected.isEmpty
               ? null
               : () => _previewSelected(workspace),
-          onCreate: selected.isEmpty ? null : () => _createRoute(workspace),
+          onCreate: selected.isEmpty || _preview == null
+              ? null
+              : () => _confirmAndCreateRoute(workspace),
           onClear: selected.isEmpty ? null : _clearSelection,
         ),
         if (_preview != null) ...[
@@ -395,7 +367,112 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
         .toList(growable: false);
   }
 
-  Widget _buildCandidateCard(RouteCandidate candidate) {
+  List<_CandidateGroup> _groupVisibleCandidates(
+    List<RouteCandidate> candidates,
+  ) {
+    final grouped = <String, List<RouteCandidate>>{};
+    for (final candidate in candidates) {
+      final phone = candidate.phone?.trim() ?? '';
+      final key = '${candidate.clientName.trim().toLowerCase()}|$phone';
+      grouped.putIfAbsent(key, () => <RouteCandidate>[]).add(candidate);
+    }
+
+    return grouped.entries
+        .map(
+          (entry) => _CandidateGroup(
+            key: entry.key,
+            clientName: entry.value.first.clientName,
+            phone: entry.value.first.phone,
+            candidates: entry.value,
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  Widget _buildCandidateGroup(_CandidateGroup group) {
+    final expanded = _expandedClientGroups.contains(group.key);
+    final selectedCount = group.candidates
+        .where((candidate) => _selectedCandidateKeys.contains(candidate.key))
+        .length;
+    final itemLabel = group.candidates.length == 1
+        ? 'pedido/tanda'
+        : 'pedidos/tandas';
+
+    return Container(
+      key: ValueKey<String>('client-group-${group.key}'),
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadii.cardRadius,
+        border: Border.all(
+          color: expanded || selectedCount > 0
+              ? AppColors.neni.withValues(alpha: 0.42)
+              : AppColors.line,
+        ),
+        boxShadow: AppShadows.small,
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            borderRadius: AppRadii.cardRadius,
+            onTap: () => setState(() {
+              if (expanded) {
+                _expandedClientGroups.remove(group.key);
+              } else {
+                _expandedClientGroups.add(group.key);
+              }
+            }),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 13, 12, 13),
+              child: Row(
+                children: [
+                  _Avatar(
+                    initial: group.clientName.trim().isEmpty
+                        ? '?'
+                        : group.clientName.trim()[0].toUpperCase(),
+                    selected: selectedCount > 0,
+                  ),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          group.clientName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.h2.copyWith(fontSize: 14.5),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${group.candidates.length} $itemLabel${selectedCount > 0 ? ' · $selectedCount seleccionado${selectedCount == 1 ? '' : 's'}' : ''}${(group.phone ?? '').trim().isEmpty ? '' : ' · ${group.phone}'}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.subtitle.copyWith(
+                            fontSize: 11.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    expanded ? Symbols.expand_less : Symbols.expand_more,
+                    color: AppColors.neniDeep,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (expanded) ...[
+            Divider(height: 1, color: AppColors.neni.withValues(alpha: 0.22)),
+            ...group.candidates.map(_buildCandidateRow),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCandidateRow(RouteCandidate candidate) {
     final selected = _selectedCandidateKeys.contains(candidate.key);
     final address = candidate.address?.trim();
 
@@ -837,15 +914,115 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
   void _openPackageAdder(RouteCandidate candidate) {
     final orderId = candidate.orderId;
     if (orderId == null) return;
-    setState(() {
-      _addingPackagesOrderId = orderId;
-      _packagesToAdd = 1;
-    });
+
+    var packageCount = 1;
+    var isCreating = false;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: AppColors.surface,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) => SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              22,
+              8,
+              22,
+              22 + MediaQuery.viewInsetsOf(context).bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Crear bolsas',
+                  style: AppTextStyles.display.copyWith(fontSize: 23),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Se agregarán $packageCount ${packageCount == 1 ? 'bolsa nueva' : 'bolsas nuevas'} al pedido #$orderId. Las ${candidate.packageCount} actuales no se modifican.',
+                  style: AppTextStyles.subtitle.copyWith(fontSize: 13),
+                ),
+                const SizedBox(height: 22),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton.filledTonal(
+                      tooltip: 'Restar una bolsa',
+                      onPressed: isCreating || packageCount == 1
+                          ? null
+                          : () => setSheetState(() => packageCount--),
+                      icon: const Icon(Symbols.remove),
+                    ),
+                    SizedBox(
+                      width: 74,
+                      child: Text(
+                        packageCount.toString(),
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.display.copyWith(fontSize: 29),
+                      ),
+                    ),
+                    IconButton.filledTonal(
+                      tooltip: 'Sumar una bolsa',
+                      onPressed: isCreating
+                          ? null
+                          : () => setSheetState(() => packageCount++),
+                      icon: const Icon(Symbols.add),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 22),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: isCreating
+                            ? null
+                            : () => Navigator.of(sheetContext).pop(),
+                        child: const Text('Cancelar'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton(
+                        onPressed: isCreating
+                            ? null
+                            : () async {
+                                setSheetState(() => isCreating = true);
+                                final created = await _addPackages(
+                                  candidate,
+                                  count: packageCount,
+                                );
+                                if (!sheetContext.mounted) return;
+                                if (created) Navigator.of(sheetContext).pop();
+                                if (sheetContext.mounted) {
+                                  setSheetState(() => isCreating = false);
+                                }
+                              },
+                        child: Text(
+                          isCreating
+                              ? 'Creando...'
+                              : 'Crear $packageCount ${packageCount == 1 ? 'bolsa' : 'bolsas'}',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
-  Future<void> _addPackages(RouteCandidate candidate) async {
+  Future<bool> _addPackages(RouteCandidate candidate, {int? count}) async {
     final orderId = candidate.orderId;
-    if (orderId == null) return;
+    if (orderId == null) return false;
+    final packageCount = count ?? _packagesToAdd;
 
     setState(() {
       _generatingPackagesOrderId = orderId;
@@ -854,16 +1031,18 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
     try {
       await ref
           .read(sellerRoutesRepositoryProvider)
-          .generatePackages(orderId: orderId, count: _packagesToAdd);
+          .generatePackages(orderId: orderId, count: packageCount);
       ref.invalidate(sellerRoutesWorkspaceProvider);
-      if (!mounted) return;
+      if (!mounted) return false;
       setState(() {
         _addingPackagesOrderId = null;
         _feedback =
-            '${_packagesToAdd == 1 ? 'Bolsa creada' : '$_packagesToAdd bolsas creadas'} para ${candidate.clientName}.';
+            '${packageCount == 1 ? 'Bolsa creada' : '$packageCount bolsas creadas'} para ${candidate.clientName}.';
       });
+      return true;
     } catch (error) {
       _setError(error, 'No pudimos crear las bolsas del pedido.');
+      return false;
     } finally {
       if (mounted) setState(() => _generatingPackagesOrderId = null);
     }
@@ -919,6 +1098,77 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
       _setError(e, 'No pudimos crear la ruta.');
     } finally {
       if (mounted) setState(() => _savingRoute = false);
+    }
+  }
+
+  Future<void> _confirmAndCreateRoute(SellerRoutesWorkspace workspace) async {
+    final selected = _selectedCandidates(workspace);
+    final withoutPackages = selected
+        .where((candidate) => candidate.isOrder && candidate.packageCount == 0)
+        .toList(growable: false);
+    final withoutCoordinates = selected
+        .where((candidate) => !candidate.hasCoordinates)
+        .toList(growable: false);
+
+    if (withoutPackages.isEmpty && withoutCoordinates.isEmpty) {
+      await _createRoute(workspace);
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Revisa antes de crear'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'La ruta puede crearse, pero estas entregas necesitan atención:',
+            ),
+            if (withoutPackages.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                '${withoutPackages.length} ${withoutPackages.length == 1 ? 'pedido sin bolsas' : 'pedidos sin bolsas'}',
+                style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700),
+              ),
+              Text(
+                withoutPackages
+                    .map((candidate) => candidate.clientName)
+                    .join(', '),
+                style: AppTextStyles.subtitle.copyWith(fontSize: 12),
+              ),
+            ],
+            if (withoutCoordinates.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                '${withoutCoordinates.length} ${withoutCoordinates.length == 1 ? 'parada sin ubicación' : 'paradas sin ubicación'}',
+                style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700),
+              ),
+              Text(
+                withoutCoordinates
+                    .map((candidate) => candidate.clientName)
+                    .join(', '),
+                style: AppTextStyles.subtitle.copyWith(fontSize: 12),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Volver a revisar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Crear de todos modos'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await _createRoute(workspace);
     }
   }
 
@@ -1353,10 +1603,84 @@ class _PreviewCard extends StatelessWidget {
   }
 }
 
+class _RouteBuildProgress extends StatelessWidget {
+  const _RouteBuildProgress({required this.activeStep});
+
+  final int activeStep;
+
+  @override
+  Widget build(BuildContext context) {
+    const labels = ['Seleccionar', 'Preparar y revisar', 'Crear y compartir'];
+    return Row(
+      children: List.generate(labels.length, (index) {
+        final step = index + 1;
+        final complete = step < activeStep;
+        final active = step == activeStep;
+        final color = complete || active ? AppColors.neniDeep : AppColors.line;
+        return Expanded(
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  if (index > 0)
+                    Expanded(
+                      child: Container(
+                        height: 2,
+                        color: step <= activeStep
+                            ? AppColors.neniDeep
+                            : AppColors.line,
+                      ),
+                    ),
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: active
+                          ? const Color(0xFFFFF5FA)
+                          : AppColors.surface,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: color, width: 2),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      complete ? '✓' : '$step',
+                      style: AppTextStyles.chip.copyWith(color: color),
+                    ),
+                  ),
+                  if (index < labels.length - 1)
+                    Expanded(
+                      child: Container(
+                        height: 2,
+                        color: step < activeStep
+                            ? AppColors.neniDeep
+                            : AppColors.line,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                labels[index],
+                textAlign: TextAlign.center,
+                style: AppTextStyles.subtitle.copyWith(
+                  fontSize: 10,
+                  color: active || complete ? AppColors.ink : AppColors.ink3,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+}
+
 class _BuilderActionBar extends StatelessWidget {
   const _BuilderActionBar({
     required this.selectedCount,
     required this.noCoordsCount,
+    required this.hasPreview,
     required this.previewing,
     required this.saving,
     required this.onPreview,
@@ -1366,6 +1690,7 @@ class _BuilderActionBar extends StatelessWidget {
 
   final int selectedCount;
   final int noCoordsCount;
+  final bool hasPreview;
   final bool previewing;
   final bool saving;
   final VoidCallback? onPreview;
@@ -1408,7 +1733,11 @@ class _BuilderActionBar extends StatelessWidget {
             children: [
               Expanded(
                 child: _SmallActionButton(
-                  label: previewing ? 'Calculando...' : 'Previsualizar',
+                  label: previewing
+                      ? 'Calculando...'
+                      : hasPreview
+                      ? 'Actualizar revisión'
+                      : 'Revisar selección',
                   icon: Symbols.route,
                   onTap: previewing || saving ? null : onPreview,
                 ),
@@ -1416,7 +1745,7 @@ class _BuilderActionBar extends StatelessWidget {
               const SizedBox(width: 9),
               Expanded(
                 child: _SmallActionButton(
-                  label: saving ? 'Guardando...' : 'Guardar ruta',
+                  label: saving ? 'Creando...' : 'Crear y compartir',
                   icon: Symbols.save,
                   filled: true,
                   onTap: previewing || saving ? null : onCreate,
@@ -1508,51 +1837,6 @@ class _DeliveryRow extends StatelessWidget {
             const SizedBox(width: 4),
             _MoveButton(icon: Symbols.keyboard_arrow_down, onTap: onDown),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-class _KpiTile extends StatelessWidget {
-  const _KpiTile({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  final String label;
-  final String value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 70,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.line),
-        boxShadow: AppShadows.small,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            label.toUpperCase(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.eyebrow(AppColors.ink3).copyWith(fontSize: 8),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.h2.copyWith(fontSize: 15, color: color),
-          ),
         ],
       ),
     );

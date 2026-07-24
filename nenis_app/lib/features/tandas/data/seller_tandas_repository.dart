@@ -248,7 +248,36 @@ class SellerTandasRepository {
       );
     }
   }
+
+  Future<Map<String, dynamic>> getWhatsAppReminder(
+    String participantId, {
+    int? weekNumber,
+  }) async {
+    try {
+      final res = await _dio.get(
+        '/api/tanda/participants/$participantId/whatsapp-reminder',
+        queryParameters: weekNumber != null ? {'weekNumber': weekNumber} : null,
+      );
+      return res.data as Map<String, dynamic>;
+    } catch (error) {
+      throw SellerTandasException(
+        _friendly(error, 'No pudimos obtener el mensaje de WhatsApp.'),
+      );
+    }
+  }
+
+  Future<SellerTanda> drawTurns(String tandaId) async {
+    try {
+      final res = await _dio.post('/api/tanda/$tandaId/draw-turns');
+      return SellerTanda.fromJson(res.data as Map<String, dynamic>);
+    } catch (error) {
+      throw SellerTandasException(
+        _friendly(error, 'No pudimos realizar el sorteo de turnos.'),
+      );
+    }
+  }
 }
+
 
 final sellerTandasRepositoryProvider = Provider<SellerTandasRepository>((ref) {
   return SellerTandasRepository(ref.read(dioProvider));
@@ -438,6 +467,12 @@ class SellerTandasController extends AsyncNotifier<SellerTandasWorkspace> {
     await ref.read(sellerTandasRepositoryProvider).processPenalties(tanda.id);
     await reloadSelected(tanda.id);
   }
+
+  Future<void> drawTurns(SellerTanda tanda) async {
+    await ref.read(sellerTandasRepositoryProvider).drawTurns(tanda.id);
+    await reloadSelected(tanda.id);
+  }
+
 
   Future<void> reloadSelected(String selectedId) async {
     final current = state.asData?.value;
