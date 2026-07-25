@@ -3,14 +3,14 @@ import 'package:nenis_app/features/orders/data/seller_order_capture_parser.dart'
 
 void main() {
   group('parseQuickCapture', () {
-    test('lee formato con comas y precio total', () {
+    test('lee formato con comas y precio unitario', () {
       final draft = parseQuickCapture('Maria Lopez, 2 blusas rojas, 300');
 
       expect(draft, isNotNull);
       expect(draft!.clientName, 'Maria Lopez');
       expect(draft.productName, 'Blusas Rojas');
       expect(draft.quantity, 2);
-      expect(draft.unitPrice, 150);
+      expect(draft.unitPrice, 300);
     });
 
     test('lee formato simple separado por espacios', () {
@@ -33,7 +33,7 @@ void main() {
       expect(draft!.clientName, 'Laura');
       expect(draft.productName, 'Toallas');
       expect(draft.quantity, 2);
-      expect(draft.unitPrice, 90);
+      expect(draft.unitPrice, 180);
     });
 
     test('rechaza texto sin precio', () {

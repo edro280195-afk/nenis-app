@@ -22,6 +22,7 @@ android/key.properties
 *.pem
 *.key
 secrets.json
+/google-services-*.json
 
 # iOS / macOS
 ios/Pods/

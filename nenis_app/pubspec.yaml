@@ -90,6 +90,7 @@ flutter:
 
   assets:
     - assets/branding/nenis-mark.png
+    - assets/branding/nenis-logo.png
     - assets/fonts/Poppins-Regular.ttf
     - assets/fonts/Poppins-Bold.ttf
 
@@ -97,7 +98,7 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: assets/branding/nenis-app-icon.png
-  adaptive_icon_background: "#FFF4F7"
+  adaptive_icon_background: "#FFF7FA"
   adaptive_icon_foreground: assets/branding/nenis-mark.png
   adaptive_icon_foreground_inset: 18
   remove_alpha_ios: true

@@ -738,12 +738,7 @@ class _BuyerHomeSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        _skeletonList(),
-        const SlowLoadHint(),
-      ],
-    );
+    return Stack(children: [_skeletonList(), const SlowLoadHint()]);
   }
 
   Widget _skeletonList() {
@@ -786,13 +781,9 @@ class _BuyerHomeSkeleton extends StatelessWidget {
           padding: EdgeInsets.symmetric(horizontal: 22),
           child: Row(
             children: [
-              Expanded(
-                child: Skeleton(height: 94, borderRadius: 20),
-              ),
+              Expanded(child: Skeleton(height: 94, borderRadius: 20)),
               SizedBox(width: 14),
-              Expanded(
-                child: Skeleton(height: 94, borderRadius: 20),
-              ),
+              Expanded(child: Skeleton(height: 94, borderRadius: 20)),
             ],
           ),
         ),
@@ -810,7 +801,8 @@ class _BuyerHomeSkeleton extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 22),
             itemCount: 4,
             separatorBuilder: (_, _) => const SizedBox(width: 13),
-            itemBuilder: (_, __) => const Skeleton(width: 104, height: 116, borderRadius: 20),
+            itemBuilder: (_, _) =>
+                const Skeleton(width: 104, height: 116, borderRadius: 20),
           ),
         ),
         const SizedBox(height: 24),
@@ -830,4 +822,3 @@ class _BuyerHomeSkeleton extends StatelessWidget {
     );
   }
 }
-

@@ -413,7 +413,7 @@ class _OrdersLoading extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
           physics: const NeverScrollableScrollPhysics(),
           itemCount: 4,
-          itemBuilder: (_, __) => const Padding(
+          itemBuilder: (_, _) => const Padding(
             padding: EdgeInsets.only(bottom: 14),
             child: Skeleton(height: 110, borderRadius: 20),
           ),

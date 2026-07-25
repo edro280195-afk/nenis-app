@@ -187,7 +187,7 @@ class _StoreLoading extends StatelessWidget {
               childAspectRatio: 0.78,
             ),
             itemCount: 4,
-            itemBuilder: (_, __) => const Skeleton(borderRadius: 20),
+            itemBuilder: (_, _) => const Skeleton(borderRadius: 20),
           ),
         ),
       ],
@@ -404,16 +404,27 @@ class _ProfileRow extends ConsumerWidget {
                     if (store.hasRatings) ...[
                       Row(
                         children: [
-                          const Icon(Symbols.star, size: 14, color: AppColors.gold, fill: 1),
+                          const Icon(
+                            Symbols.star,
+                            size: 14,
+                            color: AppColors.gold,
+                            fill: 1,
+                          ),
                           const SizedBox(width: 3),
                           Text(
                             store.averageRating!.toStringAsFixed(1),
-                            style: AppTextStyles.body.copyWith(fontSize: 12, fontWeight: FontWeight.w700),
+                            style: AppTextStyles.body.copyWith(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                           const SizedBox(width: 3),
                           Text(
                             '(${store.ratingsCount})',
-                            style: AppTextStyles.subtitle.copyWith(fontSize: 11.5, color: AppColors.ink3),
+                            style: AppTextStyles.subtitle.copyWith(
+                              fontSize: 11.5,
+                              color: AppColors.ink3,
+                            ),
                           ),
                         ],
                       ),
@@ -436,7 +447,8 @@ class _ProfileRow extends ConsumerWidget {
             if (store.isFollowing) ...[
               _HeaderIcon(
                 icon: Symbols.tune,
-                onPressed: () => _openFollowPreferences(context, store.businessId),
+                onPressed: () =>
+                    _openFollowPreferences(context, store.businessId),
               ),
               const SizedBox(width: 8),
             ],
@@ -451,7 +463,9 @@ class _ProfileRow extends ConsumerWidget {
                   ? null
                   : () async {
                       try {
-                        await ref.read(followControllerProvider.notifier).toggle();
+                        await ref
+                            .read(followControllerProvider.notifier)
+                            .toggle();
                       } on FollowException catch (e) {
                         if (context.mounted) {
                           context.showPremiumToast(
@@ -498,10 +512,12 @@ class _FollowPreferencesSheet extends ConsumerStatefulWidget {
   final int businessId;
 
   @override
-  ConsumerState<_FollowPreferencesSheet> createState() => _FollowPreferencesSheetState();
+  ConsumerState<_FollowPreferencesSheet> createState() =>
+      _FollowPreferencesSheetState();
 }
 
-class _FollowPreferencesSheetState extends ConsumerState<_FollowPreferencesSheet> {
+class _FollowPreferencesSheetState
+    extends ConsumerState<_FollowPreferencesSheet> {
   FollowState? _state;
   bool _loading = true;
   bool _saving = false;
@@ -514,8 +530,15 @@ class _FollowPreferencesSheetState extends ConsumerState<_FollowPreferencesSheet
 
   Future<void> _load() async {
     try {
-      final state = await ref.read(followRepositoryProvider).getState(widget.businessId);
-      if (mounted) setState(() { _state = state; _loading = false; });
+      final state = await ref
+          .read(followRepositoryProvider)
+          .getState(widget.businessId);
+      if (mounted) {
+        setState(() {
+          _state = state;
+          _loading = false;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -531,17 +554,30 @@ class _FollowPreferencesSheetState extends ConsumerState<_FollowPreferencesSheet
       notifyOnLive: notifyOnLive ?? current.notifyOnLive,
       isVip: current.isVip,
     );
-    setState(() { _state = next; _saving = true; });
+    setState(() {
+      _state = next;
+      _saving = true;
+    });
     try {
-      final saved = await ref.read(followRepositoryProvider).updatePreferences(
+      final saved = await ref
+          .read(followRepositoryProvider)
+          .updatePreferences(
             widget.businessId,
             notifyOnPost: next.notifyOnPost,
             notifyOnLive: next.notifyOnLive,
           );
-      if (mounted) setState(() { _state = saved; _saving = false; });
+      if (mounted) {
+        setState(() {
+          _state = saved;
+          _saving = false;
+        });
+      }
     } on FollowException catch (e) {
       if (mounted) {
-        setState(() { _state = current; _saving = false; });
+        setState(() {
+          _state = current;
+          _saving = false;
+        });
         context.showPremiumToast(e.message, type: PremiumToastType.error);
       }
     }
@@ -550,7 +586,12 @@ class _FollowPreferencesSheetState extends ConsumerState<_FollowPreferencesSheet
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.fromLTRB(22, 14, 22, 22 + MediaQuery.of(context).padding.bottom),
+      padding: EdgeInsets.fromLTRB(
+        22,
+        14,
+        22,
+        22 + MediaQuery.of(context).padding.bottom,
+      ),
       decoration: const BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -563,19 +604,30 @@ class _FollowPreferencesSheetState extends ConsumerState<_FollowPreferencesSheet
             child: Container(
               width: 40,
               height: 4,
-              decoration: BoxDecoration(color: AppColors.line, borderRadius: BorderRadius.circular(2)),
+              decoration: BoxDecoration(
+                color: AppColors.line,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
           ),
           const SizedBox(height: 16),
-          Text('Tus avisos de esta tienda', style: AppTextStyles.h2.copyWith(fontSize: 17)),
+          Text(
+            'Tus avisos de esta tienda',
+            style: AppTextStyles.h2.copyWith(fontSize: 17),
+          ),
           const SizedBox(height: 14),
           if (_loading)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 20),
-              child: Center(child: CircularProgressIndicator(color: AppColors.neniDeep)),
+              child: Center(
+                child: CircularProgressIndicator(color: AppColors.neniDeep),
+              ),
             )
           else if (_state == null)
-            Text('No pudimos cargar tus preferencias.', style: AppTextStyles.subtitle)
+            Text(
+              'No pudimos cargar tus preferencias.',
+              style: AppTextStyles.subtitle,
+            )
           else ...[
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
@@ -1246,7 +1298,10 @@ class _NovedadesTabContent extends ConsumerWidget {
           child: SizedBox(
             width: 22,
             height: 22,
-            child: CircularProgressIndicator(strokeWidth: 2.4, color: AppColors.neni),
+            child: CircularProgressIndicator(
+              strokeWidth: 2.4,
+              color: AppColors.neni,
+            ),
           ),
         ),
       ),
@@ -1304,7 +1359,11 @@ class _PostCard extends StatelessWidget {
           if (post.isVipOnly) ...[
             Row(
               children: [
-                const Icon(Symbols.workspace_premium, size: 15, color: AppColors.gold),
+                const Icon(
+                  Symbols.workspace_premium,
+                  size: 15,
+                  color: AppColors.gold,
+                ),
                 const SizedBox(width: 5),
                 Text(
                   'SOLO VIP',
@@ -1326,7 +1385,10 @@ class _PostCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     'Únete al grupo VIP de esta tienda para ver esta novedad.',
-                    style: AppTextStyles.subtitle.copyWith(fontSize: 12.5, color: AppColors.ink2),
+                    style: AppTextStyles.subtitle.copyWith(
+                      fontSize: 12.5,
+                      color: AppColors.ink2,
+                    ),
                   ),
                 ),
               ],
@@ -1339,7 +1401,10 @@ class _PostCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             _relativeTime(post.createdAt),
-            style: AppTextStyles.subtitle.copyWith(fontSize: 11, color: AppColors.ink3),
+            style: AppTextStyles.subtitle.copyWith(
+              fontSize: 11,
+              color: AppColors.ink3,
+            ),
           ),
         ],
       ),
@@ -1541,14 +1606,17 @@ void _soonToast(BuildContext context, String message) {
 /// Abre el Facebook de la tienda (`Business.FacebookUrl`) en el navegador o
 /// la app de Facebook. Si la vendedora todavía no lo configuró, avisa en
 /// vez de fingir que existe.
-Future<void> _openStoreFacebook(BuildContext context, String? facebookUrl) async {
+Future<void> _openStoreFacebook(
+  BuildContext context,
+  String? facebookUrl,
+) async {
   if (facebookUrl == null || facebookUrl.isEmpty) {
     _soonToast(context, 'Esta tienda aún no agregó su Facebook.');
     return;
   }
   final uri = Uri.tryParse(facebookUrl);
-  final opened = uri != null &&
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+  final opened =
+      uri != null && await launchUrl(uri, mode: LaunchMode.externalApplication);
   if (!opened && context.mounted) {
     context.showPremiumToast(
       'No pudimos abrir Facebook.',
@@ -1563,7 +1631,8 @@ Future<void> _openStoreFacebook(BuildContext context, String? facebookUrl) async
 Future<void> _shareStore(BuyerStoreDetail store) async {
   await SharePlus.instance.share(
     ShareParams(
-      text: '¡Sígueme en Neni\'s App! Soy ${store.name} 💕\n'
+      text:
+          '¡Sígueme en Neni\'s App! Soy ${store.name} 💕\n'
           'https://app.nenisapp.com/store/${store.businessId}',
       subject: store.name,
     ),
