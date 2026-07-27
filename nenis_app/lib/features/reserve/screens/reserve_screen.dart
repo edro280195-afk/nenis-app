@@ -67,6 +67,14 @@ class _ReserveScreenState extends ConsumerState<ReserveScreen> {
     } catch (e) {
       if (!mounted) return;
       context.showPremiumToast(e.toString(), type: PremiumToastType.error);
+      // Si el rechazo fue por stock insuficiente, `product.stock` (del
+      // primer GET) ya quedó obsoleto — sin esto, el stepper seguía
+      // ofreciendo el mismo máximo viejo y el botón se re-habilitaba con
+      // la MISMA cantidad que acaba de rechazarse, listo para fallar de
+      // nuevo con el mismo resultado. Reclampeamos a 1 (casi siempre
+      // válido) mientras se refresca el stock real.
+      ref.invalidate(storeControllerProvider);
+      setState(() => _quantity = 1);
     } finally {
       if (mounted) setState(() => _submitting = false);
     }

@@ -2644,8 +2644,16 @@ class _CreatedOrdersPanel extends StatelessWidget {
                 ],
               ),
             ),
+          if (orders.length > 4)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                '+${orders.length - 4} más ya creados',
+                style: AppTextStyles.subtitle.copyWith(fontSize: 12),
+              ),
+            ),
           _SmallTextAction(
-            label: 'Copiar mensajes',
+            label: 'Copiar mensajes (${orders.length})',
             icon: Symbols.content_copy,
             onTap: onCopyAll,
           ),

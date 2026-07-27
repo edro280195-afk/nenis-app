@@ -5,18 +5,30 @@ class SellerLiveAnnouncement {
     required this.title,
     required this.startedAt,
     required this.isActive,
+    this.currentProductId,
+    this.currentProductName,
+    this.currentProductPrice,
+    this.currentAnnouncedAt,
   });
 
   final int id;
   final String? title;
   final DateTime startedAt;
   final bool isActive;
+  final int? currentProductId;
+  final String? currentProductName;
+  final double? currentProductPrice;
+  final DateTime? currentAnnouncedAt;
 
   factory SellerLiveAnnouncement.fromJson(Map<String, dynamic> j) => SellerLiveAnnouncement(
         id: (j['id'] as num).toInt(),
         title: j['title'] as String?,
         startedAt: DateTime.tryParse(j['startedAt']?.toString() ?? '') ?? DateTime.now(),
         isActive: (j['isActive'] as bool?) ?? false,
+        currentProductId: (j['currentProductId'] as num?)?.toInt(),
+        currentProductName: j['currentProductName'] as String?,
+        currentProductPrice: (j['currentProductPrice'] as num?)?.toDouble(),
+        currentAnnouncedAt: DateTime.tryParse(j['currentAnnouncedAt']?.toString() ?? ''),
       );
 }
 

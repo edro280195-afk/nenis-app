@@ -160,7 +160,13 @@ class _LiveContent extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 22),
-        if (!store.isLiveNow)
+        // `store.isLiveNow` es del GET inicial y no se refresca solo con el
+        // evento de SignalR. Si ya llegó un `ProductAnnounced` real, la
+        // vendedora forzosamente está en vivo (el Hub exige un
+        // LiveAnnouncement activo para aceptar el anuncio) — sin este
+        // `|| liveUpdate != null` la clienta se quedaba viendo "no está en
+        // vivo" para siempre si entró justo antes de que arrancara el vivo.
+        if (!store.isLiveNow && liveUpdate == null)
           _NotLiveNow(store: store)
         else if (productId == null || productName == null)
           _WaitingForProduct(brand: brand)

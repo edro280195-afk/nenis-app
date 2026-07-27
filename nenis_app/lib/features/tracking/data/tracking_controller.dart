@@ -104,7 +104,15 @@ class TrackingController extends AsyncNotifier<OrderTracking?> {
     final accessToken = ref.read(trackingTokenProvider);
     if (accessToken.isEmpty) return;
     await ref.read(trackingRepositoryProvider).confirmOrder(accessToken);
-    await reload();
+    // Actualización local en vez de `reload()`: un `AsyncLoading` completo
+    // desmontaba `_OrderToolsSectionState` a media acción (mismo patrón
+    // que ya usa `saveInstructions` abajo), y el guard `mounted` del botón
+    // se topaba con el widget ya desmontado — el snack "¡Pedido
+    // confirmado!" nunca llegaba a mostrarse, además del parpadeo visual.
+    final current = state.asData?.value;
+    if (current != null) {
+      state = AsyncData(current.copyWith(status: TrackingStatus.confirmed));
+    }
   }
 
   /// Guarda las instrucciones de entrega editadas por la clienta.

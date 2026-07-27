@@ -15,8 +15,14 @@ class SellerClientsException implements Exception {
 String _friendly(Object error, String fallback) {
   if (error is DioException) {
     final data = error.response?.data;
-    if (data is Map && data['message'] is String) {
-      return data['message'] as String;
+    if (data is Map) {
+      if (data['message'] is String) return data['message'] as String;
+      // 402 de RequiresFeatureAttribute (ej. fusionar duplicadas requiere
+      // plan con FacebookImport) — sin este chequeo caía al fallback
+      // genérico de la operación en vez de avisar que es cosa del plan.
+      if (data['error'] == 'feature_locked') {
+        return 'Esta opción no está incluida en tu plan actual.';
+      }
     }
     if (data is String && data.trim().isNotEmpty) return data;
     if (error.response?.statusCode == 403) {

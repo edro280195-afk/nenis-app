@@ -1,8 +1,9 @@
 # Progreso — App Flutter Neni's App (compradora + vendedora)
 
-> Actualizado: 2026-07-09 (sesión de integración con Facebook). Doc para **retomar la construcción** sin re-descubrir.
+> Actualizado: 2026-07-27 (auditoría completa de pantallas + fixes). Doc para **retomar la construcción** sin re-descubrir.
 > Brief original: `PROMPT-APP-FLUTTER.md` (mismo folder) — **ojo:** ese doc describe el arranque de la Fase 2 (jun/2026) y su sección "App = compradora (no la vendedora)" ya **no** refleja la realidad; ver corrección abajo.
-> Proyecto Flutter: `C:\Codigos\nenis-app\nenis_app`. Backend: `C:\Codigos\sellgeneral-api`.
+> Proyecto Flutter: `nenis-app\nenis_app` dentro del bundle (hoy `C:\Codigos\nenis-bundle\nenis-app\nenis_app`). Backend: `nenis-bundle\sellgeneral-api`. Las rutas viejas `C:\Codigos\nenis-app\` / `C:\Codigos\sellgeneral-api\` (sin `nenis-bundle`) que aparecen más abajo en este doc son de antes del bundle — ajustar mentalmente si ya no existen sueltas.
+> **Antes de confiar en las tablas de "Pendiente" de este doc, cruzar contra `git log --oneline --stat` desde la fecha de arriba** — se ha encontrado más de una vez trabajo real ya hecho (a veces semanas) que este doc seguía listando como pendiente. Ver nota en `docs/AUDITORIA-PANTALLAS.md`.
 
 ## Cómo retomar (resumen de 1 minuto)
 
@@ -31,27 +32,98 @@ Diez días con mucho movimiento en ambos repos (27 commits backend, 26 Flutter) 
 - **Correcciones severas a vulnerabilidad y malas prácticas** (commit `5afb82a` en el backend) — revisar ese commit si hace falta contexto de seguridad específico; no se detalla aquí porque no se re-auditó en esta sesión.
 - Todo esto **ya está commiteado en `main` en ambos repos** — ver "Estado git" abajo (la sección vieja que decía "sin commitear" quedó obsoleta).
 
+## 🆕 Sesión 2026-07-27 — auditoría completa + Live Nivel 2 ya estaba construido
+
+Se pidió "qué falta y arréglalo todo, sin dejar nada a medias". Antes de
+arrancar se cruzó este doc contra `git log` y aparecieron dos sorpresas:
+
+- **El "Nivel 2" de Live (línea 47 vieja, "sin construir todavía") ya
+  estaba completo de punta a punta** desde el mismo 2026-07-09 — backend
+  (`Hubs/LiveHub.cs`: `JoinAdminLive`/`AnnounceProduct`/`JoinLive`, mapeado
+  en `/hubs/live`) y Flutter (`SellerLiveScreen`, `live_screen.dart` ya
+  NO era placeholder). Este doc simplemente no se actualizó ese mismo día.
+  Se auditó lo ya construido y se arreglaron bugs reales (ver
+  `docs/AUDITORIA-PANTALLAS.md`, sección SellerLiveScreen).
+- Un módulo completo de **Etiquetas + Inventario con NFC**
+  (`features/inventory/`, `features/labels/`, ~6,200 líneas, commit
+  `472c322` "Integracion de etiquetas", 2026-07-22) no aparecía en este doc
+  ni como hecho ni como pendiente. No se auditó a fondo esta sesión — es
+  candidato a auditoría propia si hace falta.
+
+Trabajo de esta sesión (detalle completo en `docs/AUDITORIA-PANTALLAS.md`,
+sección "✅ Completados (sesión 2026-07-27)"): auditadas y arregladas
+**todas** las pantallas que quedaban pendientes en ese doc — Rutas,
+Clientas, Live (vendedora+compradora), Cuenta+Settings, las 4 secundarias
+de vendedora, y las 15 de compradora. 32 archivos (22 Flutter + 10
+backend). Highlights de lo encontrado y arreglado:
+
+- 🔴 **Doble cobro real en Tandas** — "Registrar pago" sin guard anti
+  doble-tap en ninguna capa; arreglado en Flutter y backend.
+- 🔴 **Fuga de chat entre clientas** en `TrackingScreen` (backend, endpoint
+  anónimo) — el filtro devolvía también chat de otras clientas en la misma
+  ruta y chat interno chofer↔admin a cualquiera con un solo token de pedido.
+- 🔴 **Direcciones: no se podía borrar el pin GPS guardado** — mostraba
+  éxito falso mientras el chofer seguía navegando al lugar viejo.
+- 🔴 `DeliveryUpdate` de SignalR nunca llegaba a `TrackingScreen` (mismatch
+  de argumentos) — los cambios de estado en vivo solo se veían con
+  pull-to-refresh manual.
+- 🔴 Condición de carrera real en cuentas de cobro (dos cuentas podían
+  quedar marcadas "principal" a la vez) — candado en proceso por
+  `BusinessId`, mismo patrón que `BuyerReserveService`.
+- Varios `setState`/`ref.invalidate` sin guard `mounted` tras `await`
+  (mismo patrón B1/B2 ya conocido) repetidos en Rutas, Clientas, Novedades.
+- Lista completa de lo NO arreglado a propósito (ambigüedad de producto o
+  bajo impacto) en `docs/AUDITORIA-PANTALLAS.md`, sección "🔲 Pendientes".
+
+Verificado al cierre: `flutter analyze lib` → 0 issues. `dotnet test` →
+302/302 verde.
+
+**Lección de la sesión:** un primer intento de arreglar la condición de
+carrera de cuentas de cobro usó una transacción real +
+`pg_advisory_xact_lock` de Postgres — rompió 3 tests existentes porque la
+suite corre contra `UseInMemoryDatabase`, que no soporta transacciones. Se
+corrigió al patrón que ya usa `BuyerReserveService` (candado `SemaphoreSlim`
+en proceso). Para este tipo de fix, correr `dotnet test` (no solo
+`dotnet build`) antes de darlo por bueno.
+
 ## ✅ Hecho y validado — histórico hasta 2026-06-29 (turno 10)
 
 > Detalle técnico línea por línea de los bloques ①–⑱ originales de la Fase 2 (home, pedidos, puntos, tandas, sorteos, tienda, apartado, notificaciones, pagos, direcciones). Sigue siendo preciso para esas pantallas; no se repite aquí, ver el historial de este archivo o el código directamente en `lib/features/{home,orders,points,tandas,raffles,store,reserve,notifications,payments,addresses}/`.
 
 ## ⛏️ Pendiente (lo que falta)
 
+Lista corta a propósito — el detalle completo (con `file:line`) de todo lo
+encontrado-pero-no-arreglado el 2026-07-27 vive en
+`docs/AUDITORIA-PANTALLAS.md`, sección "🔲 Pendientes".
+
 | Pantalla / pieza | Estado |
 |---|---|
-| **⑧ Live shopping (viewer real de la clienta)** | Sigue en placeholder honesto ("en construcción") en `live_screen.dart`. **Ahora tiene plan concreto** — ver "Nivel 2" abajo: no va a ser el viewer que procesa video de Facebook, va a ser un feed en tiempo real de "producto anunciado ahora" vía SignalR. |
-| **Multi-dirección (`ClientAddress` con FK a `Client`)** | No confirmado si sigue pendiente — el modelo de direcciones que vi sigue siendo 1 dirección por `Client`. Verificar antes de asumir. |
-| **`LiveSession.Live.ViewerCount`** | Sigue hardcodeado a `0` en `BuyerStoreService` (comentario propio en el código: "no hay modelo de viewerCount todavía"). Distinto de `IsLiveNow`, que sí es real desde `LiveAnnouncement`. |
-| **Pipeline de Live Capture (`LiveSession`/`LiveCaptureService`, transcripción con Whisper + Gemini + OCR de comentarios vía `yt-dlp`)** | **Descartado.** Eduardo lo probó en producción con Regi Bazar y no funciona en la práctica (flujo inconsistente de las vendedoras al transmitir, nombres de clientas casi imposibles de transcribir bien). Sale del proyecto **junto con** el build del Nivel 2 (no antes, no aparte). Ver memoria `live-capture-transcripcion-descartada`. |
+| **Publicar la app de Meta** | Genuinamente pendiente, requiere acción manual de Eduardo — ver sección abajo, sin cambios desde 2026-07-09. |
+| **StoreScreen: storefront público** | El link de "compartir tienda" es un callejón sin salida (404) para quien no es ya clienta/seguidora — ¿es intencional o falta un flujo de "seguir desde cero"? Decisión de producto, no bug. |
+| **Points/RafflesScreen sin guard `isSeller`** | Únicas pantallas compartidas compradora/vendedora sin el guard que sí tienen Home/Tandas/Account — alcanzable si una vendedora abre el link público de su propia tienda. Confirmar si falta o es a propósito. |
+| **`preOptimized` en Rutas** | `createRoute()` siempre manda `false` — reoptimiza vía Google Routes en vez de respetar el orden ya previsualizado en pantalla. No arreglado esta sesión (esfuerzo medio, severidad baja). |
+| **Multi-dirección (`ClientAddress` con FK a `Client`)** | Confirmado (2026-07-27): es decisión deliberada, documentada en el propio código (`BuyerAddressService.cs`) — 1 dirección por `Client` a propósito, con comentario explícito de cómo extenderlo si algún día se necesita. No es un pendiente real salvo que se decida que sí se quiere la feature. |
+| **Pipeline de Live Capture (`LiveSession`/`LiveCaptureService`)** | **Ya no existe** — se borró de raíz en la migración `DropLiveCapturePipeline` (2026-07-09), junto con el `ViewerCount` hardcodeado que dependía de él. Nada que hacer aquí. |
 
-### Nivel 2 acordado — Live en tiempo real (reemplaza el pipeline de arriba)
+### Live en tiempo real ("Nivel 2") — YA CONSTRUIDO, no es un pendiente
 
-Diseño ya acordado con Eduardo (2026-07-09), sin construir todavía:
-1. La vendedora transmite en Facebook como siempre — la app no toca el video para nada.
-2. Desde una pantalla nueva en la familia `/seller/*` (ej. `/seller/live`, mismo patrón que `/seller/vip` o `/seller/updates`), anuncia con un toque qué producto está mostrando ahora.
-3. Eso dispara un evento por un `LiveHub` nuevo (mismo molde que `DeliveryHub`/`TrackingHub`/`OrderHub`/`LogisticsHub`/`PosHub`, todos `TenantAwareHubBase`) a las compradoras conectadas que siguen la tienda.
-4. La clienta ve el producto anunciado en `live_screen.dart` (hoy placeholder) y aparta con un toque — reusa `POST /api/me/reserve`, que **ya existe completo**, no hay que crear nada nuevo ahí.
-5. Antes de exponer esto a ráfagas reales de "apartar" simultáneo: `BuyerReserveService.ReserveAsync` hoy valida stock con una lectura `AsNoTracking` sin bloqueo — no decrementa nada hasta el pago en POS. Hay que endurecerlo (update atómico de stock) para que no se sobrevenda cuando varias clientas tocan "Apartar" sobre el mismo producto casi al mismo tiempo.
+Corrección 2026-07-27: esta sección decía "diseño acordado, sin construir
+todavía". **Ya estaba construido desde el 2026-07-09**, el mismo día que se
+escribió esa frase — nunca se tachó. Lo que describía como plan ya es
+código real y auditado:
+
+1. La vendedora transmite en Facebook como siempre — la app no toca el video para nada. ✅
+2. `/seller/live` (`SellerLiveScreen`) anuncia con un toque qué producto está mostrando. ✅
+3. `Hubs/LiveHub.cs` (`AnnounceProduct`) empuja el evento `ProductAnnounced` a las compradoras conectadas que siguen la tienda. ✅
+4. `live_screen.dart` (ya NO es placeholder) muestra el producto y aparta con un toque vía `POST /api/me/reserve`. ✅
+5. El candado de stock (`BuyerReserveService.ReserveAsync`) **ya tenía** un `SemaphoreSlim` por producto + conteo de "apartado" pendiente desde el mismo commit de seguridad del 2026-07-08 (`5afb82a`) — cubre bien el despliegue de una sola instancia (Render hoy). Si algún día se corre en varias instancias a la vez, ese candado deja de alcanzar por sí solo y sí haría falta el update atómico en BD (ver reporte crítico en la sesión 2026-07-27).
+
+Bugs reales encontrados el 2026-07-27 en lo ya construido (arreglados):
+`isLiveNow` no se refrescaba con el evento SignalR (la clienta se quedaba
+viendo "no está en vivo" aunque llegaran productos reales), la vendedora
+perdía de vista el último producto anunciado al reentrar a la pantalla, y
+`JoinAdminLive`/`AnnounceProduct` fallaban en silencio para vendedoras con
+más de una tienda. Detalle en `docs/AUDITORIA-PANTALLAS.md`.
 
 ### Publicar la app de Meta (en progreso, 2026-07-09)
 
@@ -72,4 +144,4 @@ App `1427323549158529`, sigue en modo Desarrollo ("Sin publicar"). Ya confirmado
 - Mockups = inspiración, NO clonar chrome de teléfono.
 
 ## Estado git
-Todo commiteado en `main` en ambos repos al 2026-07-09 (últimos: `071db75`/`Compartir tienda y reseñas...` en backend, `Compartir tienda, preferencias de notificación y calificación` en Flutter). La sección vieja de este doc que listaba archivos "sin commitear" del turno 10 quedó obsoleta — todo ese trabajo ya está en `main` desde hace días.
+Hasta el commit `dab1eb7` (2026-07-25, "Integro Firebase...") todo commiteado en `main` en ambos repos. **Los 32 archivos de la sesión 2026-07-27 (auditoría + fixes, ver arriba) siguen sin commitear** al cierre de esa sesión — quedó a propósito para que Eduardo revise el diff antes de confirmar. `git status --short` en ambos repos lista exactamente qué cambió.

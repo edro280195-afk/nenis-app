@@ -77,8 +77,11 @@ class UpdateAddressRequest {
       json['address'] = address;
     }
     if (clearLatLng) {
-      json['latitude'] = null;
-      json['longitude'] = null;
+      // Un `null` explícito en JSON deserializa igual que el campo
+      // ausente para un `double?` en el backend — sin esta bandera, el
+      // pin viejo nunca se borraba aunque la clienta viera "Dirección
+      // guardada." (y el chofer seguía navegando al lugar equivocado).
+      json['clearLocation'] = true;
     } else {
       if (latitude != null) json['latitude'] = latitude;
       if (longitude != null) json['longitude'] = longitude;

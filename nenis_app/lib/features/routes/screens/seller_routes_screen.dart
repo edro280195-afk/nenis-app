@@ -13,6 +13,7 @@ import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/segmented.dart';
+import '../../../shared/widgets/slow_load_hint.dart';
 import '../data/seller_routes_models.dart';
 import '../data/seller_routes_repository.dart';
 
@@ -58,6 +59,7 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
   bool _savingRoute = false;
   int? _optimizingRouteId;
   int? _savingOrderRouteId;
+  int? _deletingRouteId;
   String? _feedback;
   final _candidateSearchController = TextEditingController();
   String _candidateQuery = '';
@@ -106,14 +108,25 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
   }
 
   Widget _buildLoading() {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(22, 4, 22, 24),
+    return Stack(
       children: [
-        _buildHeader(),
-        const SizedBox(height: 18),
-        const _RouteSkeleton(),
-        const SizedBox(height: 12),
-        const _RouteSkeleton(),
+        ListView(
+          padding: const EdgeInsets.fromLTRB(22, 4, 22, 24),
+          children: [
+            _buildHeader(),
+            const SizedBox(height: 18),
+            const _RouteSkeleton(),
+            const SizedBox(height: 12),
+            const _RouteSkeleton(),
+          ],
+        ),
+        const Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: EdgeInsets.only(bottom: 24),
+            child: SlowLoadHint(),
+          ),
+        ),
       ],
     );
   }
@@ -869,10 +882,14 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
                     const SizedBox(width: 9),
                     Expanded(
                       child: _SmallActionButton(
-                        label: 'Eliminar',
+                        label: _deletingRouteId == route.id
+                            ? 'Eliminando...'
+                            : 'Eliminar',
                         icon: Symbols.delete,
                         danger: true,
-                        onTap: () => _deleteRoute(route.id),
+                        onTap: _deletingRouteId == null
+                            ? () => _confirmAndDeleteRoute(route.id)
+                            : null,
                       ),
                     ),
                   ],
@@ -1064,6 +1081,7 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
       final preview = await ref
           .read(sellerRoutesRepositoryProvider)
           .previewRoute(_selectedCandidates(workspace));
+      if (!mounted) return;
       setState(() {
         _preview = preview;
         if (preview.skipped.isNotEmpty) {
@@ -1084,15 +1102,23 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
       _feedback = null;
     });
     try {
-      await ref
+      final result = await ref
           .read(sellerRoutesRepositoryProvider)
           .createRoute(_selectedCandidates(workspace));
+      if (!mounted) return;
       _selectedCandidateKeys.clear();
       _preview = null;
       ref.invalidate(sellerRoutesWorkspaceProvider);
       setState(() {
         _selectedIndex = 1;
-        _feedback = 'Ruta creada con datos del API.';
+        // El backend re-valida cada pedido/tanda al crear y puede rechazar
+        // alguno (ya en otra ruta, cancelado, tanda ya entregada...). Sin
+        // avisar esto, la vendedora comparte el link al chofer creyendo
+        // que todas las paradas seleccionadas quedaron adentro.
+        _feedback = result.skipped.isEmpty
+            ? 'Ruta creada con datos del API.'
+            : 'Ruta creada. ${result.skipped.length} no se pudieron '
+                  'incluir: ${result.skipped.map((s) => '${s.name} (${s.reason})').join(', ')}';
       });
     } catch (e) {
       _setError(e, 'No pudimos crear la ruta.');
@@ -1179,7 +1205,13 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
     });
     try {
       await ref.read(sellerRoutesRepositoryProvider).optimizeRoute(routeId);
+      // Sin esto, la tarjeta expandida seguía mostrando el orden previo a
+      // optimizar (siempre prioriza el draft local si existe) — parecía
+      // que "Optimizar" no hacía nada, y "Guardar orden" podía revertir en
+      // silencio el resultado recién guardado en el servidor.
+      _draftOrders.remove(routeId);
       ref.invalidate(sellerRoutesWorkspaceProvider);
+      if (!mounted) return;
       setState(() => _feedback = 'Ruta optimizada desde el API.');
     } catch (e) {
       _setError(e, 'No pudimos optimizar la ruta.');
@@ -1200,6 +1232,7 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
           .reorderRoute(route.id, draft.map((d) => d.deliveryId).toList());
       _draftOrders.remove(route.id);
       ref.invalidate(sellerRoutesWorkspaceProvider);
+      if (!mounted) return;
       setState(() => _feedback = 'Orden de ruta guardado.');
     } catch (e) {
       _setError(e, 'No pudimos guardar el orden.');
@@ -1208,16 +1241,49 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
     }
   }
 
+  Future<void> _confirmAndDeleteRoute(int routeId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('¿Eliminar esta ruta?'),
+        content: const Text(
+          'Se borran también el chat con el repartidor y las fotos de '
+          'evidencia de entrega de esta ruta — no se pueden recuperar. '
+          'Los pedidos vuelven a quedar disponibles para otra ruta.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await _deleteRoute(routeId);
+    }
+  }
+
   Future<void> _deleteRoute(int routeId) async {
-    setState(() => _feedback = null);
+    setState(() {
+      _deletingRouteId = routeId;
+      _feedback = null;
+    });
     try {
       await ref.read(sellerRoutesRepositoryProvider).deleteRoute(routeId);
       _draftOrders.remove(routeId);
       if (_expandedRouteId == routeId) _expandedRouteId = null;
       ref.invalidate(sellerRoutesWorkspaceProvider);
+      if (!mounted) return;
       setState(() => _feedback = 'Ruta eliminada.');
     } catch (e) {
       _setError(e, 'No pudimos eliminar la ruta.');
+    } finally {
+      if (mounted) setState(() => _deletingRouteId = null);
     }
   }
 
@@ -1227,7 +1293,11 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
         _expandedRouteId = null;
       } else {
         _expandedRouteId = route.id;
-        _draftOrders[route.id] = [...route.deliveries];
+        // `putIfAbsent`, no asignación directa: si ya había un
+        // reordenamiento local sin guardar (ej. la vendedora colapsó y
+        // volvió a expandir, o tocó "Mapa"), no lo tiramos por encima con
+        // el orden del servidor.
+        _draftOrders.putIfAbsent(route.id, () => [...route.deliveries]);
       }
     });
   }
@@ -1244,7 +1314,7 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
   void _showRouteMap(SellerRoute route) {
     setState(() {
       _expandedRouteId = route.id;
-      _draftOrders[route.id] = [...route.deliveries];
+      _draftOrders.putIfAbsent(route.id, () => [...route.deliveries]);
     });
   }
 

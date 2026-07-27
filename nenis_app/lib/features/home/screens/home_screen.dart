@@ -159,7 +159,19 @@ class _HomeContent extends StatelessWidget {
                   value: '${home.liveCount}',
                   caption: 'Lives en vivo',
                   tint: const Color(0xFFF1E9FF),
-                  onTap: () => context.go('/live'),
+                  // `/live` sin :businessId no es una ruta válida (solo
+                  // existe `/live/:businessId`) — cada tap disparaba la
+                  // pantalla de error de go_router. Sin un solo destino
+                  // claro cuando hay 0 o varias tiendas en vivo a la vez,
+                  // vamos directo a la única tienda en vivo si hay
+                  // exactamente una.
+                  onTap: () {
+                    final liveStores =
+                        home.stores.where((s) => s.isLive).toList();
+                    if (liveStores.length == 1) {
+                      context.go('/live/${liveStores.first.businessId}');
+                    }
+                  },
                 ),
               ),
             ],

@@ -16,6 +16,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/segmented.dart';
+import '../../../shared/widgets/slow_load_hint.dart';
 import '../data/seller_tandas_models.dart';
 import '../data/seller_tandas_repository.dart';
 
@@ -48,10 +49,20 @@ class _SellerTandasCommandScreenState
     return ref.read(sellerTandasControllerProvider.notifier).reload();
   }
 
+  bool _actionInFlight = false;
+
   Future<void> _run(
     Future<void> Function() action, {
     required String success,
   }) async {
+    // Guard anti doble-tap compartido por todas las acciones que pasan por
+    // aquí (registrar pago, borrar pago, confirmar entrega, penalizaciones,
+    // sortear turnos) — ninguna tenía protección propia. El caso real que
+    // esto cierra: doble-tap en "Registrar pago" creaba dos TandaPayment
+    // para la misma semana (sin índice único en la tabla) e inflaba el
+    // total cobrado sin forma de corregirlo desde la app.
+    if (_actionInFlight) return;
+    _actionInFlight = true;
     try {
       await action();
       if (!mounted) return;
@@ -59,6 +70,8 @@ class _SellerTandasCommandScreenState
     } catch (error) {
       if (!mounted) return;
       _toast(error.toString());
+    } finally {
+      _actionInFlight = false;
     }
   }
 
@@ -408,8 +421,17 @@ class _SellerTandasCommandScreenState
         child: SafeArea(
           bottom: false,
           child: async.when(
-            loading: () => const Center(
-              child: CircularProgressIndicator(color: AppColors.neni),
+            loading: () => const Stack(
+              children: [
+                Center(child: CircularProgressIndicator(color: AppColors.neni)),
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: EdgeInsets.only(bottom: 24),
+                    child: SlowLoadHint(),
+                  ),
+                ),
+              ],
             ),
             error: (error, _) =>
                 _CommandError(message: error.toString(), onRetry: _reload),
@@ -471,9 +493,11 @@ class _SellerTandasCommandScreenState
                                 onAddParticipant: (tanda) =>
                                     _addParticipant(workspace, tanda),
                                 onReorder: _reorderParticipants,
+                                onDrawTurns: _drawTurns,
                                 onPay: _payParticipant,
                                 onUndoPay: _deletePayment,
                                 onDeliver: _confirmDelivery,
+                                onWhatsApp: _sendWhatsAppReminder,
                                 onProcessPenalties: _processPenalties,
                                 onEditParticipant: _editParticipant,
                               ),
@@ -2363,6 +2387,17 @@ class _EditTandaSheetState extends State<_EditTandaSheet> {
           startDate: _startDate,
         ),
       );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(error.toString()),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -2541,6 +2576,17 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
           weeklyAmount: double.tryParse(_amountCtrl.text.trim()),
         ),
       );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(error.toString()),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -2697,6 +2743,17 @@ class _ParticipantEditorSheetState extends State<_ParticipantEditorSheet> {
       await widget.onSave(
         _ParticipantEditResult(turn: turn, variant: _variantCtrl.text),
       );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(error.toString()),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -2772,6 +2829,17 @@ class _ReorderParticipantsSheetState extends State<_ReorderParticipantsSheet> {
     setState(() => _saving = true);
     try {
       await widget.onSubmit(_participants.map((item) => item.id).toList());
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(error.toString()),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }

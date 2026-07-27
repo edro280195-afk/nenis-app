@@ -38,21 +38,25 @@ class PaymentsScreen extends ConsumerWidget {
                 0,
                 (sum, p) => sum + p.amount,
               );
-              return ListView(
-                padding: const EdgeInsets.only(bottom: 24),
-                children: [
-                  _Header(
-                    onBack: () => context.canPop()
-                        ? context.pop()
-                        : context.go('/account'),
-                  ),
-                  const SizedBox(height: 12),
-                  _SummaryRow(total: totalPaid, count: payments.length),
-                  if (payments.isEmpty)
-                    const _EmptyPayments()
-                  else
-                    _PaymentsList(payments: payments),
-                ],
+              return RefreshIndicator(
+                color: AppColors.neniDeep,
+                onRefresh: () async => ref.invalidate(paymentsFeedProvider),
+                child: ListView(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  children: [
+                    _Header(
+                      onBack: () => context.canPop()
+                          ? context.pop()
+                          : context.go('/account'),
+                    ),
+                    const SizedBox(height: 12),
+                    _SummaryRow(total: totalPaid, count: payments.length),
+                    if (payments.isEmpty)
+                      const _EmptyPayments()
+                    else
+                      _PaymentsList(payments: payments),
+                  ],
+                ),
               );
             },
           ),

@@ -68,13 +68,23 @@ class LiveHubClient {
     }
   }
 
-  /// Vendedora: se une al grupo del vivo de su propia tienda.
-  Future<bool> joinAdminLive() async {
+  /// Vendedora: se une al grupo del vivo de su propia tienda. `businessId`
+  /// solo hace falta si la cuenta tiene más de una tienda (mismo valor que
+  /// el header `X-Business-Id` de las llamadas REST) — con una sola
+  /// membership el backend la resuelve solo.
+  Future<bool> joinAdminLive({String? businessId}) async {
     if (_connection.state != signalr.HubConnectionState.Connected) {
       await start();
     }
     try {
-      final ok = await _connection.invoke('JoinAdminLive');
+      // `args` es `List<Object>` (elementos no-nulos) — solo se manda el
+      // valor cuando existe; omitirlo deja que el parámetro opcional del
+      // Hub caiga en su default `null` (mismo efecto, sin meter un null en
+      // la lista).
+      final ok = await _connection.invoke(
+        'JoinAdminLive',
+        args: [?businessId],
+      );
       return ok == true;
     } catch (_) {
       return false;
@@ -82,12 +92,16 @@ class LiveHubClient {
   }
 
   /// Vendedora: anuncia un producto de su catálogo como "lo muestro ahora".
-  Future<bool> announceProduct(int productId) async {
+  /// Mismo `businessId` opcional que [joinAdminLive].
+  Future<bool> announceProduct(int productId, {String? businessId}) async {
     if (_connection.state != signalr.HubConnectionState.Connected) {
       await start();
     }
     try {
-      final ok = await _connection.invoke('AnnounceProduct', args: [productId]);
+      final ok = await _connection.invoke(
+        'AnnounceProduct',
+        args: [productId, ?businessId],
+      );
       return ok == true;
     } catch (_) {
       return false;

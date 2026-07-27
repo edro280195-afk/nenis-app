@@ -12,6 +12,7 @@ import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/pill_button.dart';
+import '../../../shared/widgets/slow_load_hint.dart';
 import '../data/seller_clients_models.dart';
 import '../data/seller_clients_repository.dart';
 
@@ -70,27 +71,38 @@ class _SellerClientsScreenState extends ConsumerState<SellerClientsScreen> {
   }
 
   Widget _buildLoading() {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(22, 8, 22, 120),
+    return Stack(
       children: [
-        _Header(
-          total: 0,
-          sortLabel: _sort.label,
-          locating: false,
-          onRefresh: () => ref.invalidate(sellerClientsProvider),
-          onSort: _showSortSheet,
-          onDuplicates: _showDuplicateSuggestionsSheet,
-          onLocate: null,
+        ListView(
+          padding: const EdgeInsets.fromLTRB(22, 8, 22, 120),
+          children: [
+            _Header(
+              total: 0,
+              sortLabel: _sort.label,
+              locating: false,
+              onRefresh: () => ref.invalidate(sellerClientsProvider),
+              onSort: _showSortSheet,
+              onDuplicates: _showDuplicateSuggestionsSheet,
+              onLocate: null,
+            ),
+            const SizedBox(height: 16),
+            const _Skeleton(height: 112),
+            const SizedBox(height: 12),
+            const _Skeleton(height: 54),
+            const SizedBox(height: 18),
+            for (var i = 0; i < 5; i++) ...[
+              const _Skeleton(height: 148),
+              const SizedBox(height: 12),
+            ],
+          ],
         ),
-        const SizedBox(height: 16),
-        const _Skeleton(height: 112),
-        const SizedBox(height: 12),
-        const _Skeleton(height: 54),
-        const SizedBox(height: 18),
-        for (var i = 0; i < 5; i++) ...[
-          const _Skeleton(height: 148),
-          const SizedBox(height: 12),
-        ],
+        const Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: EdgeInsets.only(bottom: 24),
+            child: SlowLoadHint(),
+          ),
+        ),
       ],
     );
   }
@@ -148,7 +160,14 @@ class _SellerClientsScreenState extends ConsumerState<SellerClientsScreen> {
           sortLabel: _sort.label,
         ),
         const SizedBox(height: 10),
-        if (visible.isEmpty)
+        if (visible.isEmpty && clients.isEmpty)
+          const _EmptyState(
+            icon: Symbols.diversity_3,
+            title: 'Todavía no tienes clientas',
+            message:
+                'Aparecerán aquí en cuanto captures tu primer pedido o las agregues manualmente.',
+          )
+        else if (visible.isEmpty)
           _EmptyState(
             icon: Symbols.manage_search,
             title: 'No encontré clientas',
@@ -328,12 +347,20 @@ class _SellerClientsScreenState extends ConsumerState<SellerClientsScreen> {
     int clientId,
     UpdateSellerClientRequest request,
   ) async {
-    await ref
-        .read(sellerClientsRepositoryProvider)
-        .updateClient(clientId, request);
-    ref.invalidate(sellerClientsProvider);
-    ref.invalidate(sellerClientDetailProvider(clientId));
-    _snack('Clienta guardada.');
+    try {
+      await ref
+          .read(sellerClientsRepositoryProvider)
+          .updateClient(clientId, request);
+      ref.invalidate(sellerClientsProvider);
+      ref.invalidate(sellerClientDetailProvider(clientId));
+      _snack('Clienta guardada.');
+    } catch (error) {
+      _snack(error.toString(), danger: true);
+      // Re-lanzamos para que _ClientEditSheetState._save() no cierre el
+      // sheet como si hubiera guardado — antes el error se perdía en
+      // silencio y la vendedora nunca se enteraba de que falló.
+      rethrow;
+    }
   }
 
   Future<bool> _deleteClient(SellerClientProfile client) async {
@@ -360,11 +387,19 @@ class _SellerClientsScreenState extends ConsumerState<SellerClientsScreen> {
     );
     if (ok != true) return false;
 
-    await ref.read(sellerClientsRepositoryProvider).deleteClient(client.id);
-    ref.invalidate(sellerClientsProvider);
-    ref.invalidate(sellerClientDetailProvider(client.id));
-    _snack('Clienta eliminada.');
-    return true;
+    try {
+      await ref.read(sellerClientsRepositoryProvider).deleteClient(client.id);
+      ref.invalidate(sellerClientsProvider);
+      ref.invalidate(sellerClientDetailProvider(client.id));
+      _snack('Clienta eliminada.');
+      return true;
+    } catch (error) {
+      // El backend rechaza el borrado con 400 si la clienta tiene pedidos
+      // (advertido en el diálogo de arriba) — sin este catch, esa respuesta
+      // se perdía en silencio: el sheet se quedaba abierto sin explicación.
+      _snack(error.toString(), danger: true);
+      return false;
+    }
   }
 
   Future<void> _addAlias(int clientId) async {
@@ -1652,12 +1687,29 @@ class _AliasesCard extends ConsumerWidget {
                         onDelete: alias.id <= 0
                             ? null
                             : () async {
-                                await ref
-                                    .read(sellerClientsRepositoryProvider)
-                                    .deleteAlias(alias.id);
-                                ref.invalidate(
-                                  sellerClientAliasesProvider(clientId),
-                                );
+                                try {
+                                  await ref
+                                      .read(sellerClientsRepositoryProvider)
+                                      .deleteAlias(alias.id);
+                                  ref.invalidate(
+                                    sellerClientAliasesProvider(clientId),
+                                  );
+                                } catch (error) {
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context)
+                                    ..hideCurrentSnackBar()
+                                    ..showSnackBar(
+                                      SnackBar(
+                                        behavior: SnackBarBehavior.floating,
+                                        backgroundColor: AppColors.liveRed,
+                                        content: Text(
+                                          error.toString(),
+                                          style: AppTextStyles.body
+                                              .copyWith(color: Colors.white),
+                                        ),
+                                      ),
+                                    );
+                                }
                               },
                       ),
                     )
@@ -1692,8 +1744,10 @@ class _ClientInsightCardState extends ConsumerState<_ClientInsightCard> {
       final result = await ref
           .read(sellerClientsRepositoryProvider)
           .getClientInsight(widget.clientId);
+      if (!mounted) return;
       setState(() => _text = result.text);
     } catch (error) {
+      if (!mounted) return;
       setState(() => _error = error.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -1863,6 +1917,8 @@ class _ClientEditSheetState extends State<_ClientEditSheet> {
                   controller: _phoneCtrl,
                   icon: Symbols.call,
                   keyboardType: TextInputType.phone,
+                  inputFormatters: [LengthLimitingTextInputFormatter(20)],
+                  helperText: 'Dejarlo vacío no borra el dato guardado.',
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -1896,15 +1952,27 @@ class _ClientEditSheetState extends State<_ClientEditSheet> {
                           initialValue: _type,
                           isExpanded: true,
                           decoration: _fieldDecoration(),
-                          items: const [
-                            DropdownMenuItem(
+                          // C.A.M.I. puede fijar Type a valores fuera de
+                          // estas dos opciones (ej. "VIP" por chat) — sin
+                          // este item extra, `initialValue` no matchea
+                          // ningún `DropdownMenuItem` y truena el sheet.
+                          // Se agrega el valor actual tal cual en vez de
+                          // caer a un default, para no perder el dato al
+                          // guardar sin tocar este campo.
+                          items: [
+                            const DropdownMenuItem(
                               value: 'Nueva',
                               child: Text('Nueva'),
                             ),
-                            DropdownMenuItem(
+                            const DropdownMenuItem(
                               value: 'Frecuente',
                               child: Text('Frecuente'),
                             ),
+                            if (_type != 'Nueva' && _type != 'Frecuente')
+                              DropdownMenuItem(
+                                value: _type,
+                                child: Text(_type),
+                              ),
                           ],
                           onChanged: (value) {
                             if (value != null) setState(() => _type = value);
@@ -1920,6 +1988,7 @@ class _ClientEditSheetState extends State<_ClientEditSheet> {
                   controller: _addressCtrl,
                   icon: Symbols.location_on,
                   maxLines: 2,
+                  helperText: 'Dejarla vacía no borra el dato guardado.',
                 ),
                 const SizedBox(height: 12),
                 _EditField(
@@ -1927,6 +1996,7 @@ class _ClientEditSheetState extends State<_ClientEditSheet> {
                   controller: _instructionsCtrl,
                   icon: Symbols.notes,
                   maxLines: 2,
+                  helperText: 'Dejarlas vacías no borra el dato guardado.',
                 ),
                 const SizedBox(height: 12),
                 _EditField(
@@ -2550,6 +2620,8 @@ class _EditField extends StatelessWidget {
     this.keyboardType,
     this.maxLines = 1,
     this.validator,
+    this.inputFormatters,
+    this.helperText,
   });
 
   final String label;
@@ -2558,6 +2630,8 @@ class _EditField extends StatelessWidget {
   final TextInputType? keyboardType;
   final int maxLines;
   final String? Function(String value)? validator;
+  final List<TextInputFormatter>? inputFormatters;
+  final String? helperText;
 
   @override
   Widget build(BuildContext context) {
@@ -2567,8 +2641,9 @@ class _EditField extends StatelessWidget {
         controller: controller,
         keyboardType: keyboardType,
         maxLines: maxLines,
+        inputFormatters: inputFormatters,
         style: AppTextStyles.body.copyWith(fontSize: 13),
-        decoration: _fieldDecoration(prefixIcon: icon),
+        decoration: _fieldDecoration(prefixIcon: icon, helperText: helperText),
         validator: (value) => validator?.call(value ?? ''),
       ),
     );
@@ -2601,7 +2676,7 @@ class _PickerBox extends StatelessWidget {
   }
 }
 
-InputDecoration _fieldDecoration({IconData? prefixIcon}) {
+InputDecoration _fieldDecoration({IconData? prefixIcon, String? helperText}) {
   return InputDecoration(
     isDense: true,
     filled: true,
@@ -2609,6 +2684,9 @@ InputDecoration _fieldDecoration({IconData? prefixIcon}) {
     prefixIcon: prefixIcon == null
         ? null
         : Icon(prefixIcon, color: AppColors.ink3, size: 19),
+    helperText: helperText,
+    helperMaxLines: 2,
+    helperStyle: AppTextStyles.subtitle.copyWith(fontSize: 10.5),
     contentPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 13),
     enabledBorder: OutlineInputBorder(
       borderRadius: AppRadii.fieldRadius,

@@ -12,6 +12,7 @@ import '../../../core/utils/color_hex.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/pill_button.dart';
+import '../../../shared/widgets/slow_load_hint.dart';
 import '../data/seller_settings_models.dart';
 import '../data/seller_settings_repository.dart';
 
@@ -276,7 +277,7 @@ class _SellerStoreProfileSettingsScreenState
                 const SizedBox(height: 12),
                 const _InlineWarning(
                   text:
-                      'Revisa que el nombre no esté vacío y que los colores usen formato #RRGGBB.',
+                      'Revisa que el nombre no esté vacío ni pase de 150 caracteres, y que los colores usen formato #RRGGBB.',
                 ),
               ],
             ],
@@ -438,6 +439,11 @@ class _SellerPreferencesSettingsScreenState
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
         children: [
+          const _InlineWarning(
+            text:
+                'Estas preferencias se guardan en este dispositivo, pero todavía no cambian el comportamiento real de pedidos, rutas ni notificaciones.',
+          ),
+          const SizedBox(height: 14),
           _SettingsCard(
             title: 'Alertas',
             subtitle: 'Mantente enterada sin llenar la pantalla de ruido.',
@@ -714,7 +720,9 @@ class _StorePreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final initial = name.trim().substring(0, 1).toUpperCase();
+    final initial = name.trim().isEmpty
+        ? 'N'
+        : name.trim().substring(0, 1).toUpperCase();
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
@@ -1349,8 +1357,17 @@ class _SettingsLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: CircularProgressIndicator(color: AppColors.neni),
+    return const Stack(
+      children: [
+        Center(child: CircularProgressIndicator(color: AppColors.neni)),
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: EdgeInsets.only(bottom: 24),
+            child: SlowLoadHint(),
+          ),
+        ),
+      ],
     );
   }
 }

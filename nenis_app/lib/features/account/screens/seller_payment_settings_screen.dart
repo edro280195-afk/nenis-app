@@ -12,6 +12,7 @@ import '../../../core/utils/color_hex.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/pill_button.dart';
+import '../../../shared/widgets/slow_load_hint.dart';
 import '../data/seller_settings_models.dart';
 import '../data/seller_settings_repository.dart';
 
@@ -230,8 +231,15 @@ class _SellerPaymentSettingsScreenState
   }
 
   Future<void> _setDefault(SellerPayoutAccount account) async {
+    // Guard GLOBAL, no solo por cuenta: el backend serializa "hacer
+    // principal" por negocio (candado consultivo), pero si dos cuentas
+    // distintas se pudieran marcar en vuelo al mismo tiempo desde esta
+    // misma pantalla, la UI mostraría dos requests optimistas peleando por
+    // la misma marca de "principal" hasta que ambas respondan. Con
+    // `.isNotEmpty` alcanza con una sola "hacer principal" en vuelo para
+    // bloquear cualquier otra, no solo repetir la misma cuenta.
     if (account.isDefault ||
-        _defaultingAccountIds.contains(account.id) ||
+        _defaultingAccountIds.isNotEmpty ||
         _deletingAccountIds.contains(account.id)) {
       return;
     }
@@ -1422,6 +1430,7 @@ class _PayoutForm extends StatelessWidget {
               hint: 'Banco o app de pago',
               prefixIcon: Symbols.account_balance,
               textInputAction: TextInputAction.next,
+              inputFormatters: [LengthLimitingTextInputFormatter(80)],
               onChanged: (_) => onChanged(),
             ),
           ],
@@ -1432,6 +1441,7 @@ class _PayoutForm extends StatelessWidget {
             hint: 'Nombre como aparece en el banco',
             prefixIcon: Symbols.person,
             textInputAction: TextInputAction.next,
+            inputFormatters: [LengthLimitingTextInputFormatter(120)],
             onChanged: (_) => onChanged(),
           ),
           const SizedBox(height: 12),
@@ -1457,6 +1467,7 @@ class _PayoutForm extends StatelessWidget {
             hint: 'Principal, apartados, débito...',
             prefixIcon: Symbols.sell,
             textInputAction: TextInputAction.next,
+            inputFormatters: [LengthLimitingTextInputFormatter(80)],
             onChanged: (_) => onChanged(),
           ),
           const SizedBox(height: 12),
@@ -1466,6 +1477,7 @@ class _PayoutForm extends StatelessWidget {
             hint: 'Opcional, solo para ti',
             prefixIcon: Symbols.notes,
             maxLines: 2,
+            inputFormatters: [LengthLimitingTextInputFormatter(300)],
             onChanged: (_) => onChanged(),
           ),
           const SizedBox(height: 14),
@@ -2201,8 +2213,17 @@ class _PaymentLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: CircularProgressIndicator(color: AppColors.neni),
+    return const Stack(
+      children: [
+        Center(child: CircularProgressIndicator(color: AppColors.neni)),
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: EdgeInsets.only(bottom: 24),
+            child: SlowLoadHint(),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -178,10 +178,20 @@ class TrackingHubClient {
       }
     });
 
+    // El backend manda UN solo argumento objeto ({Status, Message} —
+    // ver DriverController.cs, ej. líneas 199/245/316/613/704), no dos
+    // posicionales. Con `args[1]` esto nunca disparaba: los cambios de
+    // estado en vivo (Confirmed→Shipped→InRoute→Delivered) no llegaban y
+    // solo se veían al hacer pull-to-refresh manual.
     _connection.on('DeliveryUpdate', (args) {
-      if (args == null || args.length < 2) return;
-      final raw = args[1];
-      if (raw is String) {
+      if (args == null || args.isEmpty) return;
+      final raw = args.first;
+      if (raw is Map) {
+        final status = raw['status'] ?? raw['Status'];
+        if (status is String) {
+          _statusCtl.add(trackingStatusFromString(status));
+        }
+      } else if (raw is String) {
         _statusCtl.add(trackingStatusFromString(raw));
       }
     });

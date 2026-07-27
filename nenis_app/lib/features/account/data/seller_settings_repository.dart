@@ -189,7 +189,14 @@ class SellerSettingsRepository {
         e.type == DioExceptionType.connectionTimeout ||
         e.type == DioExceptionType.receiveTimeout ||
         e.type == DioExceptionType.sendTimeout) {
-      return 'No pudimos conectar con el servidor. Revisa tu internet.';
+      // Los guardados (POST/PUT/DELETE) no reintentan en cold-start a
+      // propósito (para no duplicar una escritura que tal vez ya se
+      // procesó) — así que un timeout aquí es, la mayoría de las veces,
+      // el backend de Render despertando (hasta ~60-100s), no un
+      // problema real de internet de la vendedora.
+      return 'No pudimos conectar con el servidor. Si acabas de abrir la '
+          'app puede estar despertando — espera unos segundos y vuelve a '
+          'intentar.';
     }
     return fallback;
   }

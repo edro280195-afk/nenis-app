@@ -74,7 +74,23 @@ class SellerVipScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  error: (_, _) => Text('No pudimos cargar tus seguidoras.', style: AppTextStyles.subtitle),
+                  error: (_, _) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'No pudimos cargar tus seguidoras.',
+                            style: AppTextStyles.subtitle,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => ref.invalidate(sellerVipControllerProvider),
+                          child: const Text('Reintentar'),
+                        ),
+                      ],
+                    ),
+                  ),
                   data: (list) {
                     if (list.isEmpty) {
                       return _EmptyState();

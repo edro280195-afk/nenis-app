@@ -47,10 +47,9 @@ class _SellerUpdatesScreenState extends ConsumerState<SellerUpdatesScreen> {
       await ref.read(sellerUpdatesRepositoryProvider).startLive(
             _liveTitle.text.trim().isEmpty ? null : _liveTitle.text.trim(),
           );
+      if (!mounted) return;
       ref.invalidate(activeLiveAnnouncementProvider);
-      if (mounted) {
-        context.showPremiumToast('Tus seguidoras ya lo saben.', type: PremiumToastType.success);
-      }
+      context.showPremiumToast('Tus seguidoras ya lo saben.', type: PremiumToastType.success);
     } on LiveAlreadyActiveException catch (e) {
       if (mounted) context.showPremiumToast(e.message, type: PremiumToastType.error);
     } on SellerUpdatesException catch (e) {
@@ -64,6 +63,7 @@ class _SellerUpdatesScreenState extends ConsumerState<SellerUpdatesScreen> {
     setState(() => _busyLive = true);
     try {
       await ref.read(sellerUpdatesRepositoryProvider).endLive(id);
+      if (!mounted) return;
       ref.invalidate(activeLiveAnnouncementProvider);
     } on SellerUpdatesException catch (e) {
       if (mounted) context.showPremiumToast(e.message, type: PremiumToastType.error);
@@ -74,7 +74,7 @@ class _SellerUpdatesScreenState extends ConsumerState<SellerUpdatesScreen> {
 
   Future<void> _pickImage() async {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (picked != null) setState(() => _pickedImage = File(picked.path));
+    if (picked != null && mounted) setState(() => _pickedImage = File(picked.path));
   }
 
   Future<void> _publish() async {
@@ -89,15 +89,14 @@ class _SellerUpdatesScreenState extends ConsumerState<SellerUpdatesScreen> {
         imageUrl = await repo.uploadImage(_pickedImage!);
       }
       await repo.createPost(body: body, imageUrl: imageUrl, isVipOnly: _vipOnly);
+      if (!mounted) return;
       ref.invalidate(myStorePostsProvider);
       _postBody.clear();
       setState(() {
         _pickedImage = null;
         _vipOnly = false;
       });
-      if (mounted) {
-        context.showPremiumToast('¡Publicado! Tus seguidoras ya lo verán.', type: PremiumToastType.success);
-      }
+      context.showPremiumToast('¡Publicado! Tus seguidoras ya lo verán.', type: PremiumToastType.success);
     } on SellerUpdatesException catch (e) {
       if (mounted) context.showPremiumToast(e.message, type: PremiumToastType.error);
     } finally {
@@ -108,6 +107,7 @@ class _SellerUpdatesScreenState extends ConsumerState<SellerUpdatesScreen> {
   Future<void> _deletePost(int id) async {
     try {
       await ref.read(sellerUpdatesRepositoryProvider).deletePost(id);
+      if (!mounted) return;
       ref.invalidate(myStorePostsProvider);
     } on SellerUpdatesException catch (e) {
       if (mounted) context.showPremiumToast(e.message, type: PremiumToastType.error);
@@ -190,7 +190,23 @@ class _SellerUpdatesScreenState extends ConsumerState<SellerUpdatesScreen> {
               const SizedBox(height: 10),
               myPosts.when(
                 loading: () => const _CardSkeleton(),
-                error: (_, _) => const SizedBox.shrink(),
+                error: (_, _) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'No pudimos cargar tus novedades.',
+                          style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => ref.invalidate(myStorePostsProvider),
+                        child: const Text('Reintentar'),
+                      ),
+                    ],
+                  ),
+                ),
                 data: (posts) {
                   if (posts.isEmpty) {
                     return Text(

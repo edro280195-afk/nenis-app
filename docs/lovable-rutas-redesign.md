@@ -180,6 +180,15 @@ Lovable debe crear una interfaz `RouteService`; en el prototipo se implementa co
 | Consultar bolsas | `GET /api/orders/{orderId}/packages` | — | bolsas, QR y estado |
 | Crear bolsas | `POST /api/orders/{orderId}/packages/generate` | `{ count: number }` | únicamente las bolsas nuevas |
 | Ruta del repartidor | `GET /api/driver/{driverToken}` | — | ruta y entregas públicas |
+| Agregar a ruta existente | `POST /api/routes/{routeId}/add-order`, `POST /api/routes/{routeId}/add-tanda` | `orderId` / `tandaParticipantId` (+ `lat`/`lng` opcionales) | ruta actualizada |
+| Quitar de ruta existente | `DELETE /api/routes/{routeId}/remove-order/{orderId}`, `DELETE /api/routes/{routeId}/remove-tanda/{tandaParticipantId}` | — | confirmación |
+| Recomponer orden | `PUT /api/routes/{routeId}/recompose` | — | ruta con nuevo orden de entregas |
+| Selección asistida por IA | `POST /api/routes/ai-select` | — | sugerencia de pedidos/tandas a incluir |
+| Chat con repartidor (ruta completa) | `GET /api/routes/{routeId}/chat`, `POST /api/routes/{routeId}/chat` | `{ text }` | historial / mensaje enviado (push por SignalR `ReceiveChatMessage`) |
+| Chat con repartidor (una entrega) | `GET /api/routes/{routeId}/deliveries/{deliveryId}/chat`, `POST /api/routes/{routeId}/deliveries/{deliveryId}/chat` | `{ text }` | historial / mensaje enviado, acotado a esa parada |
+| Liquidar ruta (cierre financiero) | `POST /api/routes/{routeId}/liquidate` | — | cierre de cobros de la ruta |
+
+> **Nota (agregada 2026-07-25):** estos últimos seis renglones no estaban en la versión original de este contrato — el `RoutesController` los ya tenía o los ganó en el mismo periodo en que se escribió este brief. Si el prototipo de Lovable no los contempla, el diseño quedará incompleto frente a lo que la vendedora ya puede hacer hoy (chat con el repartidor desde el detalle de ruta, agregar/quitar una parada sin rehacer la ruta completa, selección asistida por IA, liquidar cobros). Decidir con Eduardo si se incluyen en esta ronda de Lovable o se dejan fuera a propósito (ej. liquidación es un flujo administrativo pesado que quizás no vale la pena rediseñar aquí).
 
 ### Tipos mínimos
 

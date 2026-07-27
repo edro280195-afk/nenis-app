@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../../core/auth/auth_controller.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
@@ -33,6 +34,15 @@ class _SellerLiveScreenState extends ConsumerState<SellerLiveScreen> {
   int? _announcingId;
   LiveProductAnnouncement? _lastAnnounced;
 
+  /// Mismo valor que el header `X-Business-Id` de las llamadas REST — solo
+  /// hace falta cuando la cuenta tiene más de una tienda; con una sola
+  /// membership el backend la resuelve solo aunque esto venga null.
+  String? get _activeBusinessId => ref
+      .read(authControllerProvider)
+      .value
+      ?.activeBusinessId
+      ?.toString();
+
   Future<void> _ensureJoined() async {
     if (_joined || _joining) return;
     setState(() => _joining = true);
@@ -40,7 +50,7 @@ class _SellerLiveScreenState extends ConsumerState<SellerLiveScreen> {
     hub.productAnnouncedStream.listen((a) {
       if (mounted) setState(() => _lastAnnounced = a);
     });
-    final ok = await hub.joinAdminLive();
+    final ok = await hub.joinAdminLive(businessId: _activeBusinessId);
     if (mounted) {
       setState(() {
         _joined = ok;
@@ -52,7 +62,8 @@ class _SellerLiveScreenState extends ConsumerState<SellerLiveScreen> {
   Future<void> _announce(SellerProduct product) async {
     setState(() => _announcingId = product.id);
     final hub = ref.read(liveHubProvider);
-    final ok = await hub.announceProduct(product.id);
+    final ok =
+        await hub.announceProduct(product.id, businessId: _activeBusinessId);
     if (!mounted) return;
     setState(() => _announcingId = null);
     if (ok) {
@@ -135,13 +146,29 @@ class _SellerLiveScreenState extends ConsumerState<SellerLiveScreen> {
                         onStart: () => context.push('/seller/updates'),
                       );
                     }
+                    // Si la vendedora sale de esta pantalla y reentra a
+                    // medio vivo, `_lastAnnounced` arranca null otra vez
+                    // (solo se llena con eventos SignalR o al anunciar
+                    // desde aquí mismo). El backend sí conserva el último
+                    // producto anunciado en el propio LiveAnnouncement —
+                    // lo usamos como respaldo mientras no llegue un evento
+                    // más fresco.
+                    final lastAnnounced = _lastAnnounced ??
+                        (active.currentProductId != null && active.currentProductName != null
+                            ? LiveProductAnnouncement(
+                                productId: active.currentProductId!,
+                                name: active.currentProductName!,
+                                price: active.currentProductPrice ?? 0,
+                                announcedAt: active.currentAnnouncedAt ?? active.startedAt,
+                              )
+                            : null);
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _LiveStatusBanner(
                           title: active.title,
                           connecting: _joining && !_joined,
-                          lastAnnounced: _lastAnnounced,
+                          lastAnnounced: lastAnnounced,
                         ),
                         const SizedBox(height: 18),
                         Text(
@@ -178,7 +205,7 @@ class _SellerLiveScreenState extends ConsumerState<SellerLiveScreen> {
                                       _ProductAnnounceRow(
                                         product: p,
                                         busy: _announcingId == p.id,
-                                        isCurrent: _lastAnnounced?.productId == p.id,
+                                        isCurrent: lastAnnounced?.productId == p.id,
                                         onTap: () => _announce(p),
                                       ),
                                       const SizedBox(height: 10),

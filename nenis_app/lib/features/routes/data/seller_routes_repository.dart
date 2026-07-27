@@ -84,7 +84,9 @@ class SellerRoutesRepository {
     }
   }
 
-  Future<SellerRoute> createRoute(Iterable<RouteCandidate> candidates) async {
+  Future<CreateRouteResult> createRoute(
+    Iterable<RouteCandidate> candidates,
+  ) async {
     final orderIds = <int>[];
     final tandaIds = <String>[];
     for (final candidate in candidates) {
@@ -103,8 +105,7 @@ class SellerRoutesRepository {
           'preOptimized': false,
         },
       );
-      final data = res.data as Map<String, dynamic>;
-      return SellerRoute.fromJson(data['route'] as Map<String, dynamic>);
+      return CreateRouteResult.fromJson(res.data as Map<String, dynamic>);
     } catch (e) {
       throw SellerRoutesException(_friendly(e, 'No pudimos crear la ruta.'));
     }

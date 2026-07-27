@@ -308,6 +308,23 @@ class SkippedStop {
   );
 }
 
+/// Resultado de `POST /api/routes`: el backend re-valida cada pedido/tanda
+/// al crear (puede rechazar por "Ya en otra ruta", "Cancelado", etc.) y
+/// devuelve por separado lo que sí quedó en la ruta y lo que se cayó.
+class CreateRouteResult {
+  const CreateRouteResult({required this.route, required this.skipped});
+
+  final SellerRoute route;
+  final List<SkippedStop> skipped;
+
+  factory CreateRouteResult.fromJson(Map<String, dynamic> j) => CreateRouteResult(
+    route: SellerRoute.fromJson(j['route'] as Map<String, dynamic>),
+    skipped: ((j['skipped'] as List?) ?? const [])
+        .map((e) => SkippedStop.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
+}
+
 class RoutePreviewStop {
   const RoutePreviewStop({
     required this.kind,
