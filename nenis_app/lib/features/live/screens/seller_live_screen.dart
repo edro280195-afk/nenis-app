@@ -16,6 +16,7 @@ import '../../seller_updates/data/seller_updates_repository.dart';
 import '../data/live_hub_client.dart';
 import '../data/live_models.dart';
 import '../data/seller_products_repository.dart';
+import '../widgets/meta_live_probe_card.dart';
 
 /// Control de la vendedora durante su Live: no toca el video de Facebook
 /// para nada — solo anuncia con un toque qué producto está mostrando, y eso
@@ -37,11 +38,8 @@ class _SellerLiveScreenState extends ConsumerState<SellerLiveScreen> {
   /// Mismo valor que el header `X-Business-Id` de las llamadas REST — solo
   /// hace falta cuando la cuenta tiene más de una tienda; con una sola
   /// membership el backend la resuelve solo aunque esto venga null.
-  String? get _activeBusinessId => ref
-      .read(authControllerProvider)
-      .value
-      ?.activeBusinessId
-      ?.toString();
+  String? get _activeBusinessId =>
+      ref.read(authControllerProvider).value?.activeBusinessId?.toString();
 
   Future<void> _ensureJoined() async {
     if (_joined || _joining) return;
@@ -62,17 +60,21 @@ class _SellerLiveScreenState extends ConsumerState<SellerLiveScreen> {
   Future<void> _announce(SellerProduct product) async {
     setState(() => _announcingId = product.id);
     final hub = ref.read(liveHubProvider);
-    final ok =
-        await hub.announceProduct(product.id, businessId: _activeBusinessId);
+    final ok = await hub.announceProduct(
+      product.id,
+      businessId: _activeBusinessId,
+    );
     if (!mounted) return;
     setState(() => _announcingId = null);
     if (ok) {
-      setState(() => _lastAnnounced = LiveProductAnnouncement(
-            productId: product.id,
-            name: product.name,
-            price: product.price,
-            announcedAt: DateTime.now(),
-          ));
+      setState(
+        () => _lastAnnounced = LiveProductAnnouncement(
+          productId: product.id,
+          name: product.name,
+          price: product.price,
+          announcedAt: DateTime.now(),
+        ),
+      );
     } else {
       context.showPremiumToast(
         'No pudimos anunciarlo. Revisa tu conexión.',
@@ -108,17 +110,25 @@ class _SellerLiveScreenState extends ConsumerState<SellerLiveScreen> {
                     shadowColor: Colors.black26,
                     child: InkWell(
                       customBorder: const CircleBorder(),
-                      onTap: () =>
-                          context.canPop() ? context.pop() : context.go('/account'),
+                      onTap: () => context.canPop()
+                          ? context.pop()
+                          : context.go('/account'),
                       child: SizedBox(
                         width: 40,
                         height: 40,
-                        child: Icon(Icons.adaptive.arrow_back, size: 20, color: AppColors.ink),
+                        child: Icon(
+                          Icons.adaptive.arrow_back,
+                          size: 20,
+                          color: AppColors.ink,
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Text('Anunciar en vivo', style: AppTextStyles.h1.copyWith(fontSize: 22)),
+                  Text(
+                    'Anunciar en vivo',
+                    style: AppTextStyles.h1.copyWith(fontSize: 22),
+                  ),
                 ],
               ),
               const SizedBox(height: 6),
@@ -128,18 +138,28 @@ class _SellerLiveScreenState extends ConsumerState<SellerLiveScreen> {
                 style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
               ),
               const SizedBox(height: 20),
+              const MetaLiveProbeCard(),
+              const SizedBox(height: 20),
               if (!hasLivePush)
                 const FeatureLockedCard(
                   title: 'Anunciar en vivo es una función Pro',
-                  body: 'Avisa a tus seguidoras qué producto estás mostrando, en tiempo real.',
+                  body:
+                      'Avisa a tus seguidoras qué producto estás mostrando, en tiempo real.',
                 )
               else
                 activeLive.when(
                   loading: () => const Padding(
                     padding: EdgeInsets.symmetric(vertical: 30),
-                    child: Center(child: CircularProgressIndicator(color: AppColors.neniDeep)),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.neniDeep,
+                      ),
+                    ),
                   ),
-                  error: (_, _) => Text('No pudimos revisar tu vivo.', style: AppTextStyles.subtitle),
+                  error: (_, _) => Text(
+                    'No pudimos revisar tu vivo.',
+                    style: AppTextStyles.subtitle,
+                  ),
                   data: (active) {
                     if (active == null || !active.isActive) {
                       return _NotLiveYetCard(
@@ -153,13 +173,17 @@ class _SellerLiveScreenState extends ConsumerState<SellerLiveScreen> {
                     // producto anunciado en el propio LiveAnnouncement —
                     // lo usamos como respaldo mientras no llegue un evento
                     // más fresco.
-                    final lastAnnounced = _lastAnnounced ??
-                        (active.currentProductId != null && active.currentProductName != null
+                    final lastAnnounced =
+                        _lastAnnounced ??
+                        (active.currentProductId != null &&
+                                active.currentProductName != null
                             ? LiveProductAnnouncement(
                                 productId: active.currentProductId!,
                                 name: active.currentProductName!,
                                 price: active.currentProductPrice ?? 0,
-                                announcedAt: active.currentAnnouncedAt ?? active.startedAt,
+                                announcedAt:
+                                    active.currentAnnouncedAt ??
+                                    active.startedAt,
                               )
                             : null);
                     return Column(
@@ -173,7 +197,9 @@ class _SellerLiveScreenState extends ConsumerState<SellerLiveScreen> {
                         const SizedBox(height: 18),
                         Text(
                           'TU CATÁLOGO',
-                          style: AppTextStyles.eyebrow(AppColors.neniDeep).copyWith(letterSpacing: 1.0),
+                          style: AppTextStyles.eyebrow(
+                            AppColors.neniDeep,
+                          ).copyWith(letterSpacing: 1.0),
                         ),
                         const SizedBox(height: 10),
                         Consumer(
@@ -186,12 +212,17 @@ class _SellerLiveScreenState extends ConsumerState<SellerLiveScreen> {
                                   child: SizedBox(
                                     width: 22,
                                     height: 22,
-                                    child: CircularProgressIndicator(strokeWidth: 2.4, color: AppColors.neni),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.4,
+                                      color: AppColors.neni,
+                                    ),
                                   ),
                                 ),
                               ),
-                              error: (_, _) =>
-                                  Text('No pudimos cargar tu catálogo.', style: AppTextStyles.subtitle),
+                              error: (_, _) => Text(
+                                'No pudimos cargar tu catálogo.',
+                                style: AppTextStyles.subtitle,
+                              ),
                               data: (list) {
                                 if (list.isEmpty) {
                                   return Text(
@@ -205,7 +236,8 @@ class _SellerLiveScreenState extends ConsumerState<SellerLiveScreen> {
                                       _ProductAnnounceRow(
                                         product: p,
                                         busy: _announcingId == p.id,
-                                        isCurrent: lastAnnounced?.productId == p.id,
+                                        isCurrent:
+                                            lastAnnounced?.productId == p.id,
                                         onTap: () => _announce(p),
                                       ),
                                       const SizedBox(height: 10),
@@ -255,7 +287,10 @@ class _NotLiveYetCard extends StatelessWidget {
             child: const Icon(Symbols.sensors, color: AppColors.ink2, size: 26),
           ),
           const SizedBox(height: 14),
-          Text('Primero avisa que estás en vivo', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+          Text(
+            'Primero avisa que estás en vivo',
+            style: AppTextStyles.h2.copyWith(fontSize: 16),
+          ),
           const SizedBox(height: 6),
           Text(
             'Desde Novedades puedes prender "Estoy en vivo ahora". En cuanto '
@@ -334,15 +369,19 @@ class _LiveStatusBanner extends StatelessWidget {
                   title?.isNotEmpty == true ? title! : 'Estás en vivo',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.body.copyWith(fontSize: 14.5, color: Colors.white, fontWeight: FontWeight.w700),
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 14.5,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 1),
                 Text(
                   connecting
                       ? 'Conectando…'
                       : lastAnnounced != null
-                          ? 'Mostrando: ${lastAnnounced!.name}'
-                          : 'Toca un producto de abajo para anunciarlo',
+                      ? 'Mostrando: ${lastAnnounced!.name}'
+                      : 'Toca un producto de abajo para anunciarlo',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -386,7 +425,9 @@ class _ProductAnnounceRow extends StatelessWidget {
             color: AppColors.surface,
             borderRadius: AppRadii.softRadius,
             boxShadow: AppShadows.small,
-            border: isCurrent ? Border.all(color: AppColors.neniDeep, width: 1.4) : null,
+            border: isCurrent
+                ? Border.all(color: AppColors.neniDeep, width: 1.4)
+                : null,
           ),
           child: Row(
             children: [
@@ -398,12 +439,18 @@ class _ProductAnnounceRow extends StatelessWidget {
                       product.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.body.copyWith(fontSize: 14, fontWeight: FontWeight.w600),
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       '\$${product.price.toStringAsFixed(0)} · ${product.stock} disponibles',
-                      style: AppTextStyles.subtitle.copyWith(fontSize: 11.5, color: AppColors.ink2),
+                      style: AppTextStyles.subtitle.copyWith(
+                        fontSize: 11.5,
+                        color: AppColors.ink2,
+                      ),
                     ),
                   ],
                 ),
@@ -413,10 +460,17 @@ class _ProductAnnounceRow extends StatelessWidget {
                 const SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.neniDeep),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    color: AppColors.neniDeep,
+                  ),
                 )
               else if (isCurrent)
-                const Icon(Symbols.check_circle, color: AppColors.neniDeep, size: 22)
+                const Icon(
+                  Symbols.check_circle,
+                  color: AppColors.neniDeep,
+                  size: 22,
+                )
               else
                 Material(
                   color: AppColors.neniDeep,
@@ -427,7 +481,11 @@ class _ProductAnnounceRow extends StatelessWidget {
                     child: const SizedBox(
                       width: 34,
                       height: 34,
-                      child: Icon(Symbols.campaign, color: Colors.white, size: 18),
+                      child: Icon(
+                        Symbols.campaign,
+                        color: Colors.white,
+                        size: 18,
+                      ),
                     ),
                   ),
                 ),
