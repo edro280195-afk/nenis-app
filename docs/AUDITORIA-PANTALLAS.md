@@ -232,6 +232,12 @@ simplemente no se actualizó. Bugs reales encontrados en lo ya construido:
   widget antes de mostrar el snack de éxito — ahora actualiza el estado
   local en vez de recargar todo (mismo patrón que ya usaba
   `saveInstructions`).
+- **TrackingScreen (continuación 2026-07-27)**: token, controller, chat y
+  cliente SignalR ahora son `autoDispose`. El hub se conserva mientras
+  Tracking o el chat tengan un consumidor y se cierra al salir del último.
+  El cierre también cubre una conexión todavía en curso, evita emitir sobre
+  streams cerrados y fuerza reconexión limpia si cambia el pedido. Cubierto
+  con 3 pruebas nuevas de ciclo de vida.
 - **OrderLinkScreen**: sin hallazgos reales, solo código muerto inofensivo.
 - **Addresses**: 🔴 **no se podía borrar el pin GPS guardado** — un `null`
   explícito en JSON para lat/lng deserializa igual que el campo ausente en
@@ -269,9 +275,6 @@ por ser ambiguo o necesitar una decisión que no es mía tomar sola:
   Alcanzable si una vendedora abre el link público de su propia tienda.
   ¿Falta el guard, o Puntos/Sorteos de vendedora se administran fuera del
   app a propósito?
-- Conexión SignalR de `TrackingScreen` no es `.autoDispose` — sigue
-  conectada tras salir de la pantalla con "atrás" (costo de batería/datos,
-  no bug de corrección).
 - `AddParticipantAsync` (chip de clienta standalone en Tandas) resuelve
   por nombre normalizado — mismo patrón de match implícito que causó B5 en
   OrderCreateScreen. Puede ser dedup intencional, confirmar con la dueña.

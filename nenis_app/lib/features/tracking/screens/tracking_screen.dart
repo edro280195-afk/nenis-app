@@ -35,7 +35,10 @@ class _TrackingScreenState extends ConsumerState<TrackingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final token = widget.accessToken ?? '';
+    final providerToken = ref.watch(trackingTokenProvider);
+    final token = providerToken.isEmpty
+        ? widget.accessToken ?? ''
+        : providerToken;
     final feed = ref.watch(trackingControllerProvider);
 
     if (token.isEmpty) {
@@ -67,7 +70,9 @@ class _TrackingScreenState extends ConsumerState<TrackingScreen> {
               ref.invalidate(trackingControllerProvider);
             },
             onRatingSubmitted: (rating) {
-              ref.read(trackingControllerProvider.notifier).updateRating(rating);
+              ref
+                  .read(trackingControllerProvider.notifier)
+                  .updateRating(rating);
             },
           );
         },
@@ -88,10 +93,7 @@ class _LoadingTracking extends StatelessWidget {
           decoration: const BoxDecoration(
             color: Colors.white,
             border: Border(
-              bottom: BorderSide(
-                color: Color(0xFFF5EEF2),
-                width: 1,
-              ),
+              bottom: BorderSide(color: Color(0xFFF5EEF2), width: 1),
             ),
           ),
           child: SafeArea(

@@ -17,7 +17,7 @@ class TrackingToken extends Notifier<String> {
 }
 
 final trackingTokenProvider =
-    NotifierProvider<TrackingToken, String>(TrackingToken.new);
+    NotifierProvider.autoDispose<TrackingToken, String>(TrackingToken.new);
 
 /// Controller de la pantalla de rastreo. Combina el GET inicial al
 /// endpoint público con las suscripciones de SignalR para mantener el
@@ -35,8 +35,15 @@ class TrackingController extends AsyncNotifier<OrderTracking?> {
     }
 
     final repo = ref.read(trackingRepositoryProvider);
-    final hub = ref.read(trackingHubProvider);
+    final hub = ref.watch(trackingHubProvider);
+    ref.onDispose(() {
+      _locationSub?.cancel();
+      _statusSub?.cancel();
+      _connSub?.cancel();
+    });
+
     final order = await repo.getOrderByToken(accessToken);
+    if (!ref.mounted) return order;
 
     _locationSub?.cancel();
     _statusSub?.cancel();
@@ -59,21 +66,18 @@ class TrackingController extends AsyncNotifier<OrderTracking?> {
     });
 
     // Inicia el hub y se une al grupo. Si falla, igual tenemos el GET.
-    Future<void>(() async {
-      try {
-        await hub.start();
-        await hub.joinOrder(accessToken);
-      } catch (_) {
-        // La UI ya muestra el estado del GET; no hacemos nada aquí.
-      }
-    });
-
-    ref.onDispose(() {
-      _locationSub?.cancel();
-      _statusSub?.cancel();
-      _connSub?.cancel();
-      hub.stop();
-    });
+    unawaited(
+      Future<void>(() async {
+        if (!ref.mounted) return;
+        try {
+          await hub.start();
+          if (!ref.mounted) return;
+          await hub.joinOrder(accessToken);
+        } catch (_) {
+          // La UI ya muestra el estado del GET; no hacemos nada aquí.
+        }
+      }),
+    );
 
     return order;
   }
@@ -91,8 +95,9 @@ class TrackingController extends AsyncNotifier<OrderTracking?> {
     if (accessToken.isEmpty) return;
     state = const AsyncLoading<OrderTracking?>();
     try {
-      final order =
-          await ref.read(trackingRepositoryProvider).getOrderByToken(accessToken);
+      final order = await ref
+          .read(trackingRepositoryProvider)
+          .getOrderByToken(accessToken);
       state = AsyncData<OrderTracking?>(order);
     } catch (e, st) {
       state = AsyncError<OrderTracking?>(e, st);
@@ -119,7 +124,8 @@ class TrackingController extends AsyncNotifier<OrderTracking?> {
   Future<void> saveInstructions(String instructions) async {
     final accessToken = ref.read(trackingTokenProvider);
     if (accessToken.isEmpty) return;
-    await ref.read(trackingRepositoryProvider)
+    await ref
+        .read(trackingRepositoryProvider)
         .updateInstructions(accessToken, instructions);
     final current = state.asData?.value;
     if (current != null) {
@@ -129,9 +135,9 @@ class TrackingController extends AsyncNotifier<OrderTracking?> {
 }
 
 final trackingControllerProvider =
-    AsyncNotifierProvider<TrackingController, OrderTracking?>(
-  TrackingController.new,
-);
+    AsyncNotifierProvider.autoDispose<TrackingController, OrderTracking?>(
+      TrackingController.new,
+    );
 
 /// Estado del chat clienta ↔ chofer/admin. Carga el histórico al arrancar,
 /// mezcla los mensajes en vivo que llegan por SignalR
@@ -143,19 +149,24 @@ class OrderChatNotifier extends Notifier<List<ChatMessage>> {
   @override
   List<ChatMessage> build() {
     final token = ref.watch(trackingTokenProvider);
-    if (token.isEmpty) return const [];
+    if (token.isEmpty) {
+      _token = null;
+      return const [];
+    }
     _token = token;
 
     // Histórico (no bloquea el build; se actualiza al resolver).
     Future(() async {
       try {
         final msgs = await ref.read(trackingRepositoryProvider).getChat(token);
-        if (msgs.isNotEmpty) state = msgs;
+        if (ref.mounted && _token == token && msgs.isNotEmpty) {
+          state = msgs;
+        }
       } catch (_) {}
     });
 
     // Mensajes en vivo del chofer/admin.
-    final hub = ref.read(trackingHubProvider);
+    final hub = ref.watch(trackingHubProvider);
     _chatSub = hub.chatStream.listen((msg) {
       if (state.any((m) => m.id == msg.id)) return;
       state = [...state, msg];
@@ -170,7 +181,9 @@ class OrderChatNotifier extends Notifier<List<ChatMessage>> {
     final body = text.trim();
     if (token == null || body.isEmpty) return;
     try {
-      final msg = await ref.read(trackingRepositoryProvider).sendChat(token, body);
+      final msg = await ref
+          .read(trackingRepositoryProvider)
+          .sendChat(token, body);
       if (state.any((m) => m.id == msg.id)) return;
       state = [...state, msg];
     } catch (_) {
@@ -180,6 +193,6 @@ class OrderChatNotifier extends Notifier<List<ChatMessage>> {
 }
 
 final orderChatProvider =
-    NotifierProvider<OrderChatNotifier, List<ChatMessage>>(
-  OrderChatNotifier.new,
-);
+    NotifierProvider.autoDispose<OrderChatNotifier, List<ChatMessage>>(
+      OrderChatNotifier.new,
+    );

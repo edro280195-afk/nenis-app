@@ -1,6 +1,6 @@
 # Progreso — App Flutter Neni's App (compradora + vendedora)
 
-> Actualizado: 2026-07-27 (auditoría + Tandas + autenticación + Rutas + permisos de comunidad). Doc para **retomar la construcción** sin re-descubrir.
+> Actualizado: 2026-07-27 (auditoría + Tandas + autenticación + Rutas + permisos + ciclo SignalR). Doc para **retomar la construcción** sin re-descubrir.
 > Brief original: `PROMPT-APP-FLUTTER.md` (mismo folder) — **ojo:** ese doc describe el arranque de la Fase 2 (jun/2026) y su sección "App = compradora (no la vendedora)" ya **no** refleja la realidad; ver corrección abajo.
 > Proyecto Flutter: `nenis-app\nenis_app` dentro del bundle (hoy `C:\Codigos\nenis-bundle\nenis-app\nenis_app`). Backend: `nenis-bundle\sellgeneral-api`. Las rutas viejas `C:\Codigos\nenis-app\` / `C:\Codigos\sellgeneral-api\` (sin `nenis-bundle`) que aparecen más abajo en este doc son de antes del bundle — ajustar mentalmente si ya no existen sueltas.
 > **Antes de confiar en las tablas de "Pendiente" de este doc, cruzar contra `git log --oneline --stat` desde la fecha de arriba** — se ha encontrado más de una vez trabajo real ya hecho (a veces semanas) que este doc seguía listando como pendiente. Ver nota en `docs/AUDITORIA-PANTALLAS.md`.
@@ -155,6 +155,7 @@ el endurecimiento de autenticación y la creación de Rutas respetando
 exactamente el orden previsualizado. La agrupación visual de candidatas usa
 ahora `clientId`, no texto mutable. VIP y Novedades ya reflejan en Flutter la
 política Owner/Admin del backend, con bloqueo visual, pantalla para enlaces
-directos y traducción del 403. Verificación actual: `flutter analyze lib test`
-sin hallazgos, 91/91 pruebas Flutter, 308/308 pruebas de API y 18/18 pruebas
-del migrador.
+directos y traducción del 403. Tracking libera ahora token, controller, chat y
+hub SignalR al salir del último consumidor, incluso si todavía estaba
+conectando. Verificación actual: `flutter analyze lib test` sin hallazgos,
+94/94 pruebas Flutter, 308/308 pruebas de API y 18/18 pruebas del migrador.
