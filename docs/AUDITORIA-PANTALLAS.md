@@ -177,6 +177,12 @@ simplemente no se actualizó. Bugs reales encontrados en lo ya construido:
   "WhatsApp" sin renderizar (faltaban `onDrawTurns`/`onWhatsApp` en la
   rama wide de `_DetailPanel`); 4 bottom sheets sin `catch` (fallos
   silenciosos); `SlowLoadHint` agregado.
+- **SellerTandasCommandScreen (continuación 2026-07-27)**: resorteo bloqueado
+  en Flutter y backend desde el primer pago o entrega. La validación cubre
+  `Payments`, `IsDelivered` y `DeliveryDate` porque una entrega hecha desde
+  Rutas puede registrar la fecha sin activar la otra bandera. El botón se
+  deshabilita con explicación y el endpoint rechaza llamadas directas.
+  Verificado con 3 pruebas .NET y 4 pruebas de modelo Flutter nuevas.
 - **PointsScreen**: sin hallazgos — la más sólida de las 4. Nota: no
   distingue compradora/vendedora (ver Pendientes).
 
@@ -237,9 +243,6 @@ por ser ambiguo o necesitar una decisión que no es mía tomar sola:
   Alcanzable si una vendedora abre el link público de su propia tienda.
   ¿Falta el guard, o Puntos/Sorteos de vendedora se administran fuera del
   app a propósito?
-- **SellerTandasCommandScreen**: `DrawTurnsAsync` resortea a *todas* las
-  participantes sin advertir si ya hay pagos/entregas contra turnos
-  específicos. Confirmar si debe bloquearse una vez que ya empezó el cobro.
 - **VIP/Updates**: los tiles en `SellerAccountScreen` son visibles para
   todo el staff, pero el backend los gatea a Owner/Admin — un Driver/
   Scanner que entre ve un error genérico en vez de "no tienes permiso".

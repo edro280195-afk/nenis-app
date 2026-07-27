@@ -7,7 +7,6 @@ import 'package:intl/intl.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
@@ -346,15 +345,22 @@ class _SellerTandasCommandScreenState
   }
 
   Future<void> _drawTurns(SellerTanda tanda) async {
+    if (!tanda.canDrawTurns) {
+      _toast(
+        tanda.participants.isEmpty
+            ? 'Agrega participantes antes de sortear los turnos.'
+            : 'Ya no puedes sortear: la tanda tiene pagos o entregas registradas.',
+      );
+      return;
+    }
+
     final ok = await _confirm(
       '🎲 Sorteo de Turnos',
       '¿Deseas realizar la rifa de turnos para "${tanda.displayName}"? Esto asignará números aleatorios a todas las participantes.',
     );
     if (!ok) return;
     await _run(
-      () => ref
-          .read(sellerTandasControllerProvider.notifier)
-          .drawTurns(tanda),
+      () => ref.read(sellerTandasControllerProvider.notifier).drawTurns(tanda),
       success: '✨ ¡Sorteo de turnos completado exitosamente!',
     );
   }
@@ -399,7 +405,6 @@ class _SellerTandasCommandScreenState
       ),
     );
   }
-
 
   List<SellerTanda> _visibleTandas(SellerTandasWorkspace workspace) {
     final query = _searchCtrl.text.trim().toLowerCase();
@@ -1148,7 +1153,9 @@ class _DetailPanel extends StatelessWidget {
               onEdit: () => onEditTanda(tanda),
               onAddParticipant: () => onAddParticipant(tanda),
               onReorder: () => onReorder(tanda),
-              onDrawTurns: onDrawTurns != null ? () => onDrawTurns!(tanda) : null,
+              onDrawTurns: onDrawTurns != null
+                  ? () => onDrawTurns!(tanda)
+                  : null,
             ),
             const SizedBox(height: 14),
             _TandaScoreboard(tanda: tanda),
@@ -1180,7 +1187,9 @@ class _DetailPanel extends StatelessWidget {
                   onPay: () => onPay(tanda, participant),
                   onUndoPay: () => onUndoPay(tanda, participant),
                   onDeliver: () => onDeliver(tanda, participant),
-                  onWhatsApp: onWhatsApp != null ? () => onWhatsApp!(tanda, participant) : null,
+                  onWhatsApp: onWhatsApp != null
+                      ? () => onWhatsApp!(tanda, participant)
+                      : null,
                   onEdit: () => onEditParticipant(tanda, participant),
                 ),
                 const SizedBox(height: 10),
@@ -1332,9 +1341,13 @@ class _DetailHeader extends StatelessWidget {
               onTap: onAddParticipant,
             ),
             _RoundAction(
-              tooltip: 'Sortear turnos 🎲',
+              tooltip: tanda.canDrawTurns
+                  ? 'Sortear turnos 🎲'
+                  : tanda.participants.isEmpty
+                  ? 'Agrega participantes antes de sortear'
+                  : 'No disponible después de registrar pagos o entregas',
               icon: Symbols.casino,
-              onTap: onDrawTurns,
+              onTap: tanda.canDrawTurns ? onDrawTurns : null,
             ),
             _RoundAction(
               tooltip: 'Reordenar turnos',
@@ -1743,7 +1756,6 @@ class _ParticipantLedgerRow extends StatelessWidget {
     );
   }
 }
-
 
 class _WeekStrip extends StatelessWidget {
   const _WeekStrip({required this.tanda, required this.participant});
@@ -2596,12 +2608,13 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
   Widget build(BuildContext context) {
     final openTurns = _openTurns;
     final customSearchName = _searchCtrl.text.trim();
-    final canSubmitCustom = _selectedClient == null && customSearchName.isNotEmpty;
+    final canSubmitCustom =
+        _selectedClient == null && customSearchName.isNotEmpty;
     final submitLabel = _saving
         ? 'Inscribiendo...'
         : canSubmitCustom
-            ? 'Crear e inscribir a "$customSearchName"'
-            : 'Inscribir clienta';
+        ? 'Crear e inscribir a "$customSearchName"'
+        : 'Inscribir clienta';
 
     return _SheetScaffold(
       child: Column(
@@ -2641,8 +2654,11 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
                     onSelected: (_) => setState(() => _selectedClient = client),
                   ),
                 if (customSearchName.isNotEmpty &&
-                    !_availableClients.any((c) =>
-                        c.label.toLowerCase() == customSearchName.toLowerCase()))
+                    !_availableClients.any(
+                      (c) =>
+                          c.label.toLowerCase() ==
+                          customSearchName.toLowerCase(),
+                    ))
                   ActionChip(
                     avatar: const Icon(Symbols.person_add, size: 16),
                     label: Text('+ Crear "$customSearchName"'),
@@ -2685,7 +2701,11 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
             PillButton(
               label: submitLabel,
               icon: Symbols.person_add,
-              onPressed: _saving || (_selectedClient == null && customSearchName.isEmpty) ? null : _submit,
+              onPressed:
+                  _saving ||
+                      (_selectedClient == null && customSearchName.isEmpty)
+                  ? null
+                  : _submit,
             ),
           ],
         ],

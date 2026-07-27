@@ -325,6 +325,15 @@ class SellerTanda {
   int get deliveredCount =>
       sortedParticipants.where((participant) => participant.isDelivered).length;
 
+  bool get hasStartedOperations => participants.any(
+    (participant) =>
+        participant.payments.isNotEmpty ||
+        participant.isDelivered ||
+        participant.deliveryDate != null,
+  );
+
+  bool get canDrawTurns => participants.isNotEmpty && !hasStartedOperations;
+
   double get expectedAmount => sortedParticipants.fold<double>(
     0,
     (sum, participant) => sum + participant.amountFor(this) * totalWeeks,
@@ -516,8 +525,10 @@ class AddTandaParticipantRequest {
     return {
       'tandaId': tandaId,
       'customerId': customerId,
-      if (customerName?.trim().isNotEmpty ?? false) 'customerName': customerName!.trim(),
-      if (facebookProfileUrl?.trim().isNotEmpty ?? false) 'facebookProfileUrl': facebookProfileUrl!.trim(),
+      if (customerName?.trim().isNotEmpty ?? false)
+        'customerName': customerName!.trim(),
+      if (facebookProfileUrl?.trim().isNotEmpty ?? false)
+        'facebookProfileUrl': facebookProfileUrl!.trim(),
       'assignedTurn': assignedTurn,
       if (variant?.trim().isNotEmpty ?? false) 'variant': variant!.trim(),
       if (weeklyAmount != null && weeklyAmount! > 0)
@@ -525,7 +536,6 @@ class AddTandaParticipantRequest {
     };
   }
 }
-
 
 class SellerTandasDashboard {
   const SellerTandasDashboard({
