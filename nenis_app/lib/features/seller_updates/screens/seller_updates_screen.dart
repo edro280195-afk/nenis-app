@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../../core/auth/auth_controller.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
@@ -15,6 +16,7 @@ import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/feature_locked_card.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/premium_toast.dart';
+import '../../../shared/widgets/seller_permission_denied_view.dart';
 import '../../account/data/seller_settings_repository.dart';
 import '../data/seller_updates_models.dart';
 import '../data/seller_updates_repository.dart';
@@ -23,7 +25,8 @@ class SellerUpdatesScreen extends ConsumerStatefulWidget {
   const SellerUpdatesScreen({super.key});
 
   @override
-  ConsumerState<SellerUpdatesScreen> createState() => _SellerUpdatesScreenState();
+  ConsumerState<SellerUpdatesScreen> createState() =>
+      _SellerUpdatesScreenState();
 }
 
 class _SellerUpdatesScreenState extends ConsumerState<SellerUpdatesScreen> {
@@ -44,16 +47,25 @@ class _SellerUpdatesScreenState extends ConsumerState<SellerUpdatesScreen> {
   Future<void> _startLive() async {
     setState(() => _busyLive = true);
     try {
-      await ref.read(sellerUpdatesRepositoryProvider).startLive(
+      await ref
+          .read(sellerUpdatesRepositoryProvider)
+          .startLive(
             _liveTitle.text.trim().isEmpty ? null : _liveTitle.text.trim(),
           );
       if (!mounted) return;
       ref.invalidate(activeLiveAnnouncementProvider);
-      context.showPremiumToast('Tus seguidoras ya lo saben.', type: PremiumToastType.success);
+      context.showPremiumToast(
+        'Tus seguidoras ya lo saben.',
+        type: PremiumToastType.success,
+      );
     } on LiveAlreadyActiveException catch (e) {
-      if (mounted) context.showPremiumToast(e.message, type: PremiumToastType.error);
+      if (mounted) {
+        context.showPremiumToast(e.message, type: PremiumToastType.error);
+      }
     } on SellerUpdatesException catch (e) {
-      if (mounted) context.showPremiumToast(e.message, type: PremiumToastType.error);
+      if (mounted) {
+        context.showPremiumToast(e.message, type: PremiumToastType.error);
+      }
     } finally {
       if (mounted) setState(() => _busyLive = false);
     }
@@ -66,15 +78,22 @@ class _SellerUpdatesScreenState extends ConsumerState<SellerUpdatesScreen> {
       if (!mounted) return;
       ref.invalidate(activeLiveAnnouncementProvider);
     } on SellerUpdatesException catch (e) {
-      if (mounted) context.showPremiumToast(e.message, type: PremiumToastType.error);
+      if (mounted) {
+        context.showPremiumToast(e.message, type: PremiumToastType.error);
+      }
     } finally {
       if (mounted) setState(() => _busyLive = false);
     }
   }
 
   Future<void> _pickImage() async {
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (picked != null && mounted) setState(() => _pickedImage = File(picked.path));
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
+    if (picked != null && mounted) {
+      setState(() => _pickedImage = File(picked.path));
+    }
   }
 
   Future<void> _publish() async {
@@ -88,7 +107,11 @@ class _SellerUpdatesScreenState extends ConsumerState<SellerUpdatesScreen> {
       if (_pickedImage != null) {
         imageUrl = await repo.uploadImage(_pickedImage!);
       }
-      await repo.createPost(body: body, imageUrl: imageUrl, isVipOnly: _vipOnly);
+      await repo.createPost(
+        body: body,
+        imageUrl: imageUrl,
+        isVipOnly: _vipOnly,
+      );
       if (!mounted) return;
       ref.invalidate(myStorePostsProvider);
       _postBody.clear();
@@ -96,9 +119,14 @@ class _SellerUpdatesScreenState extends ConsumerState<SellerUpdatesScreen> {
         _pickedImage = null;
         _vipOnly = false;
       });
-      context.showPremiumToast('¡Publicado! Tus seguidoras ya lo verán.', type: PremiumToastType.success);
+      context.showPremiumToast(
+        '¡Publicado! Tus seguidoras ya lo verán.',
+        type: PremiumToastType.success,
+      );
     } on SellerUpdatesException catch (e) {
-      if (mounted) context.showPremiumToast(e.message, type: PremiumToastType.error);
+      if (mounted) {
+        context.showPremiumToast(e.message, type: PremiumToastType.error);
+      }
     } finally {
       if (mounted) setState(() => _busyPost = false);
     }
@@ -110,12 +138,23 @@ class _SellerUpdatesScreenState extends ConsumerState<SellerUpdatesScreen> {
       if (!mounted) return;
       ref.invalidate(myStorePostsProvider);
     } on SellerUpdatesException catch (e) {
-      if (mounted) context.showPremiumToast(e.message, type: PremiumToastType.error);
+      if (mounted) {
+        context.showPremiumToast(e.message, type: PremiumToastType.error);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final session = ref.watch(authControllerProvider).value;
+    if (session?.canManageStoreEngagement != true) {
+      return const SellerPermissionDeniedView(
+        title: 'Novedades y vivo',
+        message:
+            'Tu rol no permite publicar novedades ni administrar avisos en vivo. Esta herramienta está disponible para la dueña y las administradoras del negocio.',
+      );
+    }
+
     final businessSettings = ref.watch(sellerBusinessSettingsProvider);
     final features = businessSettings.value?.features ?? const [];
     final hasLivePush = features.contains('LivePush');
@@ -139,25 +178,38 @@ class _SellerUpdatesScreenState extends ConsumerState<SellerUpdatesScreen> {
                     shadowColor: Colors.black26,
                     child: InkWell(
                       customBorder: const CircleBorder(),
-                      onTap: () => context.canPop() ? context.pop() : context.go('/account'),
+                      onTap: () => context.canPop()
+                          ? context.pop()
+                          : context.go('/account'),
                       child: SizedBox(
                         width: 40,
                         height: 40,
-                        child: Icon(Icons.adaptive.arrow_back, size: 20, color: AppColors.ink),
+                        child: Icon(
+                          Icons.adaptive.arrow_back,
+                          size: 20,
+                          color: AppColors.ink,
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Text('Novedades y vivo', style: AppTextStyles.h1.copyWith(fontSize: 22)),
+                  Text(
+                    'Novedades y vivo',
+                    style: AppTextStyles.h1.copyWith(fontSize: 22),
+                  ),
                 ],
               ),
               const SizedBox(height: 22),
-              Text('En vivo ahora', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+              Text(
+                'En vivo ahora',
+                style: AppTextStyles.h2.copyWith(fontSize: 16),
+              ),
               const SizedBox(height: 10),
               if (!hasLivePush)
                 const FeatureLockedCard(
                   title: 'Avisa cuando estés en vivo',
-                  body: 'Tus seguidoras reciben un aviso al instante cuando marcas que empezaste a transmitir.',
+                  body:
+                      'Tus seguidoras reciben un aviso al instante cuando marcas que empezaste a transmitir.',
                 )
               else
                 activeLive.when(
@@ -172,7 +224,10 @@ class _SellerUpdatesScreenState extends ConsumerState<SellerUpdatesScreen> {
                   ),
                 ),
               const SizedBox(height: 26),
-              Text('Publicar una novedad', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+              Text(
+                'Publicar una novedad',
+                style: AppTextStyles.h2.copyWith(fontSize: 16),
+              ),
               const SizedBox(height: 10),
               _ComposerCard(
                 bodyController: _postBody,
@@ -186,7 +241,10 @@ class _SellerUpdatesScreenState extends ConsumerState<SellerUpdatesScreen> {
                 onPublish: _publish,
               ),
               const SizedBox(height: 26),
-              Text('Tus novedades', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+              Text(
+                'Tus novedades',
+                style: AppTextStyles.h2.copyWith(fontSize: 16),
+              ),
               const SizedBox(height: 10),
               myPosts.when(
                 loading: () => const _CardSkeleton(),
@@ -197,7 +255,9 @@ class _SellerUpdatesScreenState extends ConsumerState<SellerUpdatesScreen> {
                       Expanded(
                         child: Text(
                           'No pudimos cargar tus novedades.',
-                          style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+                          style: AppTextStyles.subtitle.copyWith(
+                            fontSize: 12.5,
+                          ),
                         ),
                       ),
                       TextButton(
@@ -263,10 +323,22 @@ class _LiveControlCard extends StatelessWidget {
           if (isLive) ...[
             Row(
               children: [
-                Container(width: 10, height: 10, decoration: const BoxDecoration(color: AppColors.liveRed, shape: BoxShape.circle)),
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: const BoxDecoration(
+                    color: AppColors.liveRed,
+                    shape: BoxShape.circle,
+                  ),
+                ),
                 const SizedBox(width: 8),
-                Text('Estás en vivo${active?.title != null ? ': ${active!.title}' : ''}',
-                    style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700, fontSize: 14)),
+                Text(
+                  'Estás en vivo${active?.title != null ? ': ${active!.title}' : ''}',
+                  style: AppTextStyles.body.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 14),
@@ -343,7 +415,12 @@ class _ComposerCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(14),
-                  child: Image.file(pickedImage!, height: 140, width: double.infinity, fit: BoxFit.cover),
+                  child: Image.file(
+                    pickedImage!,
+                    height: 140,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
                 ),
                 Positioned(
                   top: 6,
@@ -356,7 +433,11 @@ class _ComposerCard extends StatelessWidget {
                       onTap: onRemoveImage,
                       child: const Padding(
                         padding: EdgeInsets.all(6),
-                        child: Icon(Symbols.close, size: 16, color: Colors.white),
+                        child: Icon(
+                          Symbols.close,
+                          size: 16,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
@@ -377,7 +458,11 @@ class _ComposerCard extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Symbols.add_photo_alternate, size: 20, color: AppColors.ink2),
+                      Icon(
+                        Symbols.add_photo_alternate,
+                        size: 20,
+                        color: AppColors.ink2,
+                      ),
                       SizedBox(width: 8),
                       Text('Agregar foto (opcional)'),
                     ],
@@ -389,7 +474,11 @@ class _ComposerCard extends StatelessWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                Switch(value: vipOnly, onChanged: onVipChanged, activeTrackColor: AppColors.neniDeep),
+                Switch(
+                  value: vipOnly,
+                  onChanged: onVipChanged,
+                  activeTrackColor: AppColors.neniDeep,
+                ),
                 const SizedBox(width: 4),
                 const Expanded(child: Text('Solo para mis VIP')),
               ],
@@ -428,10 +517,19 @@ class _MyPostRow extends StatelessWidget {
           if (post.isVipOnly)
             const Padding(
               padding: EdgeInsets.only(right: 8, top: 2),
-              child: Icon(Symbols.workspace_premium, size: 18, color: AppColors.gold),
+              child: Icon(
+                Symbols.workspace_premium,
+                size: 18,
+                color: AppColors.gold,
+              ),
             ),
           Expanded(
-            child: Text(post.body, maxLines: 3, overflow: TextOverflow.ellipsis, style: AppTextStyles.body.copyWith(fontSize: 13)),
+            child: Text(
+              post.body,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.body.copyWith(fontSize: 13),
+            ),
           ),
           IconButton(
             icon: const Icon(Symbols.delete, size: 20, color: AppColors.ink3),
@@ -447,7 +545,10 @@ class _CardSkeleton extends StatelessWidget {
   const _CardSkeleton();
   @override
   Widget build(BuildContext context) => Container(
-        height: 96,
-        decoration: BoxDecoration(color: AppColors.segTrack, borderRadius: AppRadii.cardRadius),
-      );
+    height: 96,
+    decoration: BoxDecoration(
+      color: AppColors.segTrack,
+      borderRadius: AppRadii.cardRadius,
+    ),
+  );
 }

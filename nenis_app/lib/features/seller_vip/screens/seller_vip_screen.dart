@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../../core/auth/auth_controller.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
@@ -10,6 +11,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/feature_locked_card.dart';
 import '../../../shared/widgets/premium_toast.dart';
+import '../../../shared/widgets/seller_permission_denied_view.dart';
 import '../../account/data/seller_settings_repository.dart';
 import '../data/seller_vip_models.dart';
 import '../data/seller_vip_repository.dart';
@@ -19,8 +21,18 @@ class SellerVipScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final session = ref.watch(authControllerProvider).value;
+    if (session?.canManageStoreEngagement != true) {
+      return const SellerPermissionDeniedView(
+        title: 'Grupo VIP',
+        message:
+            'Tu rol no permite elegir seguidoras VIP. Esta herramienta está disponible para la dueña y las administradoras del negocio.',
+      );
+    }
+
     final businessSettings = ref.watch(sellerBusinessSettingsProvider);
-    final hasVipDrops = businessSettings.value?.features.contains('VipDrops') ?? false;
+    final hasVipDrops =
+        businessSettings.value?.features.contains('VipDrops') ?? false;
     final followers = ref.watch(sellerVipControllerProvider);
 
     return Scaffold(
@@ -39,16 +51,25 @@ class SellerVipScreen extends ConsumerWidget {
                     shadowColor: Colors.black26,
                     child: InkWell(
                       customBorder: const CircleBorder(),
-                      onTap: () => context.canPop() ? context.pop() : context.go('/account'),
+                      onTap: () => context.canPop()
+                          ? context.pop()
+                          : context.go('/account'),
                       child: SizedBox(
                         width: 40,
                         height: 40,
-                        child: Icon(Icons.adaptive.arrow_back, size: 20, color: AppColors.ink),
+                        child: Icon(
+                          Icons.adaptive.arrow_back,
+                          size: 20,
+                          color: AppColors.ink,
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Text('Grupo VIP', style: AppTextStyles.h1.copyWith(fontSize: 22)),
+                  Text(
+                    'Grupo VIP',
+                    style: AppTextStyles.h1.copyWith(fontSize: 22),
+                  ),
                 ],
               ),
               const SizedBox(height: 6),
@@ -60,7 +81,8 @@ class SellerVipScreen extends ConsumerWidget {
               if (!hasVipDrops)
                 const FeatureLockedCard(
                   title: 'El grupo VIP es una función Pro',
-                  body: 'Da acceso anticipado y novedades exclusivas a tus clientas favoritas.',
+                  body:
+                      'Da acceso anticipado y novedades exclusivas a tus clientas favoritas.',
                 )
               else
                 followers.when(
@@ -70,7 +92,10 @@ class SellerVipScreen extends ConsumerWidget {
                       (_) => Container(
                         margin: const EdgeInsets.only(bottom: 10),
                         height: 64,
-                        decoration: BoxDecoration(color: AppColors.segTrack, borderRadius: AppRadii.softRadius),
+                        decoration: BoxDecoration(
+                          color: AppColors.segTrack,
+                          borderRadius: AppRadii.softRadius,
+                        ),
                       ),
                     ),
                   ),
@@ -85,7 +110,8 @@ class SellerVipScreen extends ConsumerWidget {
                           ),
                         ),
                         TextButton(
-                          onPressed: () => ref.invalidate(sellerVipControllerProvider),
+                          onPressed: () =>
+                              ref.invalidate(sellerVipControllerProvider),
                           child: const Text('Reintentar'),
                         ),
                       ],
@@ -125,7 +151,9 @@ class _FollowerRow extends ConsumerWidget {
         color: AppColors.surface,
         borderRadius: AppRadii.softRadius,
         boxShadow: AppShadows.small,
-        border: follower.isVip ? Border.all(color: AppColors.gold.withValues(alpha: 0.5)) : null,
+        border: follower.isVip
+            ? Border.all(color: AppColors.gold.withValues(alpha: 0.5))
+            : null,
       ),
       child: Row(
         children: [
@@ -134,11 +162,15 @@ class _FollowerRow extends ConsumerWidget {
             height: 38,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: follower.isVip ? const Color(0xFFFFF2D4) : AppColors.segTrack,
+              color: follower.isVip
+                  ? const Color(0xFFFFF2D4)
+                  : AppColors.segTrack,
               shape: BoxShape.circle,
             ),
             child: Text(
-              follower.displayName.isNotEmpty ? follower.displayName.characters.first.toUpperCase() : '?',
+              follower.displayName.isNotEmpty
+                  ? follower.displayName.characters.first.toUpperCase()
+                  : '?',
               style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700),
             ),
           ),
@@ -148,19 +180,32 @@ class _FollowerRow extends ConsumerWidget {
               follower.displayName,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.body.copyWith(fontSize: 14, fontWeight: FontWeight.w600),
+              style: AppTextStyles.body.copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
-          if (follower.isVip) const Icon(Symbols.workspace_premium, size: 18, color: AppColors.gold),
+          if (follower.isVip)
+            const Icon(
+              Symbols.workspace_premium,
+              size: 18,
+              color: AppColors.gold,
+            ),
           Switch(
             value: follower.isVip,
             activeTrackColor: AppColors.neniDeep,
             onChanged: (value) async {
               try {
-                await ref.read(sellerVipControllerProvider.notifier).setVip(follower.accountId, value);
+                await ref
+                    .read(sellerVipControllerProvider.notifier)
+                    .setVip(follower.accountId, value);
               } on SellerVipException catch (e) {
                 if (context.mounted) {
-                  context.showPremiumToast(e.message, type: PremiumToastType.error);
+                  context.showPremiumToast(
+                    e.message,
+                    type: PremiumToastType.error,
+                  );
                 }
               }
             },
@@ -181,11 +226,18 @@ class _EmptyState extends StatelessWidget {
           Container(
             width: 72,
             height: 72,
-            decoration: BoxDecoration(color: const Color(0xFFEFE5EE), borderRadius: BorderRadius.circular(24)),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFE5EE),
+              borderRadius: BorderRadius.circular(24),
+            ),
             child: const Icon(Symbols.group, color: AppColors.ink2, size: 34),
           ),
           const SizedBox(height: 14),
-          Text('Aún no tienes seguidoras', textAlign: TextAlign.center, style: AppTextStyles.h2.copyWith(fontSize: 16)),
+          Text(
+            'Aún no tienes seguidoras',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.h2.copyWith(fontSize: 16),
+          ),
           const SizedBox(height: 6),
           Text(
             'Cuando alguien siga tu tienda, aparecerá aquí para que la marques VIP.',

@@ -23,6 +23,7 @@ class SellerAccountScreen extends ConsumerWidget {
     final businessName = _businessNameFor(session);
     final sellerName = _sellerNameFor(session);
     final roleLabel = _roleLabelFor(session);
+    final canManageStoreEngagement = session?.canManageStoreEngagement ?? false;
     final initial = businessName.isEmpty
         ? 'N'
         : businessName.characters.first.toUpperCase();
@@ -99,22 +100,33 @@ class SellerAccountScreen extends ConsumerWidget {
               _SellerMenuTile(
                 icon: Symbols.campaign,
                 title: 'Novedades y vivo',
-                subtitle: 'Publica actualizaciones y avisa cuando estés en vivo.',
-                onTap: () => context.push('/seller/updates'),
+                subtitle: canManageStoreEngagement
+                    ? 'Publica actualizaciones y avisa cuando estés en vivo.'
+                    : 'Solo disponible para dueña y administradoras.',
+                badge: canManageStoreEngagement ? null : 'Sin permiso',
+                onTap: canManageStoreEngagement
+                    ? () => context.push('/seller/updates')
+                    : null,
               ),
               const SizedBox(height: 10),
               _SellerMenuTile(
                 icon: Symbols.sensors,
                 title: 'Anunciar en vivo',
-                subtitle: 'Toca un producto mientras transmites y aparece al instante en la app.',
+                subtitle:
+                    'Toca un producto mientras transmites y aparece al instante en la app.',
                 onTap: () => context.push('/seller/live'),
               ),
               const SizedBox(height: 10),
               _SellerMenuTile(
                 icon: Symbols.workspace_premium,
                 title: 'Grupo VIP',
-                subtitle: 'Elige a tus seguidoras favoritas para novedades exclusivas.',
-                onTap: () => context.push('/seller/vip'),
+                subtitle: canManageStoreEngagement
+                    ? 'Elige a tus seguidoras favoritas para novedades exclusivas.'
+                    : 'Solo disponible para dueña y administradoras.',
+                badge: canManageStoreEngagement ? null : 'Sin permiso',
+                onTap: canManageStoreEngagement
+                    ? () => context.push('/seller/vip')
+                    : null,
               ),
               const SizedBox(height: 10),
               _SellerMenuTile(
@@ -434,7 +446,7 @@ class _SellerMenuTile extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.onTap,
+    this.onTap,
     this.badge,
     this.highlighted = false,
   });
@@ -442,98 +454,106 @@ class _SellerMenuTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final String? badge;
   final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
-        child: Ink(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: highlighted ? const Color(0xFFF7FAFF) : AppColors.surface,
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(
-              color: highlighted
-                  ? AppColors.statusRouteFg.withValues(alpha: 0.2)
-                  : AppColors.line,
-            ),
-            boxShadow: AppShadows.small,
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 46,
-                height: 46,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: highlighted
-                      ? AppColors.statusRouteBg
-                      : AppColors.neni.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(
-                  icon,
-                  color: highlighted
-                      ? AppColors.statusRouteFg
-                      : AppColors.neniDeep,
-                  size: 23,
-                ),
+    final enabled = onTap != null;
+    return Opacity(
+      opacity: enabled ? 1 : 0.68,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(22),
+          child: Ink(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: highlighted ? const Color(0xFFF7FAFF) : AppColors.surface,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: highlighted
+                    ? AppColors.statusRouteFg.withValues(alpha: 0.2)
+                    : AppColors.line,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: AppTextStyles.body.copyWith(
-                        fontSize: 14.5,
+              boxShadow: AppShadows.small,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: highlighted
+                        ? AppColors.statusRouteBg
+                        : AppColors.neni.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: highlighted
+                        ? AppColors.statusRouteFg
+                        : AppColors.neniDeep,
+                    size: 23,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: AppTextStyles.body.copyWith(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.subtitle.copyWith(fontSize: 11.5),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                if (badge != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: enabled
+                          ? AppColors.statusDeliveredBg
+                          : AppColors.statusPendingBg,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      badge!,
+                      style: AppTextStyles.chip.copyWith(
+                        color: enabled
+                            ? AppColors.statusDeliveredFg
+                            : AppColors.statusPendingFg,
+                        fontSize: 10.5,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.subtitle.copyWith(fontSize: 11.5),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              if (badge != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 9,
-                    vertical: 6,
+                  )
+                else
+                  const Icon(
+                    Symbols.chevron_right,
+                    size: 20,
+                    color: AppColors.ink3,
                   ),
-                  decoration: BoxDecoration(
-                    color: AppColors.statusDeliveredBg,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    badge!,
-                    style: AppTextStyles.chip.copyWith(
-                      color: AppColors.statusDeliveredFg,
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                )
-              else
-                const Icon(
-                  Symbols.chevron_right,
-                  size: 20,
-                  color: AppColors.ink3,
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

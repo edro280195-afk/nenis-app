@@ -20,10 +20,16 @@ class SellerVipRepository {
     try {
       final res = await _dio.get('/api/business/followers');
       return ((res.data as List?) ?? const [])
-          .map((e) => SellerFollowerAdmin.fromJson((e as Map).cast<String, dynamic>()))
+          .map(
+            (e) => SellerFollowerAdmin.fromJson(
+              (e as Map).cast<String, dynamic>(),
+            ),
+          )
           .toList();
     } on DioException catch (e) {
-      throw SellerVipException(_message(e, 'No pudimos cargar tus seguidoras.'));
+      throw SellerVipException(
+        _message(e, 'No pudimos cargar tus seguidoras.'),
+      );
     }
   }
 
@@ -36,13 +42,20 @@ class SellerVipRepository {
       return SellerFollowerAdmin.fromJson(res.data as Map<String, dynamic>);
     } on DioException catch (e) {
       if (e.response?.statusCode == 402) {
-        throw SellerVipException('El grupo VIP requiere el plan Pro o superior.');
+        throw SellerVipException(
+          'El grupo VIP requiere el plan Pro o superior.',
+        );
       }
-      throw SellerVipException(_message(e, 'No pudimos actualizar el estatus VIP.'));
+      throw SellerVipException(
+        _message(e, 'No pudimos actualizar el estatus VIP.'),
+      );
     }
   }
 
   String _message(DioException e, String fallback) {
+    if (e.response?.statusCode == 403) {
+      return 'Tu rol no permite administrar el grupo VIP. Pídele acceso a la dueña del negocio.';
+    }
     final data = e.response?.data;
     if (data is Map && data['message'] is String) {
       final message = (data['message'] as String).trim();
@@ -74,7 +87,9 @@ class SellerVipController extends AsyncNotifier<List<SellerFollowerAdmin>> {
     state = AsyncData(optimistic);
 
     try {
-      final updated = await ref.read(sellerVipRepositoryProvider).setVip(accountId, isVip);
+      final updated = await ref
+          .read(sellerVipRepositoryProvider)
+          .setVip(accountId, isVip);
       final withUpdate = [...optimistic];
       withUpdate[index] = updated;
       state = AsyncData(withUpdate);
@@ -87,5 +102,5 @@ class SellerVipController extends AsyncNotifier<List<SellerFollowerAdmin>> {
 
 final sellerVipControllerProvider =
     AsyncNotifierProvider<SellerVipController, List<SellerFollowerAdmin>>(
-  SellerVipController.new,
-);
+      SellerVipController.new,
+    );

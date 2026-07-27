@@ -86,6 +86,9 @@ class Session {
 
   bool get canManageLabels => hasActiveBusinessRole(const {'Owner', 'Admin'});
 
+  bool get canManageStoreEngagement =>
+      hasActiveBusinessRole(const {'Owner', 'Admin'});
+
   /// Construye desde el `LoginResponse` del backend (camelCase).
   factory Session.fromLoginJson(Map<String, dynamic> j) {
     final memberships = ((j['memberships'] as List?) ?? const [])

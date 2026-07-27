@@ -174,6 +174,13 @@ simplemente no se actualizó. Bugs reales encontrados en lo ya construido:
   `_endLive`, `_deletePost`, `_pickImage` — todos arreglados. Error de
   carga que renderizaba nada (`SizedBox.shrink()`) ahora muestra mensaje +
   reintentar.
+- **VIP/Updates (continuación 2026-07-27)**: el backend ya limitaba ambos
+  módulos a Owner/Admin, pero `SellerAccountScreen` los ofrecía a todo el
+  staff. Ahora `Session.canManageStoreEngagement` replica esa política; para
+  Driver/Scaner los tiles muestran `Sin permiso` y quedan deshabilitados.
+  Un enlace directo abre una explicación clara sin llamar a los providers
+  protegidos, y un 403 tardío también se traduce a un mensaje de rol.
+  Cubierto con 7 pruebas nuevas de sesión, UI y repositorios.
 - **SellerTandasCommandScreen**: 🔴 **doble cobro real** — "Registrar pago"
   sin guard anti doble-tap en ninguna capa (ni Flutter ni backend), y
   `collectedAmount` suma pagos duplicados sin dedup. Arreglado en ambos
@@ -262,9 +269,6 @@ por ser ambiguo o necesitar una decisión que no es mía tomar sola:
   Alcanzable si una vendedora abre el link público de su propia tienda.
   ¿Falta el guard, o Puntos/Sorteos de vendedora se administran fuera del
   app a propósito?
-- **VIP/Updates**: los tiles en `SellerAccountScreen` son visibles para
-  todo el staff, pero el backend los gatea a Owner/Admin — un Driver/
-  Scanner que entre ve un error genérico en vez de "no tienes permiso".
 - Conexión SignalR de `TrackingScreen` no es `.autoDispose` — sigue
   conectada tras salir de la pantalla con "atrás" (costo de batería/datos,
   no bug de corrección).

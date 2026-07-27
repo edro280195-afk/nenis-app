@@ -25,6 +25,18 @@ void main() {
       expect(session.canAccessRoutes, isFalse);
     });
   });
+
+  group('Session.canManageStoreEngagement', () {
+    test('permite Owner y Admin', () {
+      expect(_session(role: 'Owner').canManageStoreEngagement, isTrue);
+      expect(_session(role: 'Admin').canManageStoreEngagement, isTrue);
+    });
+
+    test('bloquea Driver y Scaner', () {
+      expect(_session(role: 'Driver').canManageStoreEngagement, isFalse);
+      expect(_session(role: 'Scaner').canManageStoreEngagement, isFalse);
+    });
+  });
 }
 
 Session _session({required String role}) => _baseSession(

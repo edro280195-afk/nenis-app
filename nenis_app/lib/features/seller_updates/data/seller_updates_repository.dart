@@ -46,7 +46,9 @@ class SellerUpdatesRepository {
     } on DioException catch (e) {
       if (e.response?.statusCode == 409) {
         final data = e.response?.data;
-        final activeJson = data is Map ? data['active'] as Map<String, dynamic>? : null;
+        final activeJson = data is Map
+            ? data['active'] as Map<String, dynamic>?
+            : null;
         if (activeJson != null) {
           throw LiveAlreadyActiveException(
             SellerLiveAnnouncement.fromJson(activeJson),
@@ -54,7 +56,9 @@ class SellerUpdatesRepository {
           );
         }
       }
-      throw SellerUpdatesException(_message(e, 'No pudimos avisar que estás en vivo.'));
+      throw SellerUpdatesException(
+        _message(e, 'No pudimos avisar que estás en vivo.'),
+      );
     }
   }
 
@@ -83,21 +87,30 @@ class SellerUpdatesRepository {
           'Marcar una novedad como VIP requiere el plan Pro o superior.',
         );
       }
-      throw SellerUpdatesException(_message(e, 'No pudimos publicar tu novedad.'));
+      throw SellerUpdatesException(
+        _message(e, 'No pudimos publicar tu novedad.'),
+      );
     }
   }
 
-  Future<List<SellerStorePost>> getMyPosts({int page = 1, int pageSize = 20}) async {
+  Future<List<SellerStorePost>> getMyPosts({
+    int page = 1,
+    int pageSize = 20,
+  }) async {
     try {
       final res = await _dio.get(
         '/api/business/posts',
         queryParameters: {'page': page, 'pageSize': pageSize},
       );
       return ((res.data as List?) ?? const [])
-          .map((e) => SellerStorePost.fromJson((e as Map).cast<String, dynamic>()))
+          .map(
+            (e) => SellerStorePost.fromJson((e as Map).cast<String, dynamic>()),
+          )
           .toList();
     } on DioException catch (e) {
-      throw SellerUpdatesException(_message(e, 'No pudimos cargar tus novedades.'));
+      throw SellerUpdatesException(
+        _message(e, 'No pudimos cargar tus novedades.'),
+      );
     }
   }
 
@@ -105,14 +118,19 @@ class SellerUpdatesRepository {
     try {
       await _dio.delete('/api/business/posts/$id');
     } on DioException catch (e) {
-      throw SellerUpdatesException(_message(e, 'No pudimos borrar esta novedad.'));
+      throw SellerUpdatesException(
+        _message(e, 'No pudimos borrar esta novedad.'),
+      );
     }
   }
 
   Future<String> uploadImage(File file) async {
     try {
       final formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(file.path, filename: file.uri.pathSegments.last),
+        'file': await MultipartFile.fromFile(
+          file.path,
+          filename: file.uri.pathSegments.last,
+        ),
       });
       final res = await _dio.post('/api/business/posts/image', data: formData);
       return (res.data as Map)['url'] as String;
@@ -122,6 +140,9 @@ class SellerUpdatesRepository {
   }
 
   String _message(DioException e, String fallback) {
+    if (e.response?.statusCode == 403) {
+      return 'Tu rol no permite publicar novedades ni administrar avisos en vivo. Pídele acceso a la dueña del negocio.';
+    }
     final data = e.response?.data;
     if (data is Map && data['message'] is String) {
       final message = (data['message'] as String).trim();
@@ -131,16 +152,19 @@ class SellerUpdatesRepository {
   }
 }
 
-final sellerUpdatesRepositoryProvider = Provider<SellerUpdatesRepository>((ref) {
+final sellerUpdatesRepositoryProvider = Provider<SellerUpdatesRepository>((
+  ref,
+) {
   return SellerUpdatesRepository(ref.read(dioProvider));
 });
 
 final activeLiveAnnouncementProvider =
     FutureProvider.autoDispose<SellerLiveAnnouncement?>((ref) {
-  return ref.read(sellerUpdatesRepositoryProvider).getActiveLive();
-});
+      return ref.read(sellerUpdatesRepositoryProvider).getActiveLive();
+    });
 
-final myStorePostsProvider =
-    FutureProvider.autoDispose<List<SellerStorePost>>((ref) {
+final myStorePostsProvider = FutureProvider.autoDispose<List<SellerStorePost>>((
+  ref,
+) {
   return ref.read(sellerUpdatesRepositoryProvider).getMyPosts();
 });
