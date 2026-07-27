@@ -14,6 +14,24 @@ class AuthException implements Exception {
   String toString() => message;
 }
 
+enum PasswordResetFailure {
+  invalidCode,
+  invalidCodeFormat,
+  other;
+
+  bool get requiresCodeEntry =>
+      this == PasswordResetFailure.invalidCode ||
+      this == PasswordResetFailure.invalidCodeFormat;
+}
+
+/// Fallo al confirmar un restablecimiento, clasificado con el campo `error`
+/// estable del backend. La UI no debe inferir el tipo desde el texto traducido.
+class PasswordResetException extends AuthException {
+  PasswordResetException(super.message, {required this.failure});
+
+  final PasswordResetFailure failure;
+}
+
 /// La cuenta existe y la contraseña es correcta, pero el teléfono no se ha
 /// confirmado por WhatsApp. La UI debe mandar a la pantalla de confirmación.
 class PhoneNotVerifiedException implements Exception {
@@ -150,6 +168,38 @@ class FacebookProfileRequiredException implements Exception {
 
   @override
   String toString() => message;
+}
+
+enum FacebookTerminalConflictType {
+  identityConflict,
+  verifiedPhoneChangeNotAllowed,
+  unknown,
+}
+
+/// Conflicto de identidad que no puede resolverse editando y reenviando el
+/// formulario de Facebook. La UI debe cerrar ese flujo y volver al acceso
+/// habitual.
+class FacebookTerminalConflictException extends AuthException {
+  FacebookTerminalConflictException(super.message, {required this.type});
+
+  final FacebookTerminalConflictType type;
+
+  factory FacebookTerminalConflictException.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    final message = (json['message'] as String?)?.trim();
+    return FacebookTerminalConflictException(
+      message != null && message.isNotEmpty && message.length <= 240
+          ? message
+          : 'No pudimos vincular tu Facebook con esa cuenta. Entra con tu método habitual.',
+      type: switch (json['error']) {
+        'identity_conflict' => FacebookTerminalConflictType.identityConflict,
+        'verified_phone_change_not_allowed' =>
+          FacebookTerminalConflictType.verifiedPhoneChangeNotAllowed,
+        _ => FacebookTerminalConflictType.unknown,
+      },
+    );
+  }
 }
 
 /// El perfil ya se guardó, pero todavía falta confirmar el teléfono por
@@ -438,8 +488,14 @@ class AuthRepository {
             'Contraseña actualizada. Ya puedes iniciar sesión.',
       );
     } on DioException catch (e) {
-      throw AuthException(
+      final data = _responseMap(e.response?.data);
+      throw PasswordResetException(
         _message(e, 'No pudimos actualizar la contraseña. Revisa el código.'),
+        failure: switch (data?['error']) {
+          'invalid_code' => PasswordResetFailure.invalidCode,
+          'invalid_code_format' => PasswordResetFailure.invalidCodeFormat,
+          _ => PasswordResetFailure.other,
+        },
       );
     }
   }
@@ -519,10 +575,13 @@ class AuthRepository {
     } on DioException catch (e) {
       final data = _responseMap(e.response?.data);
       if (e.response?.statusCode == 409 && data != null) {
-        throw FacebookProfileRequiredException.fromJson(
-          data,
-          fallbackAccountType: accountType,
-        );
+        if (_isFacebookContinuation(data)) {
+          throw FacebookProfileRequiredException.fromJson(
+            data,
+            fallbackAccountType: accountType,
+          );
+        }
+        throw FacebookTerminalConflictException.fromJson(data);
       }
       throw AuthException(_message(e, 'No pudimos entrar con Facebook.'));
     }
@@ -557,10 +616,13 @@ class AuthRepository {
     } on DioException catch (e) {
       final data = _responseMap(e.response?.data);
       if (e.response?.statusCode == 409 && data != null) {
-        throw FacebookProfileRequiredException.fromJson(
-          data,
-          fallbackAccountType: profile.accountType,
-        );
+        if (_isFacebookContinuation(data)) {
+          throw FacebookProfileRequiredException.fromJson(
+            data,
+            fallbackAccountType: profile.accountType,
+          );
+        }
+        throw FacebookTerminalConflictException.fromJson(data);
       }
       throw AuthException(
         _message(e, 'No pudimos completar tu cuenta de Facebook.'),
@@ -619,6 +681,14 @@ class AuthRepository {
       return data.map((key, value) => MapEntry(key.toString(), value));
     }
     return null;
+  }
+
+  bool _isFacebookContinuation(Map<String, dynamic> data) {
+    final error = data['error'];
+    return error == 'facebook_profile_required' ||
+        error == 'facebook_account_link_required' ||
+        data['needsProfile'] == true ||
+        data.containsKey('requiresExistingPassword');
   }
 }
 

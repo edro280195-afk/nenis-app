@@ -107,7 +107,7 @@ SellerTanda _tandaWithParticipant({
         'isDelivered': isDelivered,
         'deliveryDate': deliveryDate?.toIso8601String(),
         'status': 'Active',
-        'payments': [if (payment != null) payment],
+        'payments': [?payment],
       },
     ],
   });

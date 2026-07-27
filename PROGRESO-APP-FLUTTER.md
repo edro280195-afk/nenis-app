@@ -1,6 +1,6 @@
 # Progreso — App Flutter Neni's App (compradora + vendedora)
 
-> Actualizado: 2026-07-27 (auditoría completa + protección del sorteo de Tandas). Doc para **retomar la construcción** sin re-descubrir.
+> Actualizado: 2026-07-27 (auditoría + Tandas + endurecimiento de recuperación/Facebook). Doc para **retomar la construcción** sin re-descubrir.
 > Brief original: `PROMPT-APP-FLUTTER.md` (mismo folder) — **ojo:** ese doc describe el arranque de la Fase 2 (jun/2026) y su sección "App = compradora (no la vendedora)" ya **no** refleja la realidad; ver corrección abajo.
 > Proyecto Flutter: `nenis-app\nenis_app` dentro del bundle (hoy `C:\Codigos\nenis-bundle\nenis-app\nenis_app`). Backend: `nenis-bundle\sellgeneral-api`. Las rutas viejas `C:\Codigos\nenis-app\` / `C:\Codigos\sellgeneral-api\` (sin `nenis-bundle`) que aparecen más abajo en este doc son de antes del bundle — ajustar mentalmente si ya no existen sueltas.
 > **Antes de confiar en las tablas de "Pendiente" de este doc, cruzar contra `git log --oneline --stat` desde la fecha de arriba** — se ha encontrado más de una vez trabajo real ya hecho (a veces semanas) que este doc seguía listando como pendiente. Ver nota en `docs/AUDITORIA-PANTALLAS.md`.
@@ -62,6 +62,9 @@ backend). Highlights de lo encontrado y arreglado:
 - 🔴 **Resorteo peligroso en Tandas** — ya no permite cambiar aleatoriamente
   todos los turnos después de registrar el primer pago o entrega. Flutter
   deshabilita la acción y el backend aplica la regla aunque se llame directo.
+- 🟡 **Recuperación/Facebook** — el OTP usa códigos de error estructurados y
+  limpia banners obsoletos; los conflictos 409 terminales de Facebook ya no
+  dejan a la usuaria atrapada en un formulario que nunca puede resolverlos.
 - 🔴 **Fuga de chat entre clientas** en `TrackingScreen` (backend, endpoint
   anónimo) — el filtro devolvía también chat de otras clientas en la misma
   ruta y chat interno chofer↔admin a cualquiera con un solo token de pedido.
@@ -149,6 +152,6 @@ App `1427323549158529`, sigue en modo Desarrollo ("Sin publicar"). Ya confirmado
 ## Estado git
 La auditoría base del 2026-07-27 quedó publicada en `main`: app `1ec8acf` y
 backend `18d7ea4`. La continuación que protege el sorteo de Tandas forma
-parte de esta actualización. Verificación al cierre: `flutter analyze lib`
-sin hallazgos, 74/74 pruebas Flutter, 305/305 pruebas de API y 18/18 pruebas
-del migrador.
+parte de esta actualización, junto con el endurecimiento de autenticación.
+Verificación al cierre: `flutter analyze lib test` sin hallazgos, 80/80
+pruebas Flutter, 305/305 pruebas de API y 18/18 pruebas del migrador.

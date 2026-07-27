@@ -163,6 +163,7 @@ class _PasswordResetScreenState extends ConsumerState<PasswordResetScreen> {
     setState(() {
       _waToastVisible = false;
       _code = _waCode;
+      _error = null;
     });
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) setState(() => _showWaToast = false);
@@ -210,16 +211,10 @@ class _PasswordResetScreenState extends ConsumerState<PasswordResetScreen> {
       _newPassword.clear();
       _confirmPassword.clear();
       setState(() => _step = _PasswordResetStep.success);
-    } on AuthException catch (error) {
+    } on PasswordResetException catch (error) {
       if (!mounted) return;
 
-      // If code error, transition back to verifyOtp step and shake
-      final isCodeError =
-          error.message.toLowerCase().contains('código') ||
-          error.message.toLowerCase().contains('code') ||
-          error.message.toLowerCase().contains('incorrecto') ||
-          error.message.toLowerCase().contains('expirado');
-      if (isCodeError) {
+      if (error.failure.requiresCodeEntry) {
         setState(() {
           _step = _PasswordResetStep.verifyOtp;
           _error = error.message;
@@ -232,6 +227,8 @@ class _PasswordResetScreenState extends ConsumerState<PasswordResetScreen> {
       } else {
         _setError(error.message);
       }
+    } on AuthException catch (error) {
+      _setError(error.message);
     } catch (_) {
       _setError('Ocurrió un problema inesperado. Inténtalo nuevamente.');
     } finally {
@@ -463,7 +460,10 @@ class _PasswordResetScreenState extends ConsumerState<PasswordResetScreen> {
             key: ValueKey('password-reset-otp-$_otpRevision'),
             length: 6,
             onCompleted: (code) {
-              setState(() => _code = code);
+              setState(() {
+                _code = code;
+                _error = null;
+              });
               // Auto advance to password creation
               Future.delayed(const Duration(milliseconds: 200), () {
                 if (mounted && _code.length == 6) {

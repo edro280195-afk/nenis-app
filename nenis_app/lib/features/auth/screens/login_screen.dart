@@ -1058,6 +1058,7 @@ class _FacebookProfileSheetState extends ConsumerState<_FacebookProfileSheet> {
   bool _acceptedLegal = false;
   bool _saving = false;
   String? _error;
+  FacebookTerminalConflictException? _terminalConflict;
 
   bool get _isSeller => widget.draft.accountType == FacebookAccountType.seller;
 
@@ -1157,6 +1158,13 @@ class _FacebookProfileSheetState extends ConsumerState<_FacebookProfileSheet> {
         _requiresExistingPassword = error.requiresExistingPassword;
         _error = error.message;
       });
+    } on FacebookTerminalConflictException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = null;
+        _terminalConflict = error;
+      });
     } on AuthException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -1177,6 +1185,14 @@ class _FacebookProfileSheetState extends ConsumerState<_FacebookProfileSheet> {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final role = _isSeller ? LoginRole.seller : LoginRole.client;
     final accent = _isSeller ? const Color(0xFF7450A8) : AppColors.neniDeep;
+    final terminalConflict = _terminalConflict;
+    if (terminalConflict != null) {
+      return _FacebookTerminalConflictView(
+        conflict: terminalConflict,
+        role: role,
+        onClose: () => Navigator.of(context).pop(false),
+      );
+    }
 
     return SafeArea(
       top: false,
@@ -1388,6 +1404,90 @@ class _FacebookProfileSheetState extends ConsumerState<_FacebookProfileSheet> {
   }
 }
 
+class _FacebookTerminalConflictView extends StatelessWidget {
+  const _FacebookTerminalConflictView({
+    required this.conflict,
+    required this.role,
+    required this.onClose,
+  });
+
+  final FacebookTerminalConflictException conflict;
+  final LoginRole role;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final accent = role == LoginRole.seller
+        ? const Color(0xFF7450A8)
+        : AppColors.neniDeep;
+
+    return SafeArea(
+      key: const Key('facebook-terminal-conflict'),
+      top: false,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(22, 14, 22, bottomInset + 22),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.88,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Center(child: _SheetHandle()),
+                const SizedBox(height: 24),
+                Align(
+                  child: Container(
+                    width: 68,
+                    height: 68,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(Symbols.shield_lock, color: accent, size: 34),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'No pudimos vincular las cuentas',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.h1.copyWith(fontSize: 22),
+                ),
+                const SizedBox(height: 12),
+                AuthFeedbackBanner(
+                  key: const Key('facebook-terminal-message'),
+                  message: conflict.message,
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Este caso no se resuelve cambiando los datos del formulario. Vuelve al inicio e ingresa con tu teléfono o correo.',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.subtitle.copyWith(
+                    color: AppColors.ink2,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                _PrimaryAction(
+                  key: const Key('facebook-terminal-close'),
+                  label: 'Volver al inicio de sesión',
+                  icon: Symbols.login,
+                  role: role,
+                  loading: false,
+                  onPressed: onClose,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _RoleHeading extends StatelessWidget {
   const _RoleHeading({
     required this.icon,
@@ -1438,6 +1538,7 @@ class _RoleHeading extends StatelessWidget {
 
 class _PrimaryAction extends StatelessWidget {
   const _PrimaryAction({
+    super.key,
     required this.label,
     required this.icon,
     required this.role,

@@ -186,6 +186,18 @@ simplemente no se actualizó. Bugs reales encontrados en lo ya construido:
 - **PointsScreen**: sin hallazgos — la más sólida de las 4. Nota: no
   distingue compradora/vendedora (ver Pendientes).
 
+### Autenticación (continuación 2026-07-27)
+- **Recuperación de contraseña**: los errores de OTP ahora se clasifican con
+  `error=invalid_code|invalid_code_format` del backend, sin buscar palabras
+  dentro del mensaje traducido. Al completar un nuevo código se limpia el
+  banner anterior antes de volver a "Nueva contraseña".
+- **Facebook Login**: los 409 recuperables
+  (`facebook_profile_required`/`facebook_account_link_required`) conservan el
+  formulario; `identity_conflict` y `verified_phone_change_not_allowed`
+  muestran un estado terminal con explicación y botón para volver al inicio.
+  También se descarta la credencial pendiente y se cierra la sesión del SDK de
+  Facebook. Cubierto con pruebas de contrato y widget.
+
 ### Pantallas de compradora (15 pantallas/áreas, 3 grupos)
 - **BuyerHomeScreen**: 🔴 tile "Lives en vivo" navegaba a `/live` sin
   `:businessId` (ruta inválida, pantalla de error de go_router en cada
@@ -257,13 +269,6 @@ por ser ambiguo o necesitar una decisión que no es mía tomar sola:
   agrupación de candidatas por nombre en vez de `clientId`.
 - `BuyerHomeScreen`: `SearchField` ("Busca tu pedido o una tienda") es
   100% decorativo, no filtra nada.
-- `password_reset_screen.dart`: banner de error viejo no se limpia al
-  reingresar un código correcto; la pantalla decide "es error de código"
-  con string-matching sobre el mensaje ya traducido en vez del campo
-  `error` estructurado del backend (frágil si cambia la redacción).
-- Login con Facebook: un 409 "terminal" (conflicto de identidad, cambio de
-  teléfono verificado no permitido) se trata igual que uno "recuperable" —
-  no hay salida clara del sheet para el caso terminal.
 - Cuentas admin/conductor creadas fuera de la app (sin teléfono) no
   tendrían ruta de recuperación de contraseña — no confirmado contra
   producción, valdría un query rápido de `Accounts` antes de asumir.

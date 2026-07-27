@@ -100,9 +100,10 @@ class AuthController extends AsyncNotifier<Session?> {
 
   Future<void> _safeClear(SessionStorage storage) async {
     try {
-      await storage
-          .clear()
-          .timeout(const Duration(seconds: 3), onTimeout: () {});
+      await storage.clear().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {},
+      );
     } catch (_) {
       // Si ni siquiera podemos borrar, no bloqueamos: el state en null igual
       // manda a la usuaria a login.
@@ -308,11 +309,17 @@ class AuthController extends AsyncNotifier<Session?> {
     final credential = await repo.facebookAccessToken();
     _pendingFacebookCredential = credential;
     _pendingAccountType = accountType;
-    final session = await repo.facebookLogin(
-      credential,
-      accountType: accountType,
-    );
-    await _apply(session);
+    try {
+      final session = await repo.facebookLogin(
+        credential,
+        accountType: accountType,
+      );
+      await _apply(session);
+    } on FacebookTerminalConflictException {
+      _pendingFacebookCredential = null;
+      await repo.facebookLogout();
+      rethrow;
+    }
   }
 
   /// Completa una cuenta nueva o vincula una existente con Facebook. Si falta
@@ -339,6 +346,10 @@ class AuthController extends AsyncNotifier<Session?> {
       _pendingPhone = e.phone;
       _pendingDevMode = e.devMode;
       rethrow;
+    } on FacebookTerminalConflictException {
+      _pendingFacebookCredential = null;
+      await ref.read(authRepositoryProvider).facebookLogout();
+      rethrow;
     }
   }
 
@@ -362,9 +373,7 @@ class AuthController extends AsyncNotifier<Session?> {
     //    logout (ya ocurrió) ni fallar de forma visible. El timeout protege
     //    contra `FirebaseMessaging.getToken()`, que no tiene timeout propio y
     //    puede colgarse indefinidamente.
-    unawaited(
-      _cleanupAfterLogout(repo: repo, push: push, refreshToken: rt),
-    );
+    unawaited(_cleanupAfterLogout(repo: repo, push: push, refreshToken: rt));
   }
 
   Future<void> _cleanupAfterLogout({

@@ -58,6 +58,30 @@ void main() {
     });
   });
 
+  group('FacebookTerminalConflictException', () {
+    test('clasifica un conflicto entre identidades', () {
+      final result = FacebookTerminalConflictException.fromJson({
+        'error': 'identity_conflict',
+        'message': 'Los datos pertenecen a cuentas distintas.',
+      });
+
+      expect(result.type, FacebookTerminalConflictType.identityConflict);
+      expect(result.message, 'Los datos pertenecen a cuentas distintas.');
+    });
+
+    test('clasifica un cambio de teléfono verificado', () {
+      final result = FacebookTerminalConflictException.fromJson({
+        'error': 'verified_phone_change_not_allowed',
+        'message': 'Entra con tu método habitual.',
+      });
+
+      expect(
+        result.type,
+        FacebookTerminalConflictType.verifiedPhoneChangeNotAllowed,
+      );
+    });
+  });
+
   group('FacebookProfileCompletion', () {
     test('envía los datos de negocio requeridos para una vendedora', () {
       const profile = FacebookProfileCompletion(
@@ -213,6 +237,55 @@ void main() {
         ),
       );
     });
+
+    test('separa un 409 terminal del formulario recuperable', () async {
+      final dio = Dio(BaseOptions(baseUrl: 'https://api.example.com'));
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            handler.reject(
+              DioException(
+                requestOptions: options,
+                type: DioExceptionType.badResponse,
+                response: Response<Map<String, dynamic>>(
+                  requestOptions: options,
+                  statusCode: 409,
+                  data: {
+                    'error': 'identity_conflict',
+                    'message': 'Los datos pertenecen a cuentas distintas.',
+                  },
+                ),
+              ),
+            );
+          },
+        ),
+      );
+      final repository = AuthRepository(dio);
+
+      await expectLater(
+        repository.completeFacebookProfile(
+          const FacebookAccessCredential(
+            token: 'classic-token',
+            type: FacebookTokenType.classic,
+          ),
+          const FacebookProfileCompletion(
+            accountType: FacebookAccountType.client,
+            firstName: 'Ana',
+            lastName: 'López',
+            email: 'ana@example.com',
+            phone: '8681234567',
+            acceptedLegal: true,
+          ),
+        ),
+        throwsA(
+          isA<FacebookTerminalConflictException>().having(
+            (error) => error.type,
+            'type',
+            FacebookTerminalConflictType.identityConflict,
+          ),
+        ),
+      );
+    });
   });
 
   group('Contrato HTTP de recuperación de contraseña', () {
@@ -283,6 +356,52 @@ void main() {
         'newPassword': 'nueva-segura-123',
       });
       expect(result.message, 'Contraseña actualizada.');
+    });
+
+    test('clasifica el código inválido usando el campo error', () async {
+      final dio = Dio(BaseOptions(baseUrl: 'https://api.example.com'));
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            handler.reject(
+              DioException(
+                requestOptions: options,
+                type: DioExceptionType.badResponse,
+                response: Response<Map<String, dynamic>>(
+                  requestOptions: options,
+                  statusCode: 401,
+                  data: {
+                    'error': 'invalid_code',
+                    'message': 'La verificación fue rechazada.',
+                  },
+                ),
+              ),
+            );
+          },
+        ),
+      );
+      final repository = AuthRepository(dio);
+
+      await expectLater(
+        repository.confirmPasswordReset(
+          phone: '8681234567',
+          code: '111111',
+          newPassword: 'nueva-segura-123',
+        ),
+        throwsA(
+          isA<PasswordResetException>()
+              .having(
+                (error) => error.failure,
+                'failure',
+                PasswordResetFailure.invalidCode,
+              )
+              .having(
+                (error) => error.message,
+                'message',
+                'La verificación fue rechazada.',
+              ),
+        ),
+      );
     });
 
     test('traduce el límite de intentos a un mensaje accionable', () async {
