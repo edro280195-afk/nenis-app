@@ -1,6 +1,6 @@
 # Progreso — App Flutter Neni's App (compradora + vendedora)
 
-> Actualizado: 2026-07-27 (auditoría + Tandas + endurecimiento de recuperación/Facebook). Doc para **retomar la construcción** sin re-descubrir.
+> Actualizado: 2026-07-27 (auditoría + Tandas + autenticación + orden estable de Rutas). Doc para **retomar la construcción** sin re-descubrir.
 > Brief original: `PROMPT-APP-FLUTTER.md` (mismo folder) — **ojo:** ese doc describe el arranque de la Fase 2 (jun/2026) y su sección "App = compradora (no la vendedora)" ya **no** refleja la realidad; ver corrección abajo.
 > Proyecto Flutter: `nenis-app\nenis_app` dentro del bundle (hoy `C:\Codigos\nenis-bundle\nenis-app\nenis_app`). Backend: `nenis-bundle\sellgeneral-api`. Las rutas viejas `C:\Codigos\nenis-app\` / `C:\Codigos\sellgeneral-api\` (sin `nenis-bundle`) que aparecen más abajo en este doc son de antes del bundle — ajustar mentalmente si ya no existen sueltas.
 > **Antes de confiar en las tablas de "Pendiente" de este doc, cruzar contra `git log --oneline --stat` desde la fecha de arriba** — se ha encontrado más de una vez trabajo real ya hecho (a veces semanas) que este doc seguía listando como pendiente. Ver nota en `docs/AUDITORIA-PANTALLAS.md`.
@@ -107,7 +107,6 @@ encontrado-pero-no-arreglado el 2026-07-27 vive en
 | **Publicar la app de Meta** | Genuinamente pendiente, requiere acción manual de Eduardo — ver sección abajo, sin cambios desde 2026-07-09. |
 | **StoreScreen: storefront público** | El link de "compartir tienda" es un callejón sin salida (404) para quien no es ya clienta/seguidora — ¿es intencional o falta un flujo de "seguir desde cero"? Decisión de producto, no bug. |
 | **Points/RafflesScreen sin guard `isSeller`** | Únicas pantallas compartidas compradora/vendedora sin el guard que sí tienen Home/Tandas/Account — alcanzable si una vendedora abre el link público de su propia tienda. Confirmar si falta o es a propósito. |
-| **`preOptimized` en Rutas** | `createRoute()` siempre manda `false` — reoptimiza vía Google Routes en vez de respetar el orden ya previsualizado en pantalla. No arreglado esta sesión (esfuerzo medio, severidad baja). |
 | **Multi-dirección (`ClientAddress` con FK a `Client`)** | Confirmado (2026-07-27): es decisión deliberada, documentada en el propio código (`BuyerAddressService.cs`) — 1 dirección por `Client` a propósito, con comentario explícito de cómo extenderlo si algún día se necesita. No es un pendiente real salvo que se decida que sí se quiere la feature. |
 | **Pipeline de Live Capture (`LiveSession`/`LiveCaptureService`)** | **Ya no existe** — se borró de raíz en la migración `DropLiveCapturePipeline` (2026-07-09), junto con el `ViewerCount` hardcodeado que dependía de él. Nada que hacer aquí. |
 
@@ -151,7 +150,9 @@ App `1427323549158529`, sigue en modo Desarrollo ("Sin publicar"). Ya confirmado
 
 ## Estado git
 La auditoría base del 2026-07-27 quedó publicada en `main`: app `1ec8acf` y
-backend `18d7ea4`. La continuación que protege el sorteo de Tandas forma
-parte de esta actualización, junto con el endurecimiento de autenticación.
-Verificación al cierre: `flutter analyze lib test` sin hallazgos, 80/80
-pruebas Flutter, 305/305 pruebas de API y 18/18 pruebas del migrador.
+backend `18d7ea4`. Después se publicaron la protección del sorteo de Tandas,
+el endurecimiento de autenticación y la creación de Rutas respetando
+exactamente el orden previsualizado. La agrupación visual de candidatas usa
+ahora `clientId`, no texto mutable. Verificación actual:
+`flutter analyze lib test` sin hallazgos, 84/84 pruebas Flutter, 308/308
+pruebas de API y 18/18 pruebas del migrador.

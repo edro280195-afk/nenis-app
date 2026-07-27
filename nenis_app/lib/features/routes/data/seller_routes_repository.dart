@@ -86,6 +86,7 @@ class SellerRoutesRepository {
 
   Future<CreateRouteResult> createRoute(
     Iterable<RouteCandidate> candidates,
+    Iterable<RoutePreviewStop> orderedStops,
   ) async {
     final orderIds = <int>[];
     final tandaIds = <String>[];
@@ -95,6 +96,8 @@ class SellerRoutesRepository {
       if (orderId != null) orderIds.add(orderId);
       if (tandaId != null) tandaIds.add(tandaId);
     }
+    final orderedStopIds = orderedStops.toList(growable: false)
+      ..sort((left, right) => left.sortOrder.compareTo(right.sortOrder));
 
     try {
       final res = await _dio.post(
@@ -102,7 +105,10 @@ class SellerRoutesRepository {
         data: {
           'orderIds': orderIds,
           'tandaParticipantIds': tandaIds,
-          'preOptimized': false,
+          'preOptimized': true,
+          'orderedStopIds': orderedStopIds
+              .map((stop) => stop.key)
+              .toList(growable: false),
         },
       );
       return CreateRouteResult.fromJson(res.data as Map<String, dynamic>);

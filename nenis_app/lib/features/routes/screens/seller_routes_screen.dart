@@ -385,8 +385,7 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
   ) {
     final grouped = <String, List<RouteCandidate>>{};
     for (final candidate in candidates) {
-      final phone = candidate.phone?.trim() ?? '';
-      final key = '${candidate.clientName.trim().toLowerCase()}|$phone';
+      final key = candidate.clientGroupKey;
       grouped.putIfAbsent(key, () => <RouteCandidate>[]).add(candidate);
     }
 
@@ -1097,6 +1096,9 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
   }
 
   Future<void> _createRoute(SellerRoutesWorkspace workspace) async {
+    final preview = _preview;
+    if (preview == null) return;
+
     setState(() {
       _savingRoute = true;
       _feedback = null;
@@ -1104,7 +1106,7 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
     try {
       final result = await ref
           .read(sellerRoutesRepositoryProvider)
-          .createRoute(_selectedCandidates(workspace));
+          .createRoute(_selectedCandidates(workspace), preview.stops);
       if (!mounted) return;
       _selectedCandidateKeys.clear();
       _preview = null;

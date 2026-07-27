@@ -105,10 +105,17 @@ reciente de "armado de rutas"). Encontrados y arreglados:
 - 🟡 `_toggleRoute`/`_showRouteMap` sobrescribían el draft local sin
   guardar al colapsar/expandir o ver el mapa — ahora usan `putIfAbsent`.
 - 🟢 `SlowLoadHint` agregado a la carga inicial.
-- **No arreglado (queda para otra sesión, ver Pendientes abajo):**
-  `preOptimized` siempre en `false` al crear (ignora el orden ya
-  previsualizado); agrupación de candidatas por `nombre|teléfono` en vez de
-  `clientId` (bug visual, no de envío); stepper inline de bolsas es código
+- 🟡 `preOptimized` siempre se enviaba en `false`, por lo que crear volvía a
+  llamar al optimizador y podía cambiar la ruta que acababa de mostrarse.
+  Ahora Flutter manda `preOptimized: true` y la secuencia explícita
+  `orderedStopIds`; el backend conserva incluso el intercalado pedido/tanda,
+  ignora IDs ajenos/duplicados y agrega al final cualquier parada válida que
+  faltara por una previsualización vieja.
+- 🟡 Las candidatas se agrupaban por `nombre|teléfono`, lo que podía mezclar
+  dos clientas distintas o separar pedidos/tandas de la misma clienta si
+  cambió el texto. Ahora pedidos y tandas leen el `clientId` que ya expone el
+  API y lo usan como identidad estable.
+- **No arreglado (bajo impacto):** el stepper inline de bolsas es código
   muerto (~60 líneas, el bottom sheet real funciona bien).
 
 ### SellerClientsScreen (`features/clients/`)
@@ -264,9 +271,6 @@ por ser ambiguo o necesitar una decisión que no es mía tomar sola:
 - `AddParticipantAsync` (chip de clienta standalone en Tandas) resuelve
   por nombre normalizado — mismo patrón de match implícito que causó B5 en
   OrderCreateScreen. Puede ser dedup intencional, confirmar con la dueña.
-- `SellerRoutesScreen`: `preOptimized` siempre `false` al crear (reoptimiza
-  vía Google Routes en vez de respetar el orden ya previsualizado);
-  agrupación de candidatas por nombre en vez de `clientId`.
 - `BuyerHomeScreen`: `SearchField` ("Busca tu pedido o una tienda") es
   100% decorativo, no filtra nada.
 - Cuentas admin/conductor creadas fuera de la app (sin teléfono) no
