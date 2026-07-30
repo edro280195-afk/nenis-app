@@ -3,6 +3,7 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
+    id("com.google.gms.google-services")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -62,12 +63,19 @@ if (isReleaseTask && !hasReleaseSigning) {
 
 android {
     namespace = "com.nenisapp.nenis_app"
-    compileSdk = flutter.compileSdkVersion
+    // compileSdk 36: requerido por plugins recientes (app_links,
+    // flutter_facebook_auth, flutter_secure_storage, google_maps_flutter_android,
+    // shared_preferences_android, sqflite_android, url_launcher_android).
+    // No sube targetSdk (comportamiento runtime) ni minSdk (dispositivos).
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // Requerido por flutter_local_notifications (notificaciones push en
+        // foreground).
+        isCoreLibraryDesugaringEnabled = true
     }
 
     defaultConfig {
@@ -112,4 +120,8 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

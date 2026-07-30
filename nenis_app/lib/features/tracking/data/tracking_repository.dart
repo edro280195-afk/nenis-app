@@ -32,11 +32,90 @@ class TrackingRepository {
         throw TrackingException('Este enlace ha expirado.');
       }
       throw TrackingException(
-          'No pudimos cargar tu pedido. Revisa tu conexión e intenta de nuevo.');
-    } catch (_) {
-      throw TrackingException(
-          'No pudimos cargar tu pedido. Revisa tu conexión e intenta de nuevo.');
+        'No pudimos cargar tu pedido. Revisa tu conexión e intenta de nuevo.',
+      );
     }
+  }
+
+  Future<OrderRating> submitRating({
+    required String accessToken,
+    required int stars,
+    List<String>? reasons,
+    String? comment,
+  }) async {
+    try {
+      final res = await _dio.post(
+        '/api/pedido/$accessToken/rating',
+        data: {'stars': stars, 'reasons': reasons, 'comment': comment},
+      );
+      return OrderRating.fromJson(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 410) {
+        throw TrackingException('Este enlace ha expirado.');
+      }
+      throw TrackingException(
+        e.response?.data?['message'] ?? 'No se pudo enviar la calificación.',
+      );
+    } catch (_) {
+      throw TrackingException('Error de conexión.');
+    }
+  }
+
+  /// POST /api/pedido/{token}/confirm — la clienta confirma su pedido.
+  Future<void> confirmOrder(String accessToken) async {
+    try {
+      await _dio.post('/api/pedido/$accessToken/confirm');
+    } on DioException catch (e) {
+      throw TrackingException(
+        e.response?.data?['message'] ?? 'No se pudo confirmar el pedido.',
+      );
+    } catch (_) {
+      throw TrackingException('Error de conexión.');
+    }
+  }
+
+  /// PATCH /api/pedido/{token}/instructions — actualiza las instrucciones
+  /// de entrega de la clienta.
+  Future<void> updateInstructions(
+    String accessToken,
+    String instructions,
+  ) async {
+    try {
+      await _dio.patch(
+        '/api/pedido/$accessToken/instructions',
+        data: {'instructions': instructions},
+      );
+    } on DioException catch (e) {
+      throw TrackingException(
+        e.response?.data?['message'] ??
+            'No se pudieron guardar las instrucciones.',
+      );
+    } catch (_) {
+      throw TrackingException('Error de conexión.');
+    }
+  }
+
+  /// GET /api/pedido/{token}/chat — historial de mensajes clienta ↔ chofer.
+  Future<List<ChatMessage>> getChat(String accessToken) async {
+    try {
+      final res = await _dio.get('/api/pedido/$accessToken/chat');
+      final list = res.data as List? ?? const [];
+      return list
+          .map((e) => ChatMessage.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      // El chat es opcional: si falla, devolvemos vacío en lugar de romper.
+      return const [];
+    }
+  }
+
+  /// POST /api/pedido/{token}/chat — envía un mensaje de la clienta.
+  Future<ChatMessage> sendChat(String accessToken, String text) async {
+    final res = await _dio.post(
+      '/api/pedido/$accessToken/chat',
+      data: {'text': text},
+    );
+    return ChatMessage.fromJson(res.data as Map<String, dynamic>);
   }
 }
 
@@ -61,10 +140,13 @@ String trackingHubUrl() {
 /// y el estado en tiempo real.
 class TrackingHubClient {
   TrackingHubClient({signalr.HubConnection? connection})
-      : _connection = connection ?? _defaultConnection();
+    : _connection = connection ?? _defaultConnection();
 
   final signalr.HubConnection _connection;
   bool _joined = false;
+  bool _disposed = false;
+  bool _eventsWired = false;
+  Future<void>? _startInFlight;
 
   final StreamController<DriverLocation> _locationCtl =
       StreamController<DriverLocation>.broadcast();
@@ -72,12 +154,18 @@ class TrackingHubClient {
       StreamController<TrackingStatus>.broadcast();
   final StreamController<bool> _connectionCtl =
       StreamController<bool>.broadcast();
+  final StreamController<ChatMessage> _chatCtl =
+      StreamController<ChatMessage>.broadcast();
 
   Stream<DriverLocation> get locationStream => _locationCtl.stream;
   Stream<TrackingStatus> get statusStream => _statusCtl.stream;
   Stream<bool> get connectionStream => _connectionCtl.stream;
+  Stream<ChatMessage> get chatStream => _chatCtl.stream;
 
   void _wireEvents() {
+    if (_eventsWired) return;
+    _eventsWired = true;
+
     _connection.on('LocationUpdate', (args) {
       if (args == null || args.isEmpty) return;
       final raw = args.first;
@@ -85,33 +173,59 @@ class TrackingHubClient {
         final lat = (raw['latitude'] as num?)?.toDouble();
         final lng = (raw['longitude'] as num?)?.toDouble();
         if (lat != null && lng != null) {
-          _locationCtl.add(DriverLocation(
-            latitude: lat,
-            longitude: lng,
-            lastUpdate: DateTime.now(),
-          ));
+          _emitLocation(
+            DriverLocation(
+              latitude: lat,
+              longitude: lng,
+              lastUpdate: DateTime.now(),
+            ),
+          );
         }
       }
     });
 
+    // El backend manda UN solo argumento objeto ({Status, Message} —
+    // ver DriverController.cs, ej. líneas 199/245/316/613/704), no dos
+    // posicionales. Con `args[1]` esto nunca disparaba: los cambios de
+    // estado en vivo (Confirmed→Shipped→InRoute→Delivered) no llegaban y
+    // solo se veían al hacer pull-to-refresh manual.
     _connection.on('DeliveryUpdate', (args) {
-      if (args == null || args.length < 2) return;
-      final raw = args[1];
-      if (raw is String) {
-        _statusCtl.add(trackingStatusFromString(raw));
+      if (args == null || args.isEmpty) return;
+      final raw = args.first;
+      if (raw is Map) {
+        final status = raw['status'] ?? raw['Status'];
+        if (status is String) {
+          _emitStatus(trackingStatusFromString(status));
+        }
+      } else if (raw is String) {
+        _emitStatus(trackingStatusFromString(raw));
+      }
+    });
+
+    // Chat chofer/admin → clienta: el repartidor envía por
+    // POST /api/driver/{token}/deliver/{id}/chat y el backend emite
+    // `ReceiveClientChatMessage` al grupo Order_ (donde está la clienta).
+    _connection.on('ReceiveClientChatMessage', (args) {
+      if (args == null || args.isEmpty) return;
+      final raw = args.first;
+      if (raw is Map<String, dynamic>) {
+        _emitChat(ChatMessage.fromJson(raw));
+      } else if (raw is Map) {
+        _emitChat(ChatMessage.fromJson(Map<String, dynamic>.from(raw)));
       }
     });
 
     _connection.onclose(({error}) {
-      _connectionCtl.add(false);
+      _emitConnection(false);
     });
 
     _connection.onreconnecting(({error}) {
-      _connectionCtl.add(false);
+      _emitConnection(false);
     });
 
     _connection.onreconnected(({connectionId}) {
-      _connectionCtl.add(true);
+      if (_disposed) return;
+      _emitConnection(true);
       // Re-join si el accessToken estaba activo.
       if (_lastAccessToken != null) {
         // No esperamos — la reconexión ya garantiza el grupo, pero si la
@@ -126,22 +240,50 @@ class TrackingHubClient {
   String? _lastAccessToken;
 
   Future<void> start() async {
+    if (_disposed) return;
     if (_connection.state == signalr.HubConnectionState.Connected) return;
+
+    final pending = _startInFlight;
+    if (pending != null) {
+      await pending;
+      return;
+    }
+
+    _wireEvents();
+    final startFuture = _connection.start() ?? Future<void>.value();
+    _startInFlight = startFuture;
     try {
-      _wireEvents();
-      await _connection.start();
-      _connectionCtl.add(true);
+      await startFuture;
+      if (_disposed) {
+        await _stopConnection();
+        return;
+      }
+      _emitConnection(true);
     } catch (_) {
-      _connectionCtl.add(false);
+      _emitConnection(false);
       rethrow;
+    } finally {
+      if (identical(_startInFlight, startFuture)) {
+        _startInFlight = null;
+      }
     }
   }
 
   Future<bool> joinOrder(String accessToken) async {
-    if (accessToken.isEmpty) return false;
+    if (_disposed || accessToken.isEmpty) return false;
+
+    if (_lastAccessToken != null &&
+        _lastAccessToken != accessToken &&
+        _connection.state != signalr.HubConnectionState.Disconnected) {
+      await _stopConnection();
+    }
     _lastAccessToken = accessToken;
     if (_connection.state != signalr.HubConnectionState.Connected) {
       await start();
+    }
+    if (_disposed ||
+        _connection.state != signalr.HubConnectionState.Connected) {
+      return false;
     }
     try {
       final ok = await _connection.invoke('JoinOrder', args: [accessToken]);
@@ -153,22 +295,57 @@ class TrackingHubClient {
   }
 
   Future<void> stop() async {
-    if (_connection.state == signalr.HubConnectionState.Connected) {
-      try {
-        await _connection.stop();
-      } catch (_) {}
-    }
-    _connectionCtl.add(false);
+    if (_disposed) return;
+    await _stopConnection();
+    _joined = false;
+    _emitConnection(false);
   }
 
   Future<void> dispose() async {
-    await stop();
+    if (_disposed) return;
+    _disposed = true;
+    _joined = false;
+    _lastAccessToken = null;
+    await _stopConnection();
     await _locationCtl.close();
     await _statusCtl.close();
     await _connectionCtl.close();
+    await _chatCtl.close();
   }
 
   bool get isJoined => _joined;
+  bool get isDisposed => _disposed;
+
+  Future<void> _stopConnection() async {
+    if (_connection.state == signalr.HubConnectionState.Disconnected) return;
+    try {
+      await _connection.stop();
+    } catch (_) {}
+  }
+
+  void _emitLocation(DriverLocation location) {
+    if (!_disposed && !_locationCtl.isClosed) {
+      _locationCtl.add(location);
+    }
+  }
+
+  void _emitStatus(TrackingStatus status) {
+    if (!_disposed && !_statusCtl.isClosed) {
+      _statusCtl.add(status);
+    }
+  }
+
+  void _emitConnection(bool connected) {
+    if (!_disposed && !_connectionCtl.isClosed) {
+      _connectionCtl.add(connected);
+    }
+  }
+
+  void _emitChat(ChatMessage message) {
+    if (!_disposed && !_chatCtl.isClosed) {
+      _chatCtl.add(message);
+    }
+  }
 
   static signalr.HubConnection _defaultConnection() {
     final url = trackingHubUrl();
@@ -181,8 +358,8 @@ class TrackingHubClient {
   }
 }
 
-final trackingHubProvider = Provider<TrackingHubClient>((ref) {
+final trackingHubProvider = Provider.autoDispose<TrackingHubClient>((ref) {
   final client = TrackingHubClient();
-  ref.onDispose(() => client.dispose());
+  ref.onDispose(client.dispose);
   return client;
 });

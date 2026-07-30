@@ -214,6 +214,7 @@ class RouteCandidate {
     required this.kind,
     required this.clientName,
     required this.total,
+    this.clientId,
     this.orderId,
     this.tandaParticipantId,
     this.subtitle,
@@ -222,10 +223,12 @@ class RouteCandidate {
     this.latitude,
     this.longitude,
     this.badge,
+    this.packageCount = 0,
   });
 
   final String key;
   final String kind;
+  final int? clientId;
   final int? orderId;
   final String? tandaParticipantId;
   final String clientName;
@@ -236,9 +239,19 @@ class RouteCandidate {
   final double? longitude;
   final double total;
   final String? badge;
+  final int packageCount;
 
   bool get hasCoordinates => latitude != null && longitude != null;
   bool get isOrder => orderId != null;
+  String get clientGroupKey {
+    final id = clientId;
+    if (id != null) return 'client:$id';
+
+    final normalizedName = clientName.trim().toLowerCase();
+    final normalizedPhone = phone?.trim() ?? '';
+    return 'legacy:$normalizedName|$normalizedPhone';
+  }
+
   String get initial =>
       clientName.trim().isEmpty ? '?' : clientName.trim()[0].toUpperCase();
 
@@ -249,6 +262,7 @@ class RouteCandidate {
     return RouteCandidate(
       key: 'order:$orderId',
       kind: 'Pedido',
+      clientId: _in(j['clientId']),
       orderId: orderId,
       clientName: (j['clientName'] ?? 'Clienta') as String,
       subtitle:
@@ -261,6 +275,7 @@ class RouteCandidate {
       longitude: _dn(j['clientLongitude']),
       total: _d(j['total']),
       badge: j['type'] as String?,
+      packageCount: _i(j['packageCount'] ?? j['totalPackages']),
     );
   }
 
@@ -271,6 +286,7 @@ class RouteCandidate {
     return RouteCandidate(
       key: 'tanda:$participantId',
       kind: 'Tanda',
+      clientId: _in(j['clientId']),
       tandaParticipantId: participantId,
       clientName: (j['clientName'] ?? 'Clienta') as String,
       subtitle: '${j['tandaName'] ?? 'Tanda'} · Semana $week/$totalWeeks',
@@ -305,6 +321,24 @@ class SkippedStop {
   );
 }
 
+/// Resultado de `POST /api/routes`: el backend re-valida cada pedido/tanda
+/// al crear (puede rechazar por "Ya en otra ruta", "Cancelado", etc.) y
+/// devuelve por separado lo que sí quedó en la ruta y lo que se cayó.
+class CreateRouteResult {
+  const CreateRouteResult({required this.route, required this.skipped});
+
+  final SellerRoute route;
+  final List<SkippedStop> skipped;
+
+  factory CreateRouteResult.fromJson(Map<String, dynamic> j) =>
+      CreateRouteResult(
+        route: SellerRoute.fromJson(j['route'] as Map<String, dynamic>),
+        skipped: ((j['skipped'] as List?) ?? const [])
+            .map((e) => SkippedStop.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+}
+
 class RoutePreviewStop {
   const RoutePreviewStop({
     required this.kind,
@@ -335,6 +369,10 @@ class RoutePreviewStop {
   final int? tandaWeek;
 
   bool get isTanda => kind.toLowerCase() == 'tanda';
+  String get key {
+    final id = isTanda ? tandaParticipantId : orderId?.toString();
+    return '${isTanda ? 'tanda' : 'order'}:$id';
+  }
 
   factory RoutePreviewStop.fromJson(Map<String, dynamic> j) => RoutePreviewStop(
     kind: (j['kind'] ?? 'Order') as String,

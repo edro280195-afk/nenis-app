@@ -44,5 +44,10 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Android release signing
+/android/key.properties
+/android/*.jks
+/android/*.keystore
+
 # Local validation screenshots
 /docs/*.png

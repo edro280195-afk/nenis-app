@@ -1,5 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.NFC" />
     <queries>
         <provider
             android:authorities="com.facebook.katana.provider.PlatformProvider" />
@@ -40,6 +41,30 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+
+            <!-- App Link verificado del enlace del pedido:
+                 https://app.nenisapp.com/o/{token} y /pedido/{token}.
+                 Requiere /.well-known/assetlinks.json en el dominio. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="app.nenisapp.com" android:pathPrefix="/o/" />
+                <data android:scheme="https" android:host="app.nenisapp.com" android:pathPrefix="/pedido/" />
+                <!-- Compartir tienda: https://app.nenisapp.com/store/{businessId}.
+                     Sin muro de instalación propio todavía (ver deep_link_service.dart) —
+                     solo navega si la app ya está instalada y con sesión. -->
+                <data android:scheme="https" android:host="app.nenisapp.com" android:pathPrefix="/store/" />
+                <data android:scheme="https" android:host="app.nenisapp.com" android:pathPrefix="/caja/" />
+            </intent-filter>
+
+            <!-- Fallback por scheme propio (no verificado): nenis://o/{token}, nenis://store/{id}. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="nenis" />
             </intent-filter>
         </activity>
 

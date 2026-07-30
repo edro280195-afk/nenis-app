@@ -66,6 +66,10 @@ class BuyerNotification {
         return Symbols.credit_card;
       case 'reserve':
         return Symbols.bookmark;
+      case 'live-started':
+        return Symbols.sensors;
+      case 'store-post':
+        return Symbols.campaign;
       default:
         return Symbols.notifications;
     }

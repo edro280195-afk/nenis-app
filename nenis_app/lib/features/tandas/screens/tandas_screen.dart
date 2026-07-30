@@ -9,15 +9,15 @@ import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/color_hex.dart';
 import '../../../shared/widgets/background.dart';
-import '../../../shared/widgets/glass_bottom_nav.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/segmented.dart';
 import '../../../shared/widgets/store_avatar.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../data/tandas_models.dart';
 import '../data/tandas_repository.dart';
 
 import '../../../core/auth/auth_controller.dart';
-import 'seller_tandas_screen.dart';
+import 'seller_tandas_command_screen.dart';
 
 class TandasScreen extends ConsumerWidget {
   const TandasScreen({super.key});
@@ -26,7 +26,9 @@ class TandasScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(authControllerProvider).value;
     final isSeller = session != null && session.hasMembership;
-    return isSeller ? const SellerTandasScreen() : const BuyerTandasScreen();
+    return isSeller
+        ? const SellerTandasCommandScreen()
+        : const BuyerTandasScreen();
   }
 }
 
@@ -43,54 +45,38 @@ class BuyerTandasScreen extends ConsumerWidget {
       body: NeniBackground(
         child: SafeArea(
           bottom: false,
-          child: Stack(
-            children: [
-              feed.when(
-                loading: () => const Center(
-                  child: CircularProgressIndicator(color: AppColors.neni),
-                ),
-                error: (e, _) => _TandasError(
-                  onRetry: () => ref.invalidate(tandasControllerProvider),
-                ),
-                data: (tandas) {
-                  final filtered = filter == TandasFilter.mine
-                      ? tandas.where((t) => t.isMine).toList()
-                      : tandas.where((t) => !t.isMine).toList();
-                  return Column(
-                    children: [
-                      const _TandasHeader(),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(22, 12, 22, 12),
-                        child: SegmentedControl(
-                          items: TandasFilter.values
-                              .map((f) => SegmentedItem(label: f.label))
-                              .toList(),
-                          selectedIndex:
-                              TandasFilter.values.indexOf(filter),
-                          onChanged: (i) => ref
-                              .read(tandasControllerProvider.notifier)
-                              .setFilter(TandasFilter.values[i]),
-                        ),
-                      ),
-                      Expanded(
-                        child: filtered.isEmpty
-                            ? _TandasEmpty(filter: filter)
-                            : _TandasList(tandas: filtered),
-                      ),
-                    ],
-                  );
-                },
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: GlassBottomNav(
-                  items: buildDefaultNavItems(),
-                  currentRoute: '/tandas',
-                ),
-              ),
-            ],
+          child: feed.when(
+            loading: () => const _TandasLoading(),
+            error: (e, _) => _TandasError(
+              onRetry: () => ref.invalidate(tandasControllerProvider),
+            ),
+            data: (tandas) {
+              final filtered = filter == TandasFilter.mine
+                  ? tandas.where((t) => t.isMine).toList()
+                  : tandas.where((t) => !t.isMine).toList();
+              return Column(
+                children: [
+                  const _TandasHeader(),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 12, 22, 12),
+                    child: SegmentedControl(
+                      items: TandasFilter.values
+                          .map((f) => SegmentedItem(label: f.label))
+                          .toList(),
+                      selectedIndex: TandasFilter.values.indexOf(filter),
+                      onChanged: (i) => ref
+                          .read(tandasControllerProvider.notifier)
+                          .setFilter(TandasFilter.values[i]),
+                    ),
+                  ),
+                  Expanded(
+                    child: filtered.isEmpty
+                        ? _TandasEmpty(filter: filter)
+                        : _TandasList(tandas: filtered),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -108,22 +94,26 @@ class _TandasHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Tus tandas',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 26,
-                fontWeight: FontWeight.w700,
-                color: AppColors.ink,
-                letterSpacing: -0.4,
-              )),
+          Text(
+            'Tus tandas',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 26,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
+              letterSpacing: -0.4,
+            ),
+          ),
           SizedBox(height: 2),
-          Text('Avanza semana a semana con tus tiendas.',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 12.5,
-                fontWeight: FontWeight.w500,
-                color: AppColors.ink2,
-              )),
+          Text(
+            'Avanza semana a semana con tus tiendas.',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
+              color: AppColors.ink2,
+            ),
+          ),
         ],
       ),
     );
@@ -140,7 +130,7 @@ class _TandasList extends ConsumerWidget {
       color: AppColors.neniDeep,
       onRefresh: () async => ref.invalidate(tandasControllerProvider),
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(22, 0, 22, 110),
+        padding: const EdgeInsets.fromLTRB(22, 0, 22, 24),
         itemCount: tandas.length,
         itemBuilder: (context, i) => Padding(
           padding: const EdgeInsets.only(bottom: 12),
@@ -182,14 +172,22 @@ class _TandaCard extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(tanda.businessName,
-                          style: AppTextStyles.subtitle
-                              .copyWith(fontSize: 11.5, color: AppColors.ink3)),
-                      Text(tanda.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.body.copyWith(
-                              fontSize: 15.5, fontWeight: FontWeight.w600)),
+                      Text(
+                        tanda.businessName,
+                        style: AppTextStyles.subtitle.copyWith(
+                          fontSize: 11.5,
+                          color: AppColors.ink3,
+                        ),
+                      ),
+                      Text(
+                        tanda.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.body.copyWith(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -198,11 +196,18 @@ class _TandaCard extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 10),
-            Text(tanda.productName,
-                style: AppTextStyles.subtitle
-                    .copyWith(fontSize: 13, color: AppColors.ink2)),
+            Text(
+              tanda.productName,
+              style: AppTextStyles.subtitle.copyWith(
+                fontSize: 13,
+                color: AppColors.ink2,
+              ),
+            ),
             const SizedBox(height: 12),
-            if (tanda.isMine) _MineFooter(tanda: tanda) else _AvailableFooter(tanda: tanda),
+            if (tanda.isMine)
+              _MineFooter(tanda: tanda)
+            else
+              _AvailableFooter(tanda: tanda),
           ],
         ),
       ),
@@ -239,10 +244,7 @@ class _MineFooter extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
-        _PaymentStrip(
-          totalWeeks: tanda.totalWeeks,
-          paidWeeks: tanda.paidWeeks,
-        ),
+        _PaymentStrip(totalWeeks: tanda.totalWeeks, paidWeeks: tanda.paidWeeks),
         const SizedBox(height: 10),
         Row(
           children: [
@@ -278,9 +280,13 @@ class _MineFooter extends StatelessWidget {
               ),
             ),
             const Spacer(),
-            Text(tanda.weeklyAmountLabel,
-                style: AppTextStyles.subtitle.copyWith(
-                    fontSize: 12, color: AppColors.ink3)),
+            Text(
+              tanda.weeklyAmountLabel,
+              style: AppTextStyles.subtitle.copyWith(
+                fontSize: 12,
+                color: AppColors.ink3,
+              ),
+            ),
           ],
         ),
       ],
@@ -303,26 +309,41 @@ class _AvailableFooter extends StatelessWidget {
             color: const Color(0xFFFFE1EC),
             borderRadius: BorderRadius.circular(9),
           ),
-          child: const Icon(Symbols.groups,
-              size: 18, color: AppColors.neniDeep),
+          child: const Icon(
+            Symbols.groups,
+            size: 18,
+            color: AppColors.neniDeep,
+          ),
         ),
         const SizedBox(width: 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('${tanda.currentWeek} de ${tanda.totalWeeks} semanas',
-                  style: AppTextStyles.body
-                      .copyWith(fontSize: 13, fontWeight: FontWeight.w500)),
-              Text('Pregunta en tu tienda para inscribirte',
-                  style: AppTextStyles.subtitle
-                      .copyWith(fontSize: 11.5, color: AppColors.ink3)),
+              Text(
+                '${tanda.currentWeek} de ${tanda.totalWeeks} semanas',
+                style: AppTextStyles.body.copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                'Pregunta en tu tienda para inscribirte',
+                style: AppTextStyles.subtitle.copyWith(
+                  fontSize: 11.5,
+                  color: AppColors.ink3,
+                ),
+              ),
             ],
           ),
         ),
-        Text(tanda.weeklyAmountLabel,
-            style: AppTextStyles.subtitle.copyWith(
-                fontSize: 12, color: AppColors.ink3)),
+        Text(
+          tanda.weeklyAmountLabel,
+          style: AppTextStyles.subtitle.copyWith(
+            fontSize: 12,
+            color: AppColors.ink3,
+          ),
+        ),
       ],
     );
   }
@@ -353,12 +374,20 @@ class _MetaItem extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(label,
-                  style: AppTextStyles.subtitle
-                      .copyWith(fontSize: 10, color: AppColors.ink3)),
-              Text(value,
-                  style: AppTextStyles.body.copyWith(
-                      fontSize: 13, fontWeight: FontWeight.w600)),
+              Text(
+                label,
+                style: AppTextStyles.subtitle.copyWith(
+                  fontSize: 10,
+                  color: AppColors.ink3,
+                ),
+              ),
+              Text(
+                value,
+                style: AppTextStyles.body.copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ],
@@ -414,16 +443,17 @@ class _WinnerBadge extends StatelessWidget {
       child: const Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Symbols.celebration,
-              size: 14, color: AppColors.neniDeep),
+          Icon(Symbols.celebration, size: 14, color: AppColors.neniDeep),
           SizedBox(width: 4),
-          Text('¡Te toca!',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
-                color: AppColors.neniDeep,
-              )),
+          Text(
+            '¡Te toca!',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.neniDeep,
+            ),
+          ),
         ],
       ),
     );
@@ -441,7 +471,7 @@ class _TandasEmpty extends StatelessWidget {
       onRefresh: () async {},
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(top: 30, bottom: 110),
+        padding: const EdgeInsets.only(top: 30, bottom: 24),
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 30),
@@ -454,8 +484,11 @@ class _TandasEmpty extends StatelessWidget {
                     color: const Color(0xFFFFE1EC),
                     borderRadius: BorderRadius.circular(28),
                   ),
-                  child: const Icon(Symbols.groups,
-                      color: AppColors.neniDeep, size: 40),
+                  child: const Icon(
+                    Symbols.groups,
+                    color: AppColors.neniDeep,
+                    size: 40,
+                  ),
                 ),
                 const SizedBox(height: 18),
                 Text(
@@ -501,18 +534,62 @@ class _TandasError extends StatelessWidget {
         children: [
           const Icon(Symbols.cloud_off, size: 46, color: AppColors.ink3),
           const SizedBox(height: 14),
-          Text('No pudimos cargar tus tandas',
-              textAlign: TextAlign.center, style: AppTextStyles.h2),
+          Text(
+            'No pudimos cargar tus tandas',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.h2,
+          ),
           const SizedBox(height: 8),
-          Text('Revisa tu conexión e intenta de nuevo.',
-              textAlign: TextAlign.center, style: AppTextStyles.subtitle),
+          Text(
+            'Revisa tu conexión e intenta de nuevo.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.subtitle,
+          ),
           const SizedBox(height: 22),
           PillButton(
-              label: 'Reintentar',
-              icon: Symbols.refresh,
-              onPressed: onRetry),
+            label: 'Reintentar',
+            icon: Symbols.refresh,
+            onPressed: onRetry,
+          ),
         ],
       ),
+    );
+  }
+}
+
+class _TandasLoading extends StatelessWidget {
+  const _TandasLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
+      physics: const NeverScrollableScrollPhysics(),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(22, 14, 22, 14),
+          child: Row(
+            children: const [
+              Skeleton.circle(size: 32),
+              SizedBox(width: 16),
+              Skeleton.text(width: 120, height: 20),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 22),
+          child: Skeleton(height: 48, borderRadius: 14),
+        ),
+        const SizedBox(height: 20),
+        ...List.generate(
+          3,
+          (_) => const Padding(
+            padding: EdgeInsets.fromLTRB(22, 0, 22, 14),
+            child: Skeleton(height: 150, borderRadius: 24),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -8,18 +8,23 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
+import '../../../shared/widgets/slow_load_hint.dart';
 import '../data/seller_order_capture_parser.dart';
 import '../data/seller_order_message.dart';
 import '../data/seller_orders_models.dart';
 import '../data/seller_orders_repository.dart';
-import 'seller_orders_screen.dart' show GradientText;
 
 enum _CaptureMode { quick, manual }
 
 class _CaptureWorkspace {
-  const _CaptureWorkspace({required this.clients, required this.products});
+  const _CaptureWorkspace({
+    required this.clients,
+    required this.products,
+    required this.settings,
+  });
   final List<SellerClient> clients;
   final List<CommonProduct> products;
+  final OrderCaptureSettings settings;
 }
 
 final _captureWorkspaceProvider = FutureProvider.autoDispose<_CaptureWorkspace>(
@@ -27,7 +32,12 @@ final _captureWorkspaceProvider = FutureProvider.autoDispose<_CaptureWorkspace>(
     final repo = ref.read(sellerOrdersRepositoryProvider);
     final clients = await repo.getClients();
     final products = await repo.getCommonProducts();
-    return _CaptureWorkspace(clients: clients, products: products);
+    final settings = await repo.getCaptureSettings();
+    return _CaptureWorkspace(
+      clients: clients,
+      products: products,
+      settings: settings,
+    );
   },
 );
 
@@ -90,6 +100,8 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
 
   final _manualClientFocus = FocusNode();
   final _manualProductFocus = FocusNode();
+  final _manualPriceFocus = FocusNode();
+  final _manualQtyFocus = FocusNode();
   final _quickFocus = FocusNode();
 
   _CaptureMode _mode = _CaptureMode.quick;
@@ -121,14 +133,17 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
     _pinPriceCtrl.dispose();
     _manualClientFocus.dispose();
     _manualProductFocus.dispose();
+    _manualPriceFocus.dispose();
+    _manualQtyFocus.dispose();
     _quickFocus.dispose();
     super.dispose();
   }
 
   double get _manualSubtotal => _manualItems.fold(0, (s, i) => s + i.lineTotal);
-  double get _manualShipping =>
-      _manualDelivery == SellerDeliveryType.pickup ? 0 : 60;
-  double get _manualTotal => _manualSubtotal + _manualShipping;
+  double _manualShipping(double defaultShippingCost) =>
+      _manualDelivery == SellerDeliveryType.pickup ? 0 : defaultShippingCost;
+  double _manualTotal(double defaultShippingCost) =>
+      _manualSubtotal + _manualShipping(defaultShippingCost);
   double get _quickTotal => _quickQueue.fold(0, (s, i) => s + i.lineTotal);
 
   void _snack(String msg, {Color? color}) {
@@ -157,7 +172,7 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
           bottom: false,
           child: Column(
             children: [
-              _TopBar(onBack: () => context.pop()),
+              _TopBar(onBack: _goBack),
               Expanded(
                 child: workspaceAsync.when(
                   loading: () => const _CaptureLoading(),
@@ -212,7 +227,9 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
           progress: _quickProgress,
           onDeliveryChanged: (delivery) =>
               setState(() => _quickDelivery = delivery),
-          onSubmitted: (_) => _addQuickEntry(workspace.clients),
+          onSubmitted: (_) {
+            _addQuickEntry(workspace.clients);
+          },
           onChanged: (_) => setState(() {}),
           onClearPin: () => setState(() => _pinnedProduct = null),
         ),
@@ -246,13 +263,10 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
           onRemove: (id) =>
               setState(() => _quickQueue.removeWhere((i) => i.id == id)),
           onQuantityChanged: (item, quantity) {
-            setState(() {
-              if (quantity < 1) {
-                _quickQueue.remove(item);
-              } else {
-                item.quantity = quantity;
-              }
-            });
+            // U8: el stepper no elimina al llegar a 0 (para eso está el botón
+            // X de `onRemove`). Antes, bajar a 0 quitaba el item sin confirmar.
+            if (quantity < 1) return;
+            setState(() => item.quantity = quantity);
           },
         ),
       ],
@@ -364,6 +378,8 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
                 price: _manualItemPriceCtrl,
                 qty: _manualItemQtyCtrl,
                 focusNode: _manualProductFocus,
+                priceFocusNode: _manualPriceFocus,
+                qtyFocusNode: _manualQtyFocus,
                 suggestions: productSuggestions,
                 onPickProduct: _pickManualProduct,
                 onAdd: _addManualItem,
@@ -374,13 +390,9 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
                 items: _manualItems,
                 onRemove: (item) => setState(() => _manualItems.remove(item)),
                 onQuantityChanged: (item, quantity) {
-                  setState(() {
-                    if (quantity < 1) {
-                      _manualItems.remove(item);
-                    } else {
-                      item.quantity = quantity;
-                    }
-                  });
+                  // U8: el stepper no elimina al llegar a 0 (botón X lo hace).
+                  if (quantity < 1) return;
+                  setState(() => item.quantity = quantity);
                 },
               ),
             ],
@@ -388,8 +400,8 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
         ),
         _ManualSummary(
           subtotal: _manualSubtotal,
-          shipping: _manualShipping,
-          total: _manualTotal,
+          shipping: _manualShipping(workspace.settings.defaultShippingCost),
+          total: _manualTotal(workspace.settings.defaultShippingCost),
           creating: _creatingManual,
           canCreate:
               _manualItems.isNotEmpty &&
@@ -432,15 +444,15 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
     final exact = clients
         .where((c) => normalizeCaptureText(c.name) == typed)
         .firstOrNull;
+    // B5/U15/U16: NO autorellenamos teléfono/dirección/instrucciones aquí.
+    // Antes, al romperse el match exacto (escribir "Ana L" tras "Ana"), los
+    // campos de "Ana" quedaban pegados y se enviaban para una clienta nueva.
+    // El autorellenado solo ocurre vía _selectManualClient (click explícito en
+    // la sugerencia), que es una acción intencional. Aquí solo recordamos el
+    // clientId matcheado para que el backend reutilice la clienta existente.
     setState(() {
       _manualClient = exact;
-      if (exact != null) {
-        _manualFrequent = exact.isFrequent;
-        _manualPhoneCtrl.text = exact.phone ?? _manualPhoneCtrl.text;
-        _manualAddressCtrl.text = exact.address ?? '';
-        _manualInstructionsCtrl.text = exact.deliveryInstructions ?? '';
-        _manualAddressOnlyForOrder = false;
-      }
+      _manualFrequent = exact?.isFrequent ?? false;
     });
   }
 
@@ -518,7 +530,20 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
       return;
     }
 
+    // B4: bloqueamos el doble tap ANTES del await del diálogo. Antes el guard
+    // solo servía después de elegir, así que dos toques rápidos abrían dos
+    // hojas y creaban dos pedidos.
     setState(() => _creatingManual = true);
+
+    // ¿Creamos un pedido nuevo o agregamos a uno abierto? Solo preguntamos si la
+    // clienta ya tiene pedidos abiertos (no cancelados).
+    final choice = await _askOpenOrderChoice(clientName, _manualClient?.id);
+    if (choice == null) {
+      // Canceló el diálogo: libera el guard y sale sin crear nada.
+      if (mounted) setState(() => _creatingManual = false);
+      return;
+    }
+
     try {
       final address = _manualAddressCtrl.text.trim();
       final order = await ref
@@ -531,19 +556,66 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
             deliveryInstructions: _manualInstructionsCtrl.text.trim(),
             scheduledDeliveryDate: _manualScheduledDate,
             clientId: _manualClient?.id,
+            targetOrderId: choice.targetOrderId,
+            forceNew: choice.forceNew,
             type: _manualFrequent ? 'Frecuente' : 'Nueva',
             orderType: _manualDelivery,
             items: _manualItems,
           );
       _afterOrderCreated(order);
       _resetManual();
-      _snack('Pedido #${order.id} creado', color: const Color(0xFF12A150));
+      final msg = choice.targetOrderId != null
+          ? 'Articulos agregados al pedido #${order.id}'
+          : 'Pedido #${order.id} creado';
+      _snack(msg, color: const Color(0xFF12A150));
     } catch (e) {
       _snack(e.toString(), color: const Color(0xFFE11D5B));
     } finally {
       if (mounted) setState(() => _creatingManual = false);
     }
   }
+
+  /// Pregunta a la dueña si crea un pedido nuevo o agrega los articulos a un
+  /// pedido abierto. Devuelve:
+  /// - `null` si cancelo el dialogo (abortar la creacion).
+  /// - `(forceNew: false, targetOrderId: null)` si no hay abiertos o procede con
+  ///   el auto-merge legacy (modos IA/Excel que no preguntan).
+  /// - `(forceNew: true, targetOrderId: null)` si eligio "pedido nuevo".
+  /// - `(forceNew: false, targetOrderId: X)` si eligio agregar al pedido #X.
+  Future<({bool forceNew, int? targetOrderId})?> _askOpenOrderChoice(
+    String clientName,
+    int? clientId,
+  ) async {
+    final repo = ref.read(sellerOrdersRepositoryProvider);
+    List<SellerOrder> open;
+    try {
+      open = await repo.getOpenOrders(
+        clientId: clientId,
+        name: clientId == null ? clientName : null,
+      );
+    } catch (_) {
+      // Si no podemos cargar los abiertos, no bloqueamos: procede auto-merge.
+      return (forceNew: false, targetOrderId: null);
+    }
+    if (open.isEmpty) return (forceNew: false, targetOrderId: null);
+    if (!mounted) return null;
+    final newItemsCount = _manualItems.length;
+    final newItemsTotal =
+        _manualItems.fold(0.0, (s, i) => s + i.lineTotal);
+    return showModalBottomSheet<({bool forceNew, int? targetOrderId})>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => _OpenOrderSheet(
+        openOrders: open,
+        newItemsCount: newItemsCount,
+        newItemsTotal: newItemsTotal,
+      ),
+    );
+  }
+
 
   void _resetManual() {
     setState(() {
@@ -606,7 +678,7 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
     _quickFocus.requestFocus();
   }
 
-  void _addQuickEntry(List<SellerClient> clients) {
+  Future<void> _addQuickEntry(List<SellerClient> clients) async {
     final input = _quickInputCtrl.text.trim();
     if (input.isEmpty) return;
 
@@ -657,7 +729,19 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
       _snack('Formato rapido: Clienta, articulo, precio');
       return;
     }
-    final draft = parsed;
+
+    final confirmed = await showDialog<QuickCaptureDraft>(
+      context: context,
+      builder: (context) => _QuickPreviewDialog(draft: parsed!),
+    );
+    if (confirmed == null) {
+      _quickFocus.requestFocus();
+      return;
+    }
+    final draft = confirmed;
+    matched =
+        _findBestClientMatch(clients, draft.clientName, exactOnly: true) ??
+        _findBestClientMatch(clients, draft.clientName);
 
     setState(() {
       _quickQueue.insert(
@@ -734,8 +818,14 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
       _quickProgress = null;
     });
     var successCount = 0;
+    // B3: trackeamos las clientas cuyos pedidos se crearon bien. Al final
+    // quitamos solo esos items de la cola; los fallidos se quedan para que la
+    // vendedora corrija y reintente. Antes se limpiaba TODO si successCount>0,
+    // perdiendo los items del grupo que falló.
+    final createdKeys = <String>{};
 
     for (var i = 0; i < groups.length; i++) {
+      if (!mounted) return;
       final group = groups[i];
       setState(
         () => _quickProgress = '${group.clientName} ${i + 1}/${groups.length}',
@@ -752,6 +842,11 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
               clientId: group.clientId ?? client?.id,
               type: (client?.isFrequent ?? false) ? 'Frecuente' : 'Nueva',
               orderType: _quickDelivery,
+              // U17: modo rápido = cada captura es un pedido NUEVO. Así no
+              // hay auto-merge silencioso (la vendedora podría terminar
+              // agregando items a un pedido que no quería tocar). Si quiere
+              // agregar a uno existente, usa el modo manual que sí pregunta.
+              forceNew: true,
               items: group.items
                   .map(
                     (i) => DraftOrderItem(
@@ -763,28 +858,47 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
                   .toList(),
             );
         successCount++;
+        createdKeys.add(group.key);
         _afterOrderCreated(order);
       } catch (e) {
+        if (!mounted) break;
         _snack(
           'Error con ${group.clientName}: $e',
           color: const Color(0xFFE11D5B),
         );
       }
+      if (!mounted) break;
     }
 
+    if (!mounted) return;
     setState(() {
       _submittingQuick = false;
       _quickProgress = null;
-      if (successCount > 0) _quickQueue.clear();
+      if (createdKeys.isNotEmpty) {
+        _quickQueue.removeWhere(
+          (item) => createdKeys.contains(normalizeCaptureText(item.clientName)),
+        );
+      }
     });
     if (successCount > 0) {
       _snack('$successCount pedido(s) creados', color: const Color(0xFF12A150));
     }
+    if (createdKeys.length < groups.length) {
+      _snack(
+        'Algunos pedidos no se crearon: quedan en la cola para reintentar',
+        color: const Color(0xFFB5730A),
+      );
+    }
   }
 
   void _afterOrderCreated(SellerOrder order) {
+    // B2: si la pantalla ya no está montada (la vendedora salió tras crear),
+    // no tocamos el state. Antes, el setState lanzaba dentro del try de
+    // _createManualOrder y el catch lo trataba como error de la API, aunque
+    // el pedido SÍ se creó.
     ref.invalidate(sellerOrdersControllerProvider);
     ref.invalidate(sellerDashboardProvider);
+    if (!mounted) return;
     setState(() => _createdOrders.insert(0, order));
   }
 
@@ -812,9 +926,12 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
     return today.add(Duration(days: days <= 0 ? days + 7 : days));
   }
 
-  String _cleanMoney(num value) {
-    if (value % 1 == 0) return value.toInt().toString();
-    return value.toStringAsFixed(2);
+  void _goBack() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/orders');
+    }
   }
 }
 
@@ -828,7 +945,11 @@ class _TopBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
       child: Row(
         children: [
-          _RoundButton(icon: Symbols.arrow_back_ios_new, onTap: onBack),
+          _RoundButton(
+            icon: Icons.adaptive.arrow_back,
+            tooltip: 'Volver',
+            onTap: onBack,
+          ),
           Expanded(
             child: Center(
               child: RichText(
@@ -850,7 +971,7 @@ class _TopBar extends StatelessWidget {
               ),
             ),
           ),
-          _RoundButton(icon: Symbols.close, onTap: onBack),
+          const SizedBox(width: 38, height: 38),
         ],
       ),
     );
@@ -858,26 +979,35 @@ class _TopBar extends StatelessWidget {
 }
 
 class _RoundButton extends StatelessWidget {
-  const _RoundButton({required this.icon, required this.onTap});
+  const _RoundButton({
+    required this.icon,
+    required this.onTap,
+    required this.tooltip,
+  });
+
   final IconData icon;
   final VoidCallback onTap;
+  final String tooltip;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(13),
-        child: Ink(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.85),
-            borderRadius: BorderRadius.circular(13),
-            border: Border.all(color: AppColors.line),
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(13),
+          child: Ink(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(color: AppColors.line),
+            ),
+            child: Icon(icon, size: 20, color: AppColors.ink),
           ),
-          child: Icon(icon, size: 20, color: AppColors.ink),
         ),
       ),
     );
@@ -1068,6 +1198,193 @@ class _QuickHero extends StatelessWidget {
   }
 }
 
+class _QuickPreviewDialog extends StatefulWidget {
+  const _QuickPreviewDialog({required this.draft});
+
+  final QuickCaptureDraft draft;
+
+  @override
+  State<_QuickPreviewDialog> createState() => _QuickPreviewDialogState();
+}
+
+class _QuickPreviewDialogState extends State<_QuickPreviewDialog> {
+  late final TextEditingController _clientCtrl;
+  late final TextEditingController _productCtrl;
+  late final TextEditingController _qtyCtrl;
+  late final TextEditingController _priceCtrl;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final draft = widget.draft;
+    _clientCtrl = TextEditingController(text: draft.clientName);
+    _productCtrl = TextEditingController(text: draft.productName);
+    _qtyCtrl = TextEditingController(text: draft.quantity.toString());
+    _priceCtrl = TextEditingController(text: _cleanMoney(draft.unitPrice));
+  }
+
+  @override
+  void dispose() {
+    _clientCtrl.dispose();
+    _productCtrl.dispose();
+    _qtyCtrl.dispose();
+    _priceCtrl.dispose();
+    super.dispose();
+  }
+
+  void _confirm() {
+    final client = _clientCtrl.text.trim();
+    final product = _productCtrl.text.trim();
+    final qty = int.tryParse(_qtyCtrl.text.trim()) ?? 0;
+    final price =
+        double.tryParse(_priceCtrl.text.trim().replaceAll(',', '')) ?? 0;
+
+    if (client.isEmpty || product.isEmpty || qty < 1 || price <= 0) {
+      setState(() => _error = 'Revisa clienta, articulo, cantidad y precio.');
+      return;
+    }
+
+    Navigator.pop(
+      context,
+      QuickCaptureDraft(
+        clientName: client,
+        productName: product,
+        quantity: qty,
+        unitPrice: price,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final qty = int.tryParse(_qtyCtrl.text.trim()) ?? 0;
+    final price =
+        double.tryParse(_priceCtrl.text.trim().replaceAll(',', '')) ?? 0;
+    final total = qty > 0 && price > 0 ? qty * price : 0;
+
+    return AlertDialog(
+      title: const Text('Esto entendimos'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Corrige cualquier dato antes de agregarlo a la cola.',
+              style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+            ),
+            const SizedBox(height: 14),
+            _DialogField(
+              controller: _clientCtrl,
+              label: 'Clienta',
+              icon: Symbols.person,
+              onChanged: (_) => setState(() => _error = null),
+            ),
+            const SizedBox(height: 10),
+            _DialogField(
+              controller: _productCtrl,
+              label: 'Articulo',
+              icon: Symbols.shopping_bag,
+              onChanged: (_) => setState(() => _error = null),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _DialogField(
+                    controller: _qtyCtrl,
+                    label: 'Cantidad',
+                    icon: Symbols.numbers,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => setState(() => _error = null),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _DialogField(
+                    controller: _priceCtrl,
+                    label: 'Precio unitario',
+                    icon: Symbols.payments,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    onChanged: (_) => setState(() => _error = null),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF5FA),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.line),
+              ),
+              child: Text(
+                'Total interpretado: ${money(total)}',
+                style: AppTextStyles.body.copyWith(
+                  color: AppColors.neniDeep,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                _error!,
+                style: AppTextStyles.subtitle.copyWith(
+                  color: const Color(0xFFE11D5B),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(onPressed: _confirm, child: const Text('Agregar')),
+      ],
+    );
+  }
+}
+
+class _DialogField extends StatelessWidget {
+  const _DialogField({
+    required this.controller,
+    required this.label,
+    required this.icon,
+    this.keyboardType,
+    this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final IconData icon;
+  final TextInputType? keyboardType;
+  final ValueChanged<String>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        border: const OutlineInputBorder(),
+      ),
+    );
+  }
+}
+
 class _PinnedBanner extends StatelessWidget {
   const _PinnedBanner({required this.product, required this.onClear});
   final CommonProduct product;
@@ -1158,9 +1475,26 @@ class _PinProductCard extends StatelessWidget {
           ),
           if (products.isNotEmpty) ...[
             const SizedBox(height: 10),
-            _ProductChips(
-              products: products.take(6).toList(),
-              onPick: onPickProduct,
+            // U14: los chips ahora filtran por lo que la vendedora escribe en
+            // el campo "Producto". Antes mostraban `products.take(6)` fijos.
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: name,
+              builder: (context, value, _) {
+                final query = normalizeCaptureText(value.text);
+                final filtered = query.isEmpty
+                    ? products.take(6).toList()
+                    : products
+                        .where(
+                          (p) => normalizeCaptureText(p.name).contains(query),
+                        )
+                        .take(6)
+                        .toList();
+                if (filtered.isEmpty) return const SizedBox.shrink();
+                return _ProductChips(
+                  products: filtered,
+                  onPick: onPickProduct,
+                );
+              },
             ),
           ],
         ],
@@ -1387,6 +1721,8 @@ class _ManualAddItemForm extends StatelessWidget {
     required this.price,
     required this.qty,
     required this.focusNode,
+    required this.priceFocusNode,
+    required this.qtyFocusNode,
     required this.suggestions,
     required this.onPickProduct,
     required this.onAdd,
@@ -1397,6 +1733,8 @@ class _ManualAddItemForm extends StatelessWidget {
   final TextEditingController price;
   final TextEditingController qty;
   final FocusNode focusNode;
+  final FocusNode priceFocusNode;
+  final FocusNode qtyFocusNode;
   final List<CommonProduct> suggestions;
   final ValueChanged<CommonProduct> onPickProduct;
   final VoidCallback onAdd;
@@ -1437,11 +1775,17 @@ class _ManualAddItemForm extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 9),
+          // U7: focus chain. Antes, Enter en cualquier campo disparaba "Agregar"
+          // (fallaba porque faltaban datos). Ahora:
+          //  Nombre → "Siguiente" avanza a Precio.
+          //  Precio → "Siguiente" avanza a Cantidad.
+          //  Cantidad → "Hecho" agrega el artículo.
           _MiniField(
             controller: name,
             focusNode: focusNode,
             hint: 'Nombre del producto',
-            onSubmitted: (_) => onAdd(),
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) => priceFocusNode.requestFocus(),
           ),
           if (suggestions.isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -1453,11 +1797,13 @@ class _ManualAddItemForm extends StatelessWidget {
               Expanded(
                 child: _MiniField(
                   controller: price,
+                  focusNode: priceFocusNode,
                   hint: 'Precio',
                   keyboard: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
-                  onSubmitted: (_) => onAdd(),
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => qtyFocusNode.requestFocus(),
                 ),
               ),
               const SizedBox(width: 8),
@@ -1465,9 +1811,11 @@ class _ManualAddItemForm extends StatelessWidget {
                 width: 66,
                 child: _MiniField(
                   controller: qty,
+                  focusNode: qtyFocusNode,
                   hint: 'Cant.',
                   center: true,
                   keyboard: TextInputType.number,
+                  textInputAction: TextInputAction.done,
                   onSubmitted: (_) => onAdd(),
                 ),
               ),
@@ -1549,7 +1897,16 @@ class _SubmitBar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('TOTAL', style: AppTextStyles.eyebrow(AppColors.ink3)),
-                GradientText(money(total), fontSize: 24),
+                Text(
+                  money(total),
+                  style: AppTextStyles.h1.copyWith(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.neniDeep,
+                    letterSpacing: 0,
+                    height: 1,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1959,6 +2316,10 @@ class _Field extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // U6: filtrar a solo dígitos y punto si el campo es numérico (precio/
+    // cantidad). Antes se podía teclear "1.2.3" o "abc".
+    final isNumeric =
+        keyboard == TextInputType.number || keyboard == TextInputType.phone;
     return TextField(
       controller: controller,
       focusNode: focusNode,
@@ -1966,6 +2327,9 @@ class _Field extends StatelessWidget {
       textInputAction: textInputAction,
       maxLines: maxLines,
       onChanged: onChanged,
+      inputFormatters: isNumeric
+          ? [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))]
+          : null,
       style: AppTextStyles.body.copyWith(fontSize: 13.5),
       decoration: InputDecoration(
         isDense: true,
@@ -1998,6 +2362,7 @@ class _MiniField extends StatelessWidget {
     this.focusNode,
     this.keyboard,
     this.center = false,
+    this.textInputAction,
     this.onSubmitted,
   });
 
@@ -2006,17 +2371,23 @@ class _MiniField extends StatelessWidget {
   final String hint;
   final TextInputType? keyboard;
   final bool center;
+  final TextInputAction? textInputAction;
   final ValueChanged<String>? onSubmitted;
 
   @override
   Widget build(BuildContext context) {
+    final isNumeric =
+        keyboard == TextInputType.number || keyboard == TextInputType.phone;
     return TextField(
       controller: controller,
       focusNode: focusNode,
       keyboardType: keyboard,
       textAlign: center ? TextAlign.center : TextAlign.start,
-      textInputAction: TextInputAction.done,
+      textInputAction: textInputAction,
       onSubmitted: onSubmitted,
+      inputFormatters: isNumeric
+          ? [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))]
+          : null,
       style: AppTextStyles.body.copyWith(fontSize: 12.5),
       decoration: InputDecoration(
         isDense: true,
@@ -2273,8 +2644,16 @@ class _CreatedOrdersPanel extends StatelessWidget {
                 ],
               ),
             ),
+          if (orders.length > 4)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                '+${orders.length - 4} más ya creados',
+                style: AppTextStyles.subtitle.copyWith(fontSize: 12),
+              ),
+            ),
           _SmallTextAction(
-            label: 'Copiar mensajes',
+            label: 'Copiar mensajes (${orders.length})',
             icon: Symbols.content_copy,
             onTap: onCopyAll,
           ),
@@ -2326,19 +2705,31 @@ class _CaptureLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(18, 8, 18, 30),
+    return Stack(
       children: [
-        for (var i = 0; i < 4; i++)
-          Container(
-            height: i == 0 ? 54 : 132,
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.62),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: AppColors.line),
-            ),
+        ListView(
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 30),
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            for (var i = 0; i < 4; i++)
+              Container(
+                height: i == 0 ? 54 : 132,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.62),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: AppColors.line),
+                ),
+              ),
+          ],
+        ),
+        const Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: EdgeInsets.only(bottom: 24),
+            child: SlowLoadHint(),
           ),
+        ),
       ],
     );
   }
@@ -2372,4 +2763,214 @@ extension _FirstOrNull<T> on Iterable<T> {
     if (!iterator.moveNext()) return null;
     return iterator.current;
   }
+}
+
+String _cleanMoney(num value) {
+  if (value % 1 == 0) return value.toInt().toString();
+  return value.toStringAsFixed(2);
+}
+
+/// Hoja inferior que pregunta si se crea un pedido nuevo o se agregan los
+/// articulos a un pedido abierto existente.
+class _OpenOrderSheet extends StatelessWidget {
+  const _OpenOrderSheet({required this.openOrders, required this.newItemsCount, required this.newItemsTotal});
+  final List<SellerOrder> openOrders;
+  final int newItemsCount;
+  final double newItemsTotal;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          12,
+          16,
+          16 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.black12,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Text(
+              'Esta clienta ya tiene pedidos abiertos',
+              style: theme.textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            // U19: mostrar qué se va a agregar para que la decisión sea
+            // informada, no a ciegas.
+            Container(
+              margin: const EdgeInsets.only(top: 8, bottom: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF0F5),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                'Vas a agregar $newItemsCount '
+                '${newItemsCount == 1 ? 'artículo' : 'artículos'} · '
+                '${money(newItemsTotal)}',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.neniDeep,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '¿Creas un pedido nuevo o agregas a uno existente?',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 14),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context).pop(
+                (forceNew: true, targetOrderId: null),
+              ),
+              icon: const Icon(Symbols.add_circle),
+              label: const Text('Crear pedido nuevo'),
+            ),
+            const SizedBox(height: 14),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Agregar a un pedido existente',
+                style: theme.textTheme.labelMedium,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(context).height * 0.4,
+              ),
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: openOrders.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
+                itemBuilder: (ctx, i) {
+                  final o = openOrders[i];
+                  return _OpenOrderTile(
+                    order: o,
+                    onTap: () => Navigator.of(context).pop(
+                      (forceNew: false, targetOrderId: o.id),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(null),
+              child: const Text('Cancelar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OpenOrderTile extends StatelessWidget {
+  const _OpenOrderTile({required this.order, required this.onTap});
+  final SellerOrder order;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final itemsText = order.items
+        .map((i) => '${i.productName} x${i.quantity}')
+        .join(', ');
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.black12),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  '#${order.id}',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _statusColor(order.status).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _statusLabel(order.status),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: _statusColor(order.status),
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  money(order.total),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            if (itemsText.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                itemsText,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  static String _statusLabel(SellerOrderStatus s) => switch (s) {
+        SellerOrderStatus.pending => 'Pendiente',
+        SellerOrderStatus.confirmed => 'Confirmado',
+        SellerOrderStatus.shipped => 'Enviado',
+        SellerOrderStatus.inRoute => 'En ruta',
+        SellerOrderStatus.delivered => 'Entregado',
+        SellerOrderStatus.notDelivered => 'No entregado',
+        SellerOrderStatus.postponed => 'Pospuesto',
+        SellerOrderStatus.canceled => 'Cancelado',
+      };
+
+  static Color _statusColor(SellerOrderStatus s) => switch (s) {
+        SellerOrderStatus.pending => const Color(0xFFB7791F),
+        SellerOrderStatus.confirmed => const Color(0xFF2563EB),
+        SellerOrderStatus.shipped => const Color(0xFF2563EB),
+        SellerOrderStatus.inRoute => const Color(0xFF2563EB),
+        SellerOrderStatus.delivered => const Color(0xFF12A150),
+        SellerOrderStatus.notDelivered => const Color(0xFFE11D5B),
+        SellerOrderStatus.postponed => const Color(0xFFB7791F),
+        SellerOrderStatus.canceled => const Color(0xFFE11D5B),
+      };
 }

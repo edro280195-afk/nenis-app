@@ -3,6 +3,11 @@ import 'package:intl/intl.dart';
 String tandaMoney(num value) =>
     '\$${NumberFormat('#,##0', 'es_MX').format(value)}';
 
+String tandaDate(DateTime? value) {
+  if (value == null) return 'Sin fecha';
+  return DateFormat('dd MMM yyyy', 'es_MX').format(value);
+}
+
 double _double(dynamic value) => value == null ? 0 : (value as num).toDouble();
 int _int(dynamic value) => value == null ? 0 : (value as num).toInt();
 String _string(dynamic value) => (value ?? '') as String;
@@ -207,6 +212,7 @@ class SellerTanda {
     this.startDate,
     this.createdAt,
     this.accessToken,
+    this.serverCurrentWeek,
     this.product,
   });
 
@@ -220,6 +226,7 @@ class SellerTanda {
   final String status;
   final DateTime? createdAt;
   final String? accessToken;
+  final int? serverCurrentWeek;
   final SellerTandaProduct? product;
   final List<SellerTandaParticipant> participants;
 
@@ -233,6 +240,9 @@ class SellerTanda {
       : 'Producto por definir';
 
   int get currentWeek {
+    final serverWeek = serverCurrentWeek;
+    if (serverWeek != null) return serverWeek;
+
     final start = startDate;
     if (start == null || totalWeeks <= 0) return 0;
     final today = DateTime.now().toUtc();
@@ -240,7 +250,7 @@ class SellerTanda {
     final todayUtc = DateTime.utc(today.year, today.month, today.day);
     final days = todayUtc.difference(startUtc).inDays;
     if (days < 0) return 0;
-    return ((days == 0 ? 0 : days - 1) ~/ 7) + 1;
+    return (days ~/ 7) + 1;
   }
 
   int get actionableWeek {
@@ -284,6 +294,14 @@ class SellerTanda {
   List<SellerTandaParticipant> get lateParticipants =>
       sortedParticipants.where((participant) => participant.isLate).toList();
 
+  List<SellerTandaParticipant> get paidThisWeekParticipants {
+    final week = actionableWeek;
+    if (week == 0) return const [];
+    return sortedParticipants
+        .where((participant) => participant.hasPaidWeek(week))
+        .toList();
+  }
+
   List<SellerTandaParticipant> get deliveryParticipants {
     final week = actionableWeek;
     if (week == 0) return const [];
@@ -293,6 +311,78 @@ class SellerTanda {
               participant.assignedTurn == week && !participant.isDelivered,
         )
         .toList();
+  }
+
+  SellerTandaParticipant? get currentDeliveryParticipant {
+    final week = actionableWeek;
+    if (week == 0) return null;
+    for (final participant in sortedParticipants) {
+      if (participant.assignedTurn == week) return participant;
+    }
+    return null;
+  }
+
+  int get deliveredCount =>
+      sortedParticipants.where((participant) => participant.isDelivered).length;
+
+  bool get hasStartedOperations => participants.any(
+    (participant) =>
+        participant.payments.isNotEmpty ||
+        participant.isDelivered ||
+        participant.deliveryDate != null,
+  );
+
+  bool get canDrawTurns => participants.isNotEmpty && !hasStartedOperations;
+
+  double get expectedAmount => sortedParticipants.fold<double>(
+    0,
+    (sum, participant) => sum + participant.amountFor(this) * totalWeeks,
+  );
+
+  double get collectedAmount => sortedParticipants.fold<double>(
+    0,
+    (sum, participant) =>
+        sum +
+        participant.payments
+            .where((payment) => payment.isVerified)
+            .fold<double>(
+              0,
+              (paymentSum, payment) =>
+                  paymentSum + payment.amountPaid + payment.penaltyPaid,
+            ),
+  );
+
+  double get currentWeekExpected {
+    if (actionableWeek == 0) return 0;
+    return sortedParticipants.fold<double>(
+      0,
+      (sum, participant) => sum + participant.amountFor(this),
+    );
+  }
+
+  double get currentWeekCollected {
+    final week = actionableWeek;
+    if (week == 0) return 0;
+    return sortedParticipants.fold<double>(0, (sum, participant) {
+      final payment = participant.paymentForWeek(week);
+      if (payment == null) return sum;
+      return sum + payment.amountPaid + payment.penaltyPaid;
+    });
+  }
+
+  double get currentWeekPending {
+    if (actionableWeek == 0) return 0;
+    return (currentWeekExpected - currentWeekCollected)
+        .clamp(0, double.infinity)
+        .toDouble();
+  }
+
+  DateTime? deliveryDateForTurn(int turn) {
+    final start = startDate;
+    if (start == null || turn < 1) return null;
+    final date = DateTime(start.year, start.month, start.day, 12);
+    final daysToSunday = (7 - date.weekday) % 7;
+    return date.add(Duration(days: daysToSunday + ((turn - 1) * 7)));
   }
 
   factory SellerTanda.fromJson(Map<String, dynamic> json) {
@@ -310,6 +400,9 @@ class SellerTanda {
           : _string(json['status']),
       createdAt: _date(json['createdAt']),
       accessToken: json['accessToken'] as String?,
+      serverCurrentWeek: json['currentWeek'] == null
+          ? null
+          : _int(json['currentWeek']),
       product: productJson is Map<String, dynamic>
           ? SellerTandaProduct.fromJson(productJson)
           : null,
@@ -377,6 +470,69 @@ class CreateTandaRequest {
       'participants': participants
           .map((participant) => participant.toJson())
           .toList(),
+    };
+  }
+}
+
+class UpdateTandaRequest {
+  const UpdateTandaRequest({
+    required this.id,
+    required this.name,
+    required this.totalWeeks,
+    required this.weeklyAmount,
+    required this.penaltyAmount,
+    required this.startDate,
+  });
+
+  final String id;
+  final String name;
+  final int totalWeeks;
+  final double weeklyAmount;
+  final double penaltyAmount;
+  final DateTime startDate;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name.trim(),
+      'totalWeeks': totalWeeks,
+      'weeklyAmount': weeklyAmount,
+      'penaltyAmount': penaltyAmount,
+      'startDate': DateFormat('yyyy-MM-dd').format(startDate),
+    };
+  }
+}
+
+class AddTandaParticipantRequest {
+  const AddTandaParticipantRequest({
+    required this.tandaId,
+    this.customerId = 0,
+    this.customerName,
+    this.facebookProfileUrl,
+    required this.assignedTurn,
+    this.variant,
+    this.weeklyAmount,
+  });
+
+  final String tandaId;
+  final int customerId;
+  final String? customerName;
+  final String? facebookProfileUrl;
+  final int assignedTurn;
+  final String? variant;
+  final double? weeklyAmount;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'tandaId': tandaId,
+      'customerId': customerId,
+      if (customerName?.trim().isNotEmpty ?? false)
+        'customerName': customerName!.trim(),
+      if (facebookProfileUrl?.trim().isNotEmpty ?? false)
+        'facebookProfileUrl': facebookProfileUrl!.trim(),
+      'assignedTurn': assignedTurn,
+      if (variant?.trim().isNotEmpty ?? false) 'variant': variant!.trim(),
+      if (weeklyAmount != null && weeklyAmount! > 0)
+        'weeklyAmount': weeklyAmount,
     };
   }
 }

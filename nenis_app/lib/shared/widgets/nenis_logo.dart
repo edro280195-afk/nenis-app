@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_text_styles.dart';
 
 class NenisMark extends StatelessWidget {
   const NenisMark({super.key, this.size = 56});
@@ -27,51 +26,40 @@ class NenisLogo extends StatelessWidget {
     this.markSize = 56,
     this.wordmarkSize = 28,
     this.subtitle,
+    this.crossAxisAlignment = CrossAxisAlignment.start,
   });
 
   final double markSize;
   final double wordmarkSize;
   final String? subtitle;
+  final CrossAxisAlignment crossAxisAlignment;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final preferredHeight = wordmarkSize * 1.45;
+    final logoHeight = markSize > preferredHeight ? markSize : preferredHeight;
+
+    return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: crossAxisAlignment,
       children: [
-        NenisMark(size: markSize),
-        const SizedBox(width: 8),
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text.rich(
-              TextSpan(
-                text: "Neni's",
-                style: AppTextStyles.h1.copyWith(
-                  fontSize: wordmarkSize,
-                  height: 1,
-                ),
-                children: const [
-                  TextSpan(
-                    text: '.',
-                    style: TextStyle(color: AppColors.neniDeep),
-                  ),
-                ],
-              ),
-            ),
-            if (subtitle != null) ...[
-              const SizedBox(height: 3),
-              Text(
-                subtitle!,
-                style: const TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.ink2,
-                ),
-              ),
-            ],
-          ],
+        Image.asset(
+          'assets/branding/nenis-logo.png',
+          height: logoHeight,
+          fit: BoxFit.contain,
+          semanticLabel: "Logo de Neni's",
         ),
+        if (subtitle != null) ...[
+          const SizedBox(height: 3),
+          Text(
+            subtitle!,
+            style: const TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
+              color: AppColors.ink2,
+            ),
+          ),
+        ],
       ],
     );
   }

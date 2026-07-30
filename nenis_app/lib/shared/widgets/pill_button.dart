@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:material_symbols_icons/symbols.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radii.dart';
 import '../../core/theme/app_shadows.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/brand_theme.dart';
+import 'interactive_bounce.dart';
 
 enum PillButtonVariant { primary, brand, ghost, facebook }
 
@@ -77,44 +77,44 @@ class PillButton extends StatelessWidget {
         ],
         Text(
           label,
-          style: AppTextStyles.button.copyWith(color: fg).copyWith(
-            fontSize: 16,
-          ),
+          style: AppTextStyles.button
+              .copyWith(color: fg)
+              .copyWith(fontSize: 16),
         ),
       ],
     );
 
     return Opacity(
       opacity: disabled ? 0.5 : 1,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: AppRadii.pillRadius,
-          child: Ink(
-            width: expand ? double.infinity : null,
-            height: 56,
-            decoration: BoxDecoration(
-              color: bg,
-              borderRadius: AppRadii.pillRadius,
-              border: border,
-              boxShadow: disabled ? const [] : shadow,
-              gradient: (isPrimary || isBrand || isFb)
-                  ? LinearGradient(
-                      colors: isPrimary
-                          ? const [AppColors.neni, AppColors.neniDeep]
-                          : isBrand
-                              ? [brand.gradientStart, brand.gradientEnd]
-                              : const [
-                                  Color(0xFF2190F8),
-                                  AppColors.facebook,
-                                ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
-                  : null,
+      child: InteractiveBounce(
+        onPressed: onPressed,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: AppRadii.pillRadius,
+            child: Ink(
+              width: expand ? double.infinity : null,
+              height: 56,
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: AppRadii.pillRadius,
+                border: border,
+                boxShadow: disabled ? const [] : shadow,
+                gradient: (isPrimary || isBrand || isFb)
+                    ? LinearGradient(
+                        colors: isPrimary
+                            ? const [AppColors.neni, AppColors.neniDeep]
+                            : isBrand
+                            ? [brand.gradientStart, brand.gradientEnd]
+                            : const [Color(0xFF2190F8), AppColors.facebook],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+              ),
+              child: Center(child: child),
             ),
-            child: Center(child: child),
           ),
         ),
       ),
@@ -140,20 +140,23 @@ class PillIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: AppRadii.iconBtnRadius,
-        child: Ink(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: AppRadii.iconBtnRadius,
-            boxShadow: AppShadows.small,
+    return InteractiveBounce(
+      onPressed: onPressed,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: AppRadii.iconBtnRadius,
+          child: Ink(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: background,
+              borderRadius: AppRadii.iconBtnRadius,
+              boxShadow: AppShadows.small,
+            ),
+            child: Icon(icon, size: 23, color: iconColor),
           ),
-          child: Icon(icon, size: 23, color: iconColor),
         ),
       ),
     );
@@ -167,8 +170,9 @@ class BackIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PillIconButton(
-      icon: Symbols.arrow_back,
+      icon: Icons.adaptive.arrow_back,
       onPressed: onPressed,
+      size: 48,
     );
   }
 }

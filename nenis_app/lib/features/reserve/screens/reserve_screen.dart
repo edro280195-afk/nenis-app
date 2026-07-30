@@ -10,7 +10,10 @@ import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/color_hex.dart';
 import '../../../shared/widgets/background.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/pill_button.dart';
+import '../../../shared/widgets/premium_toast.dart';
+import '../../../shared/widgets/premium_dialog.dart';
 import '../../store/data/store_models.dart';
 import '../../store/data/store_repository.dart';
 import '../data/reserve_models.dart';
@@ -50,7 +53,9 @@ class _ReserveScreenState extends ConsumerState<ReserveScreen> {
   Future<void> _confirm(BuyerProduct product) async {
     setState(() => _submitting = true);
     try {
-      final result = await ref.read(reserveRepositoryProvider).reserve(
+      final result = await ref
+          .read(reserveRepositoryProvider)
+          .reserve(
             ReserveRequest(
               businessId: int.parse(widget.businessId),
               productId: product.id,
@@ -61,19 +66,25 @@ class _ReserveScreenState extends ConsumerState<ReserveScreen> {
       await _showSuccessDialog(result);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(e.toString())));
+      context.showPremiumToast(e.toString(), type: PremiumToastType.error);
+      // Si el rechazo fue por stock insuficiente, `product.stock` (del
+      // primer GET) ya quedó obsoleto — sin esto, el stepper seguía
+      // ofreciendo el mismo máximo viejo y el botón se re-habilitaba con
+      // la MISMA cantidad que acaba de rechazarse, listo para fallar de
+      // nuevo con el mismo resultado. Reclampeamos a 1 (casi siempre
+      // válido) mientras se refresca el stock real.
+      ref.invalidate(storeControllerProvider);
+      setState(() => _quantity = 1);
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
   }
 
   Future<void> _showSuccessDialog(ReserveResult result) async {
-    final goTracking = await showDialog<bool>(
+    final goTracking = await showPremiumDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => _SuccessDialog(order: result),
+      child: _SuccessDialog(order: result),
     );
     if (!mounted) return;
     if (goTracking == true && result.accessToken != null) {
@@ -148,8 +159,44 @@ class _ReserveLoading extends StatelessWidget {
   const _ReserveLoading();
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: CircularProgressIndicator(color: AppColors.neni),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(22, 14, 22, 14),
+          child: Row(
+            children: const [
+              Skeleton.circle(size: 32),
+              SizedBox(width: 16),
+              Skeleton.text(width: 150, height: 20),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: SingleChildScrollView(
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: const [
+                Skeleton(height: 240, borderRadius: 28),
+                SizedBox(height: 20),
+                Skeleton.text(width: 180, height: 22),
+                SizedBox(height: 10),
+                Skeleton.text(width: 120, height: 16),
+                SizedBox(height: 14),
+                Skeleton.text(width: double.infinity, height: 64),
+                SizedBox(height: 28),
+                Skeleton(height: 56, borderRadius: 16),
+              ],
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(22),
+          child: const Skeleton(height: 56, borderRadius: 28),
+        ),
+      ],
     );
   }
 }
@@ -169,7 +216,11 @@ class _ReserveError extends StatelessWidget {
           const SizedBox(height: 14),
           Text(message, textAlign: TextAlign.center, style: AppTextStyles.h2),
           const SizedBox(height: 22),
-          PillButton(label: 'Volver', icon: Symbols.arrow_back, onPressed: onBack),
+          PillButton(
+            label: 'Volver',
+            icon: Symbols.arrow_back,
+            onPressed: onBack,
+          ),
         ],
       ),
     );
@@ -204,10 +255,11 @@ class _ReserveContent extends StatelessWidget {
       decimalDigits: 0,
     );
     final subtotal = product.price * quantity;
-    final canConfirm = product.inStock
-        && quantity >= 1
-        && quantity <= product.stock
-        && !submitting;
+    final canConfirm =
+        product.inStock &&
+        quantity >= 1 &&
+        quantity <= product.stock &&
+        !submitting;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(22, 8, 22, 24),
@@ -222,23 +274,31 @@ class _ReserveContent extends StatelessWidget {
               child: InkWell(
                 customBorder: const CircleBorder(),
                 onTap: onBack,
-                child: const SizedBox(
+                child: SizedBox(
                   width: 40,
                   height: 40,
-                  child: Icon(Symbols.arrow_back,
-                      size: 20, color: AppColors.ink),
+                  child: Icon(
+                    Icons.adaptive.arrow_back,
+                    size: 20,
+                    color: AppColors.ink,
+                  ),
                 ),
               ),
             ),
             const SizedBox(width: 12),
-            Text('Apartar producto', style: AppTextStyles.h1.copyWith(fontSize: 22)),
+            Text(
+              'Apartar producto',
+              style: AppTextStyles.h1.copyWith(fontSize: 22),
+            ),
           ],
         ),
         const SizedBox(height: 8),
         Text(
           'Tu tienda lo guarda para ti hasta que confirmes la entrega.',
-          style: AppTextStyles.subtitle
-              .copyWith(fontSize: 13, color: AppColors.ink2),
+          style: AppTextStyles.subtitle.copyWith(
+            fontSize: 13,
+            color: AppColors.ink2,
+          ),
         ),
         const SizedBox(height: 22),
         _ProductCard(product: product, brand: brand),
@@ -255,9 +315,13 @@ class _ReserveContent extends StatelessWidget {
           brand: brand,
         ),
         const SizedBox(height: 6),
-        Text('Lo pagas al recoger o recibir.',
-            style: AppTextStyles.subtitle
-                .copyWith(fontSize: 12, color: AppColors.ink3)),
+        Text(
+          'Lo pagas al recoger o recibir.',
+          style: AppTextStyles.subtitle.copyWith(
+            fontSize: 12,
+            color: AppColors.ink3,
+          ),
+        ),
         const SizedBox(height: 28),
         PillButton(
           label: submitting ? 'Apartando…' : 'Confirmar apartado',
@@ -304,33 +368,49 @@ class _ProductCard extends StatelessWidget {
               ),
             ),
             alignment: Alignment.center,
-            child: Icon(Symbols.image,
-                size: 48, color: Colors.white.withValues(alpha: 0.85)),
+            child: Icon(
+              Symbols.image,
+              size: 48,
+              color: Colors.white.withValues(alpha: 0.85),
+            ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(product.name,
-                    style: AppTextStyles.body.copyWith(
-                        fontSize: 16, fontWeight: FontWeight.w700)),
+                Text(
+                  product.name,
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(height: 6),
-                Text('\$${product.price.toStringAsFixed(0)}',
-                    style: AppTextStyles.body.copyWith(
-                        fontSize: 18, fontWeight: FontWeight.w700)),
+                Text(
+                  '\$${product.price.toStringAsFixed(0)}',
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    const Icon(Symbols.inventory_2,
-                        size: 13, color: AppColors.ink3),
+                    const Icon(
+                      Symbols.inventory_2,
+                      size: 13,
+                      color: AppColors.ink3,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       product.stock > 0
                           ? '${product.stock} disponibles'
                           : 'Sin stock',
-                      style: AppTextStyles.subtitle
-                          .copyWith(fontSize: 11.5, color: AppColors.ink3),
+                      style: AppTextStyles.subtitle.copyWith(
+                        fontSize: 11.5,
+                        color: AppColors.ink3,
+                      ),
                     ),
                   ],
                 ),
@@ -367,12 +447,20 @@ class _QuantityStepper extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Cantidad',
-                    style: AppTextStyles.body
-                        .copyWith(fontSize: 14, fontWeight: FontWeight.w600)),
-                Text('Máximo $max disponibles',
-                    style: AppTextStyles.subtitle
-                        .copyWith(fontSize: 11.5, color: AppColors.ink3)),
+                Text(
+                  'Cantidad',
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  'Máximo $max disponibles',
+                  style: AppTextStyles.subtitle.copyWith(
+                    fontSize: 11.5,
+                    color: AppColors.ink3,
+                  ),
+                ),
               ],
             ),
           ),
@@ -383,8 +471,10 @@ class _QuantityStepper extends StatelessWidget {
           SizedBox(
             width: 36,
             child: Center(
-              child: Text('$value',
-                  style: AppTextStyles.h2.copyWith(fontSize: 18)),
+              child: Text(
+                '$value',
+                style: AppTextStyles.h2.copyWith(fontSize: 18),
+              ),
             ),
           ),
           _StepperButton(
@@ -442,13 +532,21 @@ class _SummaryRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text(label,
-              style: AppTextStyles.body
-                  .copyWith(fontSize: 14, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: AppTextStyles.body.copyWith(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const Spacer(),
-          Text(value,
-              style: AppTextStyles.h2.copyWith(
-                  fontSize: 18, color: AppColors.ink)),
+          Text(
+            value,
+            style: AppTextStyles.h2.copyWith(
+              fontSize: 18,
+              color: AppColors.ink,
+            ),
+          ),
         ],
       ),
     );
@@ -461,8 +559,7 @@ class _SuccessDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(22, 28, 22, 22),
         child: Column(
@@ -475,12 +572,14 @@ class _SuccessDialog extends StatelessWidget {
                 color: AppColors.statusDeliveredBg,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Symbols.check_circle,
-                  color: AppColors.statusDeliveredFg, size: 44),
+              child: const Icon(
+                Symbols.check_circle,
+                color: AppColors.statusDeliveredFg,
+                size: 44,
+              ),
             ),
             const SizedBox(height: 14),
-            Text('¡Apartado!',
-                style: AppTextStyles.h1.copyWith(fontSize: 22)),
+            Text('¡Apartado!', style: AppTextStyles.h1.copyWith(fontSize: 22)),
             const SizedBox(height: 6),
             Text(
               '${order.businessName} ya está guardando tu pedido. Te avisamos cuando esté listo.',
@@ -488,9 +587,13 @@ class _SuccessDialog extends StatelessWidget {
               style: AppTextStyles.subtitle.copyWith(fontSize: 13),
             ),
             const SizedBox(height: 8),
-            Text('Pedido #${order.orderId}',
-                style: AppTextStyles.subtitle.copyWith(
-                    fontSize: 12, color: AppColors.ink3)),
+            Text(
+              'Pedido #${order.orderId}',
+              style: AppTextStyles.subtitle.copyWith(
+                fontSize: 12,
+                color: AppColors.ink3,
+              ),
+            ),
             const SizedBox(height: 22),
             PillButton(
               label: 'Ver mi pedido',

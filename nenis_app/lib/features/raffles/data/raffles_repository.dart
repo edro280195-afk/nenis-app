@@ -60,6 +60,6 @@ class RafflesController extends AsyncNotifier<List<BuyerRaffle>> {
 }
 
 final rafflesControllerProvider =
-    AsyncNotifierProvider<RafflesController, List<BuyerRaffle>>(
+    AsyncNotifierProvider.autoDispose<RafflesController, List<BuyerRaffle>>(
   RafflesController.new,
 );

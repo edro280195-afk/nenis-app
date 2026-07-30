@@ -8,11 +8,13 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
+import '../../../shared/widgets/skeleton.dart';
+import '../../../shared/widgets/slow_load_hint.dart';
+import '../../labels/screens/order_label_section.dart';
 import '../data/seller_order_message.dart';
 import '../data/seller_orders_models.dart';
 import '../data/seller_orders_repository.dart';
 import '../widgets/seller_status_chip.dart';
-import 'seller_orders_screen.dart' show GradientText;
 
 class OrderDetailScreen extends ConsumerStatefulWidget {
   const OrderDetailScreen({super.key, required this.orderId});
@@ -78,19 +80,117 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     }
   }
 
-  Future<void> _setStatus(SellerOrderStatus s) =>
-      _run(() => _repo.updateStatus(_id, s));
+  // D6: orden del flujo de entrega. Se usa para detectar "rebajas" de
+  // estatus (ej. marcar como Pendiente algo ya Entregado) y pedir confirmación
+  // antes de revertir el avance.
+  static const _deliveryFlow = [
+    SellerOrderStatus.pending,
+    SellerOrderStatus.confirmed,
+    SellerOrderStatus.shipped,
+    SellerOrderStatus.inRoute,
+    SellerOrderStatus.delivered,
+  ];
+
+  Future<void> _setStatus(SellerOrderStatus s) async {
+    if (s.requiresStatusReason) {
+      final draft = await showDialog<_StatusChangeDraft>(
+        context: context,
+        builder: (context) => _StatusChangeDialog(status: s),
+      );
+      if (draft == null) return;
+      return _run(
+        () => _repo.updateStatus(
+          _id,
+          s,
+          postponedAt: draft.postponedAt,
+          postponedNote: draft.note,
+        ),
+      );
+    }
+
+    // Confirmar rebajas en el flujo de entrega (ej. Entregado → Pendiente).
+    final current =
+        ref.read(sellerOrderDetailProvider(_id)).asData?.value.status;
+    if (current != null && _isStatusDowngrade(current, s)) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text('¿Cambiar a un est anterior?'),
+          content: Text(
+            'El pedido está "${current.label}" y lo vas a pasar a '
+            '"${s.label}". ¿Lo confirmas?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Sí, cambiar'),
+            ),
+          ],
+        ),
+      );
+      if (ok != true) return;
+    }
+
+    return _run(() => _repo.updateStatus(_id, s));
+  }
+
+  bool _isStatusDowngrade(SellerOrderStatus from, SellerOrderStatus to) {
+    final fromIdx = _deliveryFlow.indexOf(from);
+    final toIdx = _deliveryFlow.indexOf(to);
+    if (fromIdx < 0 || toIdx < 0) return false;
+    return toIdx < fromIdx;
+  }
 
   Future<void> _setDelivery(SellerDeliveryType t) =>
       _run(() => _repo.setOrderType(_id, t));
 
-  Future<void> _changeQty(SellerOrderItem it, int qty) => _run(() async {
+  Future<void> _changeQty(SellerOrderItem it, int qty) async {
+    // D1: antes, bajar a 0 eliminaba el artículo sin confirmar. La vendedora
+    // tocaba "-" esperando llegar a 0 y perdía el item sin aviso. Ahora se
+    // pide confirmación antes de quitarlo.
     if (qty < 1) {
-      await _repo.removeItem(_id, it.id);
-    } else {
-      await _repo.updateItem(_id, it.id, it.productName, qty, it.unitPrice);
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text('¿Quitar artículo?'),
+          content: Text(
+            'Se eliminará "${it.productName}" del pedido #$_id.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(
+                'Quitar',
+                style: TextStyle(color: const Color(0xFFE11D5B)),
+              ),
+            ),
+          ],
+        ),
+      );
+      if (ok != true) return;
     }
-  });
+    return _run(() async {
+      if (qty < 1) {
+        await _repo.removeItem(_id, it.id);
+      } else {
+        await _repo.updateItem(_id, it.id, it.productName, qty, it.unitPrice);
+      }
+    });
+  }
 
   Future<void> _addItem() async {
     final name = _newItemName.text.trim();
@@ -124,6 +224,37 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       _snack('Escribe un monto válido');
       return;
     }
+    // D3: advertir si el cobro excede el restante. Podría ser un abono a
+    // cuenta (válido), pero conviene confirmar para evitar capturas
+    // equivocadas que dejen saldo negativo.
+    final balance = ref.read(sellerOrderDetailProvider(_id)).asData?.value.balanceDue ?? 0;
+    if (amount > balance + 0.01) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text('El cobro excede el restante'),
+          content: Text(
+            'El restante es ${money(balance)} pero vas a cobrar '
+            '${money(amount)} (excede ${money(amount - balance)}). '
+            '¿Lo confirmas?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Sí, cobrar'),
+            ),
+          ],
+        ),
+      );
+      if (ok != true) return;
+    }
     await _run(() => _repo.addPayment(_id, amount, method));
     _amountCtrl.clear();
     if (mounted) {
@@ -142,15 +273,30 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       return;
     }
     await Clipboard.setData(ClipboardData(text: buildSellerOrderMessage(o)));
-    _snack('Mensaje para la clienta copiado', color: const Color(0xFF7C5AC9));
-
+    // D4: antes se marcaba `setNotified(true)` silenciosamente. Ahora el
+    // mensaje del snack lo hace transparente para que la vendedora sepa
+    // que copiar implica marcar como notificado.
     if (!o.isNotified) {
       try {
         await _repo.setNotified(o.id, true);
         _invalidate();
+        _snack(
+          'Mensaje copiado · pedido marcado como notificado',
+          color: const Color(0xFF7C5AC9),
+        );
       } catch (_) {
-        // El mensaje ya quedo copiado; esta marca no debe bloquear el flujo.
+        _snack('Mensaje para la clienta copiado', color: const Color(0xFF7C5AC9));
       }
+    } else {
+      _snack('Mensaje para la clienta copiado', color: const Color(0xFF7C5AC9));
+    }
+  }
+
+  void _goBack() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/orders');
     }
   }
 
@@ -164,19 +310,10 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         child: SafeArea(
           bottom: false,
           child: async.when(
-            loading: () => Column(
-              children: [
-                _TopBar(title: 'Pedido', onClose: () => context.pop()),
-                const Expanded(
-                  child: Center(
-                    child: CircularProgressIndicator(color: AppColors.neni),
-                  ),
-                ),
-              ],
-            ),
+            loading: () => _OrderDetailLoading(onBack: _goBack),
             error: (e, _) => Column(
               children: [
-                _TopBar(title: 'Pedido', onClose: () => context.pop()),
+                _TopBar(title: 'Pedido', onBack: _goBack),
                 Expanded(
                   child: Center(
                     child: Padding(
@@ -204,10 +341,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             ),
             data: (o) => Column(
               children: [
-                _TopBar(
-                  title: 'Detalle del pedido',
-                  onClose: () => context.pop(),
-                ),
+                _TopBar(title: 'Detalle del pedido', onBack: _goBack),
                 Expanded(
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
@@ -215,6 +349,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                       _DetailHead(order: o),
                       _PipelineSection(order: o, onTap: _setStatus),
                       _DeliverySection(order: o, onChange: _setDelivery),
+                      OrderLabelSection(orderId: _id),
                       _ProductsSection(
                         order: o,
                         showAddItem: _showAddItem,
@@ -246,9 +381,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.title, required this.onClose});
+  const _TopBar({required this.title, required this.onBack});
   final String title;
-  final VoidCallback onClose;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -256,7 +391,11 @@ class _TopBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
       child: Row(
         children: [
-          _RoundButton(icon: Symbols.arrow_back_ios_new, onTap: onClose),
+          _RoundButton(
+            icon: Icons.adaptive.arrow_back,
+            tooltip: 'Volver',
+            onTap: onBack,
+          ),
           Expanded(
             child: Text(
               title,
@@ -264,7 +403,7 @@ class _TopBar extends StatelessWidget {
               style: AppTextStyles.h2.copyWith(fontSize: 15),
             ),
           ),
-          _RoundButton(icon: Symbols.close, onTap: onClose),
+          const SizedBox(width: 38, height: 38),
         ],
       ),
     );
@@ -272,28 +411,183 @@ class _TopBar extends StatelessWidget {
 }
 
 class _RoundButton extends StatelessWidget {
-  const _RoundButton({required this.icon, required this.onTap});
+  const _RoundButton({
+    required this.icon,
+    required this.onTap,
+    required this.tooltip,
+  });
+
   final IconData icon;
   final VoidCallback onTap;
+  final String tooltip;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(13),
-        child: Ink(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.85),
-            borderRadius: BorderRadius.circular(13),
-            border: Border.all(color: AppColors.line),
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(13),
+          child: Ink(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(color: AppColors.line),
+            ),
+            child: Icon(icon, size: 20, color: AppColors.ink),
           ),
-          child: Icon(icon, size: 20, color: AppColors.ink),
         ),
       ),
+    );
+  }
+}
+
+extension _StatusChangeUi on SellerOrderStatus {
+  bool get requiresStatusReason =>
+      this == SellerOrderStatus.postponed ||
+      this == SellerOrderStatus.notDelivered ||
+      this == SellerOrderStatus.canceled;
+
+  String get dialogTitle => switch (this) {
+    SellerOrderStatus.postponed => 'Reprogramar pedido',
+    SellerOrderStatus.notDelivered => 'Marcar no entregado',
+    SellerOrderStatus.canceled => 'Cancelar pedido',
+    _ => 'Cambiar estatus',
+  };
+
+  String get noteLabel => switch (this) {
+    SellerOrderStatus.postponed => 'Motivo de la reprogramacion',
+    SellerOrderStatus.notDelivered => 'Motivo de no entrega',
+    SellerOrderStatus.canceled => 'Motivo de cancelacion',
+    _ => 'Nota',
+  };
+}
+
+class _StatusChangeDraft {
+  const _StatusChangeDraft({required this.note, this.postponedAt});
+
+  final String note;
+  final DateTime? postponedAt;
+}
+
+class _StatusChangeDialog extends StatefulWidget {
+  const _StatusChangeDialog({required this.status});
+
+  final SellerOrderStatus status;
+
+  @override
+  State<_StatusChangeDialog> createState() => _StatusChangeDialogState();
+}
+
+class _StatusChangeDialogState extends State<_StatusChangeDialog> {
+  late final TextEditingController _noteCtrl;
+  late DateTime _postponedAt;
+  bool _submitted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _noteCtrl = TextEditingController();
+    final now = DateTime.now();
+    _postponedAt = DateTime(now.year, now.month, now.day + 1);
+  }
+
+  @override
+  void dispose() {
+    _noteCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _postponedAt,
+      firstDate: DateTime(now.year, now.month, now.day),
+      lastDate: DateTime(now.year + 1, now.month, now.day),
+    );
+    if (picked != null && mounted) {
+      setState(() => _postponedAt = picked);
+    }
+  }
+
+  void _submit() {
+    setState(() => _submitted = true);
+    final note = _noteCtrl.text.trim();
+    if (note.isEmpty) return;
+
+    Navigator.pop(
+      context,
+      _StatusChangeDraft(
+        note: note,
+        postponedAt: widget.status == SellerOrderStatus.postponed
+            ? _postponedAt
+            : null,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final status = widget.status;
+    final requiresDate = status == SellerOrderStatus.postponed;
+    final noteEmpty = _submitted && _noteCtrl.text.trim().isEmpty;
+    final dateLabel = MaterialLocalizations.of(
+      context,
+    ).formatMediumDate(_postponedAt);
+
+    return AlertDialog(
+      title: Text(status.dialogTitle),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (requiresDate) ...[
+              Text(
+                'Nueva fecha',
+                style: AppTextStyles.subtitle.copyWith(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: _pickDate,
+                icon: const Icon(Symbols.event),
+                label: Text(dateLabel),
+              ),
+              const SizedBox(height: 14),
+            ],
+            TextField(
+              controller: _noteCtrl,
+              minLines: 3,
+              maxLines: 4,
+              textInputAction: TextInputAction.newline,
+              onChanged: (_) {
+                if (_submitted) setState(() {});
+              },
+              decoration: InputDecoration(
+                labelText: status.noteLabel,
+                hintText: 'Escribe una nota clara para el historial.',
+                errorText: noteEmpty ? 'La nota es obligatoria.' : null,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(onPressed: _submit, child: Text(status.label)),
+      ],
     );
   }
 }
@@ -473,8 +767,12 @@ class _PipelineSection extends StatelessWidget {
   static const _flow = [
     SellerOrderStatus.pending,
     SellerOrderStatus.confirmed,
+    SellerOrderStatus.shipped,
     SellerOrderStatus.inRoute,
     SellerOrderStatus.delivered,
+    SellerOrderStatus.postponed,
+    SellerOrderStatus.notDelivered,
+    SellerOrderStatus.canceled,
   ];
 
   @override
@@ -1004,10 +1302,17 @@ class _MiniField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // D5: si es numérico, filtrar a solo dígitos y punto (igual que el campo
+    // de monto de cobros). Antes se podía teclear "1.2.3" o "abc".
+    final isNumeric =
+        keyboard == TextInputType.number || keyboard == TextInputType.phone;
     return TextField(
       controller: controller,
       keyboardType: keyboard,
       textAlign: center ? TextAlign.center : TextAlign.start,
+      inputFormatters: isNumeric
+          ? [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))]
+          : null,
       style: AppTextStyles.body.copyWith(fontSize: 12.5),
       decoration: InputDecoration(
         isDense: true,
@@ -1273,7 +1578,16 @@ class _FooterBar extends StatelessWidget {
                   color: AppColors.ink3,
                 ),
               ),
-              GradientText(money(order.total), fontSize: 20),
+              Text(
+                money(order.total),
+                style: AppTextStyles.h1.copyWith(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.neniDeep,
+                  letterSpacing: 0,
+                  height: 1,
+                ),
+              ),
             ],
           ),
           Material(
@@ -1314,6 +1628,52 @@ class _FooterBar extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _OrderDetailLoading extends StatelessWidget {
+  const _OrderDetailLoading({required this.onBack});
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _TopBar(title: 'Pedido', onBack: onBack),
+        Expanded(
+          child: Stack(
+            children: [
+              SingleChildScrollView(
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 22,
+                  vertical: 12,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: const [
+                    Skeleton(height: 76, borderRadius: 20),
+                    SizedBox(height: 18),
+                    Skeleton(height: 94, borderRadius: 20),
+                    SizedBox(height: 18),
+                    Skeleton(height: 160, borderRadius: 20),
+                    SizedBox(height: 18),
+                    Skeleton(height: 110, borderRadius: 20),
+                  ],
+                ),
+              ),
+              const Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: 24),
+                  child: SlowLoadHint(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

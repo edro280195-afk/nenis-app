@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "213749430285",
+    "project_id": "nenisapp-60810",
+    "storage_bucket": "nenisapp-60810.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:213749430285:android:7d594c3d27163c3f037d44",
+        "android_client_info": {
+          "package_name": "com.nenisapp.nenis_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDvaxdo2Bep_WMoCqIUyVG9s3nguFxXwxM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

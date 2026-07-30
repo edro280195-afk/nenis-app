@@ -1,18 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/platform/google_maps_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
-import '../../../shared/widgets/glass_bottom_nav.dart';
 import '../../../shared/widgets/segmented.dart';
+import '../../../shared/widgets/slow_load_hint.dart';
 import '../data/seller_routes_models.dart';
 import '../data/seller_routes_repository.dart';
+
+enum _RouteCandidateFilter {
+  all,
+  selected,
+  noPackages,
+  noCoords,
+  orders,
+  tandas,
+}
+
+class _CandidateGroup {
+  const _CandidateGroup({
+    required this.key,
+    required this.clientName,
+    required this.phone,
+    required this.candidates,
+  });
+
+  final String key;
+  final String clientName;
+  final String? phone;
+  final List<RouteCandidate> candidates;
+}
 
 class SellerRoutesScreen extends ConsumerStatefulWidget {
   const SellerRoutesScreen({super.key});
@@ -33,13 +59,27 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
   bool _savingRoute = false;
   int? _optimizingRouteId;
   int? _savingOrderRouteId;
+  int? _deletingRouteId;
   String? _feedback;
+  final _candidateSearchController = TextEditingController();
+  String _candidateQuery = '';
+  _RouteCandidateFilter _candidateFilter = _RouteCandidateFilter.all;
+  int? _addingPackagesOrderId;
+  int? _generatingPackagesOrderId;
+  int _packagesToAdd = 1;
+  final Set<String> _expandedClientGroups = <String>{};
 
   final List<SegmentedItem> _tabs = const [
     SegmentedItem(label: 'Armar', icon: Symbols.add_road),
     SegmentedItem(label: 'Rutas', icon: Symbols.map),
     SegmentedItem(label: 'Historial', icon: Symbols.history),
   ];
+
+  @override
+  void dispose() {
+    _candidateSearchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,30 +90,17 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
       body: NeniBackground(
         child: SafeArea(
           bottom: false,
-          child: Stack(
-            children: [
-              RefreshIndicator(
-                color: AppColors.neniDeep,
-                onRefresh: () async {
-                  ref.invalidate(sellerRoutesWorkspaceProvider);
-                  await ref.read(sellerRoutesWorkspaceProvider.future);
-                },
-                child: workspaceAsync.when(
-                  loading: _buildLoading,
-                  error: (error, _) => _buildError(error),
-                  data: _buildContent,
-                ),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: GlassBottomNav(
-                  items: buildSellerNavItems(),
-                  currentRoute: '/routes',
-                ),
-              ),
-            ],
+          child: RefreshIndicator(
+            color: AppColors.neniDeep,
+            onRefresh: () async {
+              ref.invalidate(sellerRoutesWorkspaceProvider);
+              await ref.read(sellerRoutesWorkspaceProvider.future);
+            },
+            child: workspaceAsync.when(
+              loading: _buildLoading,
+              error: (error, _) => _buildError(error),
+              data: _buildContent,
+            ),
           ),
         ),
       ),
@@ -81,14 +108,25 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
   }
 
   Widget _buildLoading() {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(22, 4, 22, 120),
+    return Stack(
       children: [
-        _buildHeader(),
-        const SizedBox(height: 18),
-        const _RouteSkeleton(),
-        const SizedBox(height: 12),
-        const _RouteSkeleton(),
+        ListView(
+          padding: const EdgeInsets.fromLTRB(22, 4, 22, 24),
+          children: [
+            _buildHeader(),
+            const SizedBox(height: 18),
+            const _RouteSkeleton(),
+            const SizedBox(height: 12),
+            const _RouteSkeleton(),
+          ],
+        ),
+        const Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: EdgeInsets.only(bottom: 24),
+            child: SlowLoadHint(),
+          ),
+        ),
       ],
     );
   }
@@ -98,7 +136,7 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
         ? error.message
         : 'No pudimos cargar las rutas.';
     return ListView(
-      padding: const EdgeInsets.fromLTRB(22, 4, 22, 120),
+      padding: const EdgeInsets.fromLTRB(22, 4, 22, 24),
       children: [
         _buildHeader(),
         const SizedBox(height: 18),
@@ -115,12 +153,10 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
 
   Widget _buildContent(SellerRoutesWorkspace workspace) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(22, 4, 22, 120),
+      padding: const EdgeInsets.fromLTRB(22, 4, 22, 24),
       children: [
         _buildHeader(),
         const SizedBox(height: 14),
-        _buildSummary(workspace),
-        const SizedBox(height: 12),
         SegmentedControl(
           items: _tabs,
           selectedIndex: _selectedIndex,
@@ -149,10 +185,10 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Rutas de reparto', style: AppTextStyles.display),
+              Text('Rutas', style: AppTextStyles.display),
               const SizedBox(height: 4),
               Text(
-                'Arma, optimiza y revisa recorridos con datos del API.',
+                'Planea, prepara y comparte cada entrega con claridad.',
                 style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
               ),
             ],
@@ -166,70 +202,34 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
     );
   }
 
-  Widget _buildSummary(SellerRoutesWorkspace workspace) {
-    final selected = _selectedCandidates(workspace);
-    final withCoords = workspace.candidates
-        .where((c) => c.hasCoordinates)
-        .length;
-    final pendingMoney = workspace.candidates.fold<double>(
-      0,
-      (sum, c) => sum + c.total,
-    );
-
-    return Row(
-      children: [
-        Expanded(
-          child: _KpiTile(
-            label: 'Candidatos',
-            value: workspace.candidates.length.toString(),
-            color: AppColors.neniDeep,
-          ),
-        ),
-        const SizedBox(width: 9),
-        Expanded(
-          child: _KpiTile(
-            label: 'Con mapa',
-            value: withCoords.toString(),
-            color: AppColors.statusDeliveredFg,
-          ),
-        ),
-        const SizedBox(width: 9),
-        Expanded(
-          child: _KpiTile(
-            label: 'Elegidos',
-            value: selected.length.toString(),
-            color: AppColors.statusRouteFg,
-          ),
-        ),
-        const SizedBox(width: 9),
-        Expanded(
-          child: _KpiTile(
-            label: 'Por ruta',
-            value: routeMoney(pendingMoney),
-            color: AppColors.gold,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildBuilder(SellerRoutesWorkspace workspace) {
     final selected = _selectedCandidates(workspace);
     final noCoords = selected.where((c) => !c.hasCoordinates).length;
+    final visibleCandidates = _visibleCandidates(workspace);
+    final groups = _groupVisibleCandidates(visibleCandidates);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _RouteBuildProgress(activeStep: _preview == null ? 1 : 2),
+        const SizedBox(height: 18),
         _SectionTitle(
-          title: 'Pedidos y tandas disponibles',
+          title: 'Elige a quién entregar',
           trailing: TextButton.icon(
-            onPressed: workspace.candidates.isEmpty
+            onPressed: visibleCandidates.isEmpty
                 ? null
-                : () => _selectAllCandidates(workspace),
+                : () => _selectVisibleCandidates(visibleCandidates),
             icon: const Icon(Symbols.checklist, size: 18),
-            label: const Text('Seleccionar'),
+            label: const Text('Visibles'),
           ),
         ),
+        Text(
+          'Busca una clienta y agrega únicamente sus pedidos. Las bolsas se preparan sin salir de esta pantalla.',
+          style: AppTextStyles.subtitle.copyWith(fontSize: 12),
+        ),
+        const SizedBox(height: 12),
+        _buildCandidateFilters(workspace),
+        const SizedBox(height: 12),
         if (workspace.candidates.isEmpty)
           const _EmptyState(
             icon: Symbols.inventory_2,
@@ -237,18 +237,27 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
             message:
                 'Cuando haya pedidos o tandas disponibles aparecerán aquí.',
           )
+        else if (visibleCandidates.isEmpty)
+          const _EmptyState(
+            icon: Symbols.person_search,
+            title: 'No encontramos clientas',
+            message: 'Prueba con otro nombre, teléfono o filtro.',
+          )
         else
-          ...workspace.candidates.map(_buildCandidateCard),
+          ...groups.map(_buildCandidateGroup),
         const SizedBox(height: 10),
         _BuilderActionBar(
           selectedCount: selected.length,
           noCoordsCount: noCoords,
+          hasPreview: _preview != null,
           previewing: _previewing,
           saving: _savingRoute,
           onPreview: selected.isEmpty
               ? null
               : () => _previewSelected(workspace),
-          onCreate: selected.isEmpty ? null : () => _createRoute(workspace),
+          onCreate: selected.isEmpty || _preview == null
+              ? null
+              : () => _confirmAndCreateRoute(workspace),
           onClear: selected.isEmpty ? null : _clearSelection,
         ),
         if (_preview != null) ...[
@@ -261,7 +270,221 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
     );
   }
 
-  Widget _buildCandidateCard(RouteCandidate candidate) {
+  Widget _buildCandidateFilters(SellerRoutesWorkspace workspace) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: _candidateSearchController,
+          onChanged: (value) => setState(() => _candidateQuery = value),
+          textInputAction: TextInputAction.search,
+          decoration: InputDecoration(
+            hintText: 'Buscar clienta, teléfono o pedido',
+            prefixIcon: const Icon(Symbols.search),
+            suffixIcon: _candidateQuery.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Limpiar búsqueda',
+                    icon: const Icon(Symbols.close),
+                    onPressed: () {
+                      _candidateSearchController.clear();
+                      setState(() => _candidateQuery = '');
+                    },
+                  ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _candidateFilterChip(
+                label: 'Todas (${workspace.candidates.length})',
+                filter: _RouteCandidateFilter.all,
+              ),
+              _candidateFilterChip(
+                label: 'Elegidas (${_selectedCandidateKeys.length})',
+                filter: _RouteCandidateFilter.selected,
+              ),
+              _candidateFilterChip(
+                label: 'Sin bolsas',
+                filter: _RouteCandidateFilter.noPackages,
+              ),
+              _candidateFilterChip(
+                label: 'Sin ubicación',
+                filter: _RouteCandidateFilter.noCoords,
+              ),
+              _candidateFilterChip(
+                label: 'Pedidos',
+                filter: _RouteCandidateFilter.orders,
+              ),
+              _candidateFilterChip(
+                label: 'Tandas',
+                filter: _RouteCandidateFilter.tandas,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _candidateFilterChip({
+    required String label,
+    required _RouteCandidateFilter filter,
+  }) {
+    final selected = _candidateFilter == filter;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        label: Text(label),
+        selected: selected,
+        onSelected: (_) => setState(() => _candidateFilter = filter),
+        labelStyle: AppTextStyles.chip.copyWith(
+          color: selected ? AppColors.surface : AppColors.ink2,
+        ),
+        selectedColor: AppColors.neniDeep,
+        backgroundColor: AppColors.surface,
+        side: BorderSide(color: selected ? AppColors.neniDeep : AppColors.line),
+      ),
+    );
+  }
+
+  List<RouteCandidate> _visibleCandidates(SellerRoutesWorkspace workspace) {
+    final query = _candidateQuery.trim().toLowerCase();
+    return workspace.candidates
+        .where((candidate) {
+          final matchesFilter = switch (_candidateFilter) {
+            _RouteCandidateFilter.all => true,
+            _RouteCandidateFilter.selected => _selectedCandidateKeys.contains(
+              candidate.key,
+            ),
+            _RouteCandidateFilter.noPackages =>
+              candidate.isOrder && candidate.packageCount == 0,
+            _RouteCandidateFilter.noCoords => !candidate.hasCoordinates,
+            _RouteCandidateFilter.orders => candidate.isOrder,
+            _RouteCandidateFilter.tandas => !candidate.isOrder,
+          };
+          if (!matchesFilter) return false;
+          if (query.isEmpty) return true;
+
+          final searchable = [
+            candidate.clientName,
+            candidate.phone,
+            candidate.address,
+            candidate.subtitle,
+            candidate.orderId?.toString(),
+          ].whereType<String>().join(' ').toLowerCase();
+          return searchable.contains(query);
+        })
+        .toList(growable: false);
+  }
+
+  List<_CandidateGroup> _groupVisibleCandidates(
+    List<RouteCandidate> candidates,
+  ) {
+    final grouped = <String, List<RouteCandidate>>{};
+    for (final candidate in candidates) {
+      final key = candidate.clientGroupKey;
+      grouped.putIfAbsent(key, () => <RouteCandidate>[]).add(candidate);
+    }
+
+    return grouped.entries
+        .map(
+          (entry) => _CandidateGroup(
+            key: entry.key,
+            clientName: entry.value.first.clientName,
+            phone: entry.value.first.phone,
+            candidates: entry.value,
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  Widget _buildCandidateGroup(_CandidateGroup group) {
+    final expanded = _expandedClientGroups.contains(group.key);
+    final selectedCount = group.candidates
+        .where((candidate) => _selectedCandidateKeys.contains(candidate.key))
+        .length;
+    final itemLabel = group.candidates.length == 1
+        ? 'pedido/tanda'
+        : 'pedidos/tandas';
+
+    return Container(
+      key: ValueKey<String>('client-group-${group.key}'),
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadii.cardRadius,
+        border: Border.all(
+          color: expanded || selectedCount > 0
+              ? AppColors.neni.withValues(alpha: 0.42)
+              : AppColors.line,
+        ),
+        boxShadow: AppShadows.small,
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            borderRadius: AppRadii.cardRadius,
+            onTap: () => setState(() {
+              if (expanded) {
+                _expandedClientGroups.remove(group.key);
+              } else {
+                _expandedClientGroups.add(group.key);
+              }
+            }),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 13, 12, 13),
+              child: Row(
+                children: [
+                  _Avatar(
+                    initial: group.clientName.trim().isEmpty
+                        ? '?'
+                        : group.clientName.trim()[0].toUpperCase(),
+                    selected: selectedCount > 0,
+                  ),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          group.clientName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.h2.copyWith(fontSize: 14.5),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${group.candidates.length} $itemLabel${selectedCount > 0 ? ' · $selectedCount seleccionado${selectedCount == 1 ? '' : 's'}' : ''}${(group.phone ?? '').trim().isEmpty ? '' : ' · ${group.phone}'}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.subtitle.copyWith(
+                            fontSize: 11.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    expanded ? Symbols.expand_less : Symbols.expand_more,
+                    color: AppColors.neniDeep,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (expanded) ...[
+            Divider(height: 1, color: AppColors.neni.withValues(alpha: 0.22)),
+            ...group.candidates.map(_buildCandidateRow),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCandidateRow(RouteCandidate candidate) {
     final selected = _selectedCandidateKeys.contains(candidate.key);
     final address = candidate.address?.trim();
 
@@ -347,6 +570,99 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
                       ),
                   ],
                 ),
+                if (candidate.isOrder) ...[
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Icon(
+                        Symbols.shopping_bag,
+                        size: 16,
+                        color: candidate.packageCount > 0
+                            ? AppColors.statusDeliveredFg
+                            : AppColors.ink3,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          candidate.packageCount == 0
+                              ? 'Aún no tiene bolsas preparadas'
+                              : '${candidate.packageCount} ${candidate.packageCount == 1 ? 'bolsa lista' : 'bolsas listas'}',
+                          style: AppTextStyles.subtitle.copyWith(
+                            fontSize: 11.5,
+                          ),
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => _openPackageAdder(candidate),
+                        icon: const Icon(Symbols.add, size: 16),
+                        label: Text(
+                          candidate.packageCount == 0
+                              ? 'Crear bolsas'
+                              : 'Agregar',
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_addingPackagesOrderId == candidate.orderId)
+                    Container(
+                      margin: const EdgeInsets.only(top: 6),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.lavender.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(AppRadii.smallTile),
+                        border: Border.all(
+                          color: AppColors.lavender.withValues(alpha: 0.26),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            tooltip: 'Quitar una bolsa',
+                            onPressed:
+                                _packagesToAdd <= 1 ||
+                                    _generatingPackagesOrderId ==
+                                        candidate.orderId
+                                ? null
+                                : () => setState(() => _packagesToAdd--),
+                            icon: const Icon(Symbols.remove),
+                          ),
+                          Text(
+                            _packagesToAdd.toString(),
+                            style: AppTextStyles.h2.copyWith(fontSize: 16),
+                          ),
+                          IconButton(
+                            tooltip: 'Agregar una bolsa',
+                            onPressed:
+                                _generatingPackagesOrderId == candidate.orderId
+                                ? null
+                                : () => setState(() => _packagesToAdd++),
+                            icon: const Icon(Symbols.add),
+                          ),
+                          const Spacer(),
+                          TextButton(
+                            onPressed:
+                                _generatingPackagesOrderId == candidate.orderId
+                                ? null
+                                : () => setState(
+                                    () => _addingPackagesOrderId = null,
+                                  ),
+                            child: const Text('Cancelar'),
+                          ),
+                          FilledButton(
+                            onPressed:
+                                _generatingPackagesOrderId == candidate.orderId
+                                ? null
+                                : () => _addPackages(candidate),
+                            child: Text(
+                              _generatingPackagesOrderId == candidate.orderId
+                                  ? 'Creando...'
+                                  : 'Agregar',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
                 if (address != null && address.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   Row(
@@ -468,6 +784,28 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
               ],
             ),
             const SizedBox(height: 12),
+            if (_driverLink(route).isNotEmpty) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: _SmallActionButton(
+                      label: 'WhatsApp chofer',
+                      icon: Symbols.chat,
+                      onTap: () => _shareDriverLink(route),
+                    ),
+                  ),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: _SmallActionButton(
+                      label: 'Copiar link',
+                      icon: Symbols.content_copy,
+                      onTap: () => _copyDriverLink(route),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
             Row(
               children: [
                 Expanded(
@@ -505,7 +843,11 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
             ),
             if (expanded) ...[
               const SizedBox(height: 13),
-              _RouteMapCard(route: route, depot: _depot),
+              _RouteMapCard(
+                route: route,
+                depot: _depot,
+                showRouteLine: route.status != SellerRouteStatus.completed,
+              ),
               const SizedBox(height: 13),
               ...List.generate(
                 draft.length,
@@ -539,10 +881,14 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
                     const SizedBox(width: 9),
                     Expanded(
                       child: _SmallActionButton(
-                        label: 'Eliminar',
+                        label: _deletingRouteId == route.id
+                            ? 'Eliminando...'
+                            : 'Eliminar',
                         icon: Symbols.delete,
                         danger: true,
-                        onTap: () => _deleteRoute(route.id),
+                        onTap: _deletingRouteId == null
+                            ? () => _confirmAndDeleteRoute(route.id)
+                            : null,
                       ),
                     ),
                   ],
@@ -572,13 +918,150 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
     });
   }
 
-  void _selectAllCandidates(SellerRoutesWorkspace workspace) {
+  void _selectVisibleCandidates(Iterable<RouteCandidate> candidates) {
     setState(() {
-      _selectedCandidateKeys
-        ..clear()
-        ..addAll(workspace.candidates.map((c) => c.key));
+      _selectedCandidateKeys.addAll(
+        candidates.map((candidate) => candidate.key),
+      );
       _preview = null;
     });
+  }
+
+  void _openPackageAdder(RouteCandidate candidate) {
+    final orderId = candidate.orderId;
+    if (orderId == null) return;
+
+    var packageCount = 1;
+    var isCreating = false;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: AppColors.surface,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) => SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              22,
+              8,
+              22,
+              22 + MediaQuery.viewInsetsOf(context).bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Crear bolsas',
+                  style: AppTextStyles.display.copyWith(fontSize: 23),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Se agregarán $packageCount ${packageCount == 1 ? 'bolsa nueva' : 'bolsas nuevas'} al pedido #$orderId. Las ${candidate.packageCount} actuales no se modifican.',
+                  style: AppTextStyles.subtitle.copyWith(fontSize: 13),
+                ),
+                const SizedBox(height: 22),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton.filledTonal(
+                      tooltip: 'Restar una bolsa',
+                      onPressed: isCreating || packageCount == 1
+                          ? null
+                          : () => setSheetState(() => packageCount--),
+                      icon: const Icon(Symbols.remove),
+                    ),
+                    SizedBox(
+                      width: 74,
+                      child: Text(
+                        packageCount.toString(),
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.display.copyWith(fontSize: 29),
+                      ),
+                    ),
+                    IconButton.filledTonal(
+                      tooltip: 'Sumar una bolsa',
+                      onPressed: isCreating
+                          ? null
+                          : () => setSheetState(() => packageCount++),
+                      icon: const Icon(Symbols.add),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 22),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: isCreating
+                            ? null
+                            : () => Navigator.of(sheetContext).pop(),
+                        child: const Text('Cancelar'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton(
+                        onPressed: isCreating
+                            ? null
+                            : () async {
+                                setSheetState(() => isCreating = true);
+                                final created = await _addPackages(
+                                  candidate,
+                                  count: packageCount,
+                                );
+                                if (!sheetContext.mounted) return;
+                                if (created) Navigator.of(sheetContext).pop();
+                                if (sheetContext.mounted) {
+                                  setSheetState(() => isCreating = false);
+                                }
+                              },
+                        child: Text(
+                          isCreating
+                              ? 'Creando...'
+                              : 'Crear $packageCount ${packageCount == 1 ? 'bolsa' : 'bolsas'}',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _addPackages(RouteCandidate candidate, {int? count}) async {
+    final orderId = candidate.orderId;
+    if (orderId == null) return false;
+    final packageCount = count ?? _packagesToAdd;
+
+    setState(() {
+      _generatingPackagesOrderId = orderId;
+      _feedback = null;
+    });
+    try {
+      await ref
+          .read(sellerRoutesRepositoryProvider)
+          .generatePackages(orderId: orderId, count: packageCount);
+      ref.invalidate(sellerRoutesWorkspaceProvider);
+      if (!mounted) return false;
+      setState(() {
+        _addingPackagesOrderId = null;
+        _feedback =
+            '${packageCount == 1 ? 'Bolsa creada' : '$packageCount bolsas creadas'} para ${candidate.clientName}.';
+      });
+      return true;
+    } catch (error) {
+      _setError(error, 'No pudimos crear las bolsas del pedido.');
+      return false;
+    } finally {
+      if (mounted) setState(() => _generatingPackagesOrderId = null);
+    }
   }
 
   void _clearSelection() {
@@ -597,6 +1080,7 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
       final preview = await ref
           .read(sellerRoutesRepositoryProvider)
           .previewRoute(_selectedCandidates(workspace));
+      if (!mounted) return;
       setState(() {
         _preview = preview;
         if (preview.skipped.isNotEmpty) {
@@ -612,25 +1096,107 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
   }
 
   Future<void> _createRoute(SellerRoutesWorkspace workspace) async {
+    final preview = _preview;
+    if (preview == null) return;
+
     setState(() {
       _savingRoute = true;
       _feedback = null;
     });
     try {
-      await ref
+      final result = await ref
           .read(sellerRoutesRepositoryProvider)
-          .createRoute(_selectedCandidates(workspace));
+          .createRoute(_selectedCandidates(workspace), preview.stops);
+      if (!mounted) return;
       _selectedCandidateKeys.clear();
       _preview = null;
       ref.invalidate(sellerRoutesWorkspaceProvider);
       setState(() {
         _selectedIndex = 1;
-        _feedback = 'Ruta creada con datos del API.';
+        // El backend re-valida cada pedido/tanda al crear y puede rechazar
+        // alguno (ya en otra ruta, cancelado, tanda ya entregada...). Sin
+        // avisar esto, la vendedora comparte el link al chofer creyendo
+        // que todas las paradas seleccionadas quedaron adentro.
+        _feedback = result.skipped.isEmpty
+            ? 'Ruta creada con datos del API.'
+            : 'Ruta creada. ${result.skipped.length} no se pudieron '
+                  'incluir: ${result.skipped.map((s) => '${s.name} (${s.reason})').join(', ')}';
       });
     } catch (e) {
       _setError(e, 'No pudimos crear la ruta.');
     } finally {
       if (mounted) setState(() => _savingRoute = false);
+    }
+  }
+
+  Future<void> _confirmAndCreateRoute(SellerRoutesWorkspace workspace) async {
+    final selected = _selectedCandidates(workspace);
+    final withoutPackages = selected
+        .where((candidate) => candidate.isOrder && candidate.packageCount == 0)
+        .toList(growable: false);
+    final withoutCoordinates = selected
+        .where((candidate) => !candidate.hasCoordinates)
+        .toList(growable: false);
+
+    if (withoutPackages.isEmpty && withoutCoordinates.isEmpty) {
+      await _createRoute(workspace);
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Revisa antes de crear'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'La ruta puede crearse, pero estas entregas necesitan atención:',
+            ),
+            if (withoutPackages.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                '${withoutPackages.length} ${withoutPackages.length == 1 ? 'pedido sin bolsas' : 'pedidos sin bolsas'}',
+                style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700),
+              ),
+              Text(
+                withoutPackages
+                    .map((candidate) => candidate.clientName)
+                    .join(', '),
+                style: AppTextStyles.subtitle.copyWith(fontSize: 12),
+              ),
+            ],
+            if (withoutCoordinates.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                '${withoutCoordinates.length} ${withoutCoordinates.length == 1 ? 'parada sin ubicación' : 'paradas sin ubicación'}',
+                style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700),
+              ),
+              Text(
+                withoutCoordinates
+                    .map((candidate) => candidate.clientName)
+                    .join(', '),
+                style: AppTextStyles.subtitle.copyWith(fontSize: 12),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Volver a revisar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Crear de todos modos'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await _createRoute(workspace);
     }
   }
 
@@ -641,7 +1207,13 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
     });
     try {
       await ref.read(sellerRoutesRepositoryProvider).optimizeRoute(routeId);
+      // Sin esto, la tarjeta expandida seguía mostrando el orden previo a
+      // optimizar (siempre prioriza el draft local si existe) — parecía
+      // que "Optimizar" no hacía nada, y "Guardar orden" podía revertir en
+      // silencio el resultado recién guardado en el servidor.
+      _draftOrders.remove(routeId);
       ref.invalidate(sellerRoutesWorkspaceProvider);
+      if (!mounted) return;
       setState(() => _feedback = 'Ruta optimizada desde el API.');
     } catch (e) {
       _setError(e, 'No pudimos optimizar la ruta.');
@@ -662,6 +1234,7 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
           .reorderRoute(route.id, draft.map((d) => d.deliveryId).toList());
       _draftOrders.remove(route.id);
       ref.invalidate(sellerRoutesWorkspaceProvider);
+      if (!mounted) return;
       setState(() => _feedback = 'Orden de ruta guardado.');
     } catch (e) {
       _setError(e, 'No pudimos guardar el orden.');
@@ -670,16 +1243,49 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
     }
   }
 
+  Future<void> _confirmAndDeleteRoute(int routeId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('¿Eliminar esta ruta?'),
+        content: const Text(
+          'Se borran también el chat con el repartidor y las fotos de '
+          'evidencia de entrega de esta ruta — no se pueden recuperar. '
+          'Los pedidos vuelven a quedar disponibles para otra ruta.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await _deleteRoute(routeId);
+    }
+  }
+
   Future<void> _deleteRoute(int routeId) async {
-    setState(() => _feedback = null);
+    setState(() {
+      _deletingRouteId = routeId;
+      _feedback = null;
+    });
     try {
       await ref.read(sellerRoutesRepositoryProvider).deleteRoute(routeId);
       _draftOrders.remove(routeId);
       if (_expandedRouteId == routeId) _expandedRouteId = null;
       ref.invalidate(sellerRoutesWorkspaceProvider);
+      if (!mounted) return;
       setState(() => _feedback = 'Ruta eliminada.');
     } catch (e) {
       _setError(e, 'No pudimos eliminar la ruta.');
+    } finally {
+      if (mounted) setState(() => _deletingRouteId = null);
     }
   }
 
@@ -689,7 +1295,11 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
         _expandedRouteId = null;
       } else {
         _expandedRouteId = route.id;
-        _draftOrders[route.id] = [...route.deliveries];
+        // `putIfAbsent`, no asignación directa: si ya había un
+        // reordenamiento local sin guardar (ej. la vendedora colapsó y
+        // volvió a expandir, o tocó "Mapa"), no lo tiramos por encima con
+        // el orden del servidor.
+        _draftOrders.putIfAbsent(route.id, () => [...route.deliveries]);
       }
     });
   }
@@ -706,22 +1316,75 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
   void _showRouteMap(SellerRoute route) {
     setState(() {
       _expandedRouteId = route.id;
-      _draftOrders[route.id] = [...route.deliveries];
+      _draftOrders.putIfAbsent(route.id, () => [...route.deliveries]);
     });
   }
 
+  Future<void> _copyDriverLink(SellerRoute route) async {
+    final link = _driverLink(route);
+    if (link.isEmpty) {
+      _setError('Esta ruta no tiene enlace de chofer.', '');
+      return;
+    }
+
+    await Clipboard.setData(ClipboardData(text: link));
+    if (mounted) setState(() => _feedback = 'Enlace de chofer copiado.');
+  }
+
+  Future<void> _shareDriverLink(SellerRoute route) async {
+    final link = _driverLink(route);
+    if (link.isEmpty) {
+      _setError('Esta ruta no tiene enlace de chofer.', '');
+      return;
+    }
+
+    final message = Uri.encodeComponent(
+      'Hola, te comparto ${route.name} para reparto: $link',
+    );
+    final uri = Uri.parse('https://wa.me/?text=$message');
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened) {
+      _setError('No pudimos abrir WhatsApp.', '');
+    }
+  }
+
+  String _driverLink(SellerRoute route) {
+    final link = route.driverLink.trim();
+    if (link.isNotEmpty && !_isLegacyRegiBazarLink(link)) return link;
+
+    final token = route.driverToken.trim();
+    return token.isEmpty
+        ? link
+        : '${AppConfig.webAdminBaseUrl}/repartidor/${Uri.encodeComponent(token)}';
+  }
+
+  bool _isLegacyRegiBazarLink(String link) {
+    final host = Uri.tryParse(link)?.host.toLowerCase() ?? '';
+    return host == 'regibazar.com' || host.endsWith('.regibazar.com');
+  }
+
   void _setError(Object error, String fallback) {
-    final message = error is SellerRoutesException ? error.message : fallback;
+    final message = error is SellerRoutesException
+        ? error.message
+        : error is String
+        ? error
+        : fallback;
     if (mounted) setState(() => _feedback = message);
   }
 }
 
 class _RouteMapCard extends ConsumerWidget {
-  const _RouteMapCard({required this.depot, this.preview, this.route});
+  const _RouteMapCard({
+    required this.depot,
+    this.preview,
+    this.route,
+    this.showRouteLine = true,
+  });
 
   final LatLng depot;
   final RoutePreview? preview;
   final SellerRoute? route;
+  final bool showRouteLine;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -751,7 +1414,9 @@ class _RouteMapCard extends ConsumerWidget {
       ),
     };
 
-    final polylinePoints = _polylinePoints(points);
+    final polylinePoints = showRouteLine
+        ? _polylinePoints(points)
+        : const <LatLng>[];
     final mapsConfigured = ref.watch(googleMapsConfiguredProvider);
     return mapsConfigured.when(
       loading: () => const _MapConfigState(
@@ -871,8 +1536,11 @@ class _GoogleRouteMap extends StatelessWidget {
           },
           myLocationButtonEnabled: false,
           mapToolbarEnabled: false,
-          zoomControlsEnabled: false,
-          liteModeEnabled: true,
+          zoomControlsEnabled: true,
+          zoomGesturesEnabled: true,
+          scrollGesturesEnabled: true,
+          rotateGesturesEnabled: true,
+          liteModeEnabled: false,
         ),
       ),
     );
@@ -1007,10 +1675,84 @@ class _PreviewCard extends StatelessWidget {
   }
 }
 
+class _RouteBuildProgress extends StatelessWidget {
+  const _RouteBuildProgress({required this.activeStep});
+
+  final int activeStep;
+
+  @override
+  Widget build(BuildContext context) {
+    const labels = ['Seleccionar', 'Preparar y revisar', 'Crear y compartir'];
+    return Row(
+      children: List.generate(labels.length, (index) {
+        final step = index + 1;
+        final complete = step < activeStep;
+        final active = step == activeStep;
+        final color = complete || active ? AppColors.neniDeep : AppColors.line;
+        return Expanded(
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  if (index > 0)
+                    Expanded(
+                      child: Container(
+                        height: 2,
+                        color: step <= activeStep
+                            ? AppColors.neniDeep
+                            : AppColors.line,
+                      ),
+                    ),
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: active
+                          ? const Color(0xFFFFF5FA)
+                          : AppColors.surface,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: color, width: 2),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      complete ? '✓' : '$step',
+                      style: AppTextStyles.chip.copyWith(color: color),
+                    ),
+                  ),
+                  if (index < labels.length - 1)
+                    Expanded(
+                      child: Container(
+                        height: 2,
+                        color: step < activeStep
+                            ? AppColors.neniDeep
+                            : AppColors.line,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                labels[index],
+                textAlign: TextAlign.center,
+                style: AppTextStyles.subtitle.copyWith(
+                  fontSize: 10,
+                  color: active || complete ? AppColors.ink : AppColors.ink3,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+}
+
 class _BuilderActionBar extends StatelessWidget {
   const _BuilderActionBar({
     required this.selectedCount,
     required this.noCoordsCount,
+    required this.hasPreview,
     required this.previewing,
     required this.saving,
     required this.onPreview,
@@ -1020,6 +1762,7 @@ class _BuilderActionBar extends StatelessWidget {
 
   final int selectedCount;
   final int noCoordsCount;
+  final bool hasPreview;
   final bool previewing;
   final bool saving;
   final VoidCallback? onPreview;
@@ -1062,7 +1805,11 @@ class _BuilderActionBar extends StatelessWidget {
             children: [
               Expanded(
                 child: _SmallActionButton(
-                  label: previewing ? 'Calculando...' : 'Previsualizar',
+                  label: previewing
+                      ? 'Calculando...'
+                      : hasPreview
+                      ? 'Actualizar revisión'
+                      : 'Revisar selección',
                   icon: Symbols.route,
                   onTap: previewing || saving ? null : onPreview,
                 ),
@@ -1070,7 +1817,7 @@ class _BuilderActionBar extends StatelessWidget {
               const SizedBox(width: 9),
               Expanded(
                 child: _SmallActionButton(
-                  label: saving ? 'Guardando...' : 'Guardar ruta',
+                  label: saving ? 'Creando...' : 'Crear y compartir',
                   icon: Symbols.save,
                   filled: true,
                   onTap: previewing || saving ? null : onCreate,
@@ -1162,51 +1909,6 @@ class _DeliveryRow extends StatelessWidget {
             const SizedBox(width: 4),
             _MoveButton(icon: Symbols.keyboard_arrow_down, onTap: onDown),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-class _KpiTile extends StatelessWidget {
-  const _KpiTile({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  final String label;
-  final String value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 70,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.line),
-        boxShadow: AppShadows.small,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            label.toUpperCase(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.eyebrow(AppColors.ink3).copyWith(fontSize: 8),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.h2.copyWith(fontSize: 15, color: color),
-          ),
         ],
       ),
     );

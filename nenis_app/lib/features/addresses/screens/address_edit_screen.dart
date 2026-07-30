@@ -45,6 +45,17 @@ class _AddressEditScreenState extends ConsumerState<AddressEditScreen> {
   Future<void> _save() async {
     final id = int.tryParse(widget.clientId);
     if (id == null) return;
+    final coordinatesError = validateAddressCoordinatesInput(
+      _latCtl.text,
+      _lngCtl.text,
+    );
+    if (coordinatesError != null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(coordinatesError)));
+      return;
+    }
+
     setState(() => _submitting = true);
     try {
       UpdateAddressRequest req;
@@ -56,18 +67,19 @@ class _AddressEditScreenState extends ConsumerState<AddressEditScreen> {
           address: _addressCtl.text.trim().isEmpty
               ? null
               : _addressCtl.text.trim(),
-          latitude: double.tryParse(_latCtl.text.trim()),
-          longitude: double.tryParse(_lngCtl.text.trim()),
+          latitude: parseAddressLatitude(_latCtl.text),
+          longitude: parseAddressLongitude(_lngCtl.text),
           deliveryInstructions: _instrCtl.text.trim().isEmpty
               ? null
               : _instrCtl.text.trim(),
+          clearLatLng: _latCtl.text.trim().isEmpty && _lngCtl.text.trim().isEmpty,
         );
       } else {
         // Con original: solo enviamos lo que cambió (null = no tocar).
         final newAddr = _addressCtl.text.trim();
         final newInstr = _instrCtl.text.trim();
-        final newLat = double.tryParse(_latCtl.text.trim());
-        final newLng = double.tryParse(_lngCtl.text.trim());
+        final newLat = parseAddressLatitude(_latCtl.text);
+        final newLng = parseAddressLongitude(_lngCtl.text);
 
         req = UpdateAddressRequest(
           address: newAddr == (orig.address?.trim() ?? '')
@@ -77,8 +89,9 @@ class _AddressEditScreenState extends ConsumerState<AddressEditScreen> {
           longitude: newLng == orig.longitude ? null : newLng,
           deliveryInstructions:
               newInstr == (orig.deliveryInstructions?.trim() ?? '')
-                  ? null
-                  : (newInstr.isEmpty ? '' : newInstr),
+              ? null
+              : (newInstr.isEmpty ? '' : newInstr),
+          clearLatLng: orig.latitude != null && newLat == null && newLng == null,
         );
       }
       await ref.read(addressesRepositoryProvider).updateAddress(id, req);
@@ -114,9 +127,8 @@ class _AddressEditScreenState extends ConsumerState<AddressEditScreen> {
             ),
             error: (e, _) => _EditError(
               message: e.toString(),
-              onBack: () => context.canPop()
-                  ? context.pop()
-                  : context.go('/addresses'),
+              onBack: () =>
+                  context.canPop() ? context.pop() : context.go('/addresses'),
             ),
             data: (addresses) {
               if (id == null) {
@@ -151,9 +163,8 @@ class _AddressEditScreenState extends ConsumerState<AddressEditScreen> {
                 instrCtl: _instrCtl,
                 submitting: _submitting,
                 onSave: _save,
-                onBack: () => context.canPop()
-                    ? context.pop()
-                    : context.go('/addresses'),
+                onBack: () =>
+                    context.canPop() ? context.pop() : context.go('/addresses'),
               );
             },
           ),
@@ -190,28 +201,41 @@ class _EditForm extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(22, 8, 22, 24),
       children: [
-        Material(
-          color: AppColors.surface,
-          shape: const CircleBorder(),
-          elevation: 2,
-          shadowColor: Colors.black26,
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: onBack,
-            child: const SizedBox(
-              width: 40,
-              height: 40,
-              child: Icon(Symbols.arrow_back, size: 20, color: AppColors.ink),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Material(
+            color: AppColors.surface,
+            shape: const CircleBorder(),
+            elevation: 2,
+            shadowColor: Colors.black26,
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: onBack,
+              child: SizedBox(
+                width: 40,
+                height: 40,
+                child: Icon(
+                  Icons.adaptive.arrow_back,
+                  size: 20,
+                  color: AppColors.ink,
+                ),
+              ),
             ),
           ),
         ),
         const SizedBox(height: 16),
-        Text('Editar dirección',
-            style: AppTextStyles.h1.copyWith(fontSize: 22)),
+        Text(
+          'Editar dirección',
+          style: AppTextStyles.h1.copyWith(fontSize: 22),
+        ),
         const SizedBox(height: 2),
-        Text('Tienda: ${address.businessName}',
-            style: AppTextStyles.subtitle
-                .copyWith(fontSize: 13, color: AppColors.ink2)),
+        Text(
+          'Tienda: ${address.businessName}',
+          style: AppTextStyles.subtitle.copyWith(
+            fontSize: 13,
+            color: AppColors.ink2,
+          ),
+        ),
         const SizedBox(height: 22),
         Container(
           padding: const EdgeInsets.all(12),
@@ -229,9 +253,13 @@ class _EditForm extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(address.businessName,
-                    style: AppTextStyles.body.copyWith(
-                        fontSize: 14.5, fontWeight: FontWeight.w600)),
+                child: Text(
+                  address.businessName,
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ],
           ),
@@ -258,8 +286,10 @@ class _EditForm extends StatelessWidget {
                 label: 'Latitud',
                 controller: latCtl,
                 hint: '27.4861',
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true, signed: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                  signed: true,
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -268,8 +298,10 @@ class _EditForm extends StatelessWidget {
                 label: 'Longitud',
                 controller: lngCtl,
                 hint: '-99.5069',
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true, signed: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                  signed: true,
+                ),
               ),
             ),
           ],
@@ -307,7 +339,11 @@ class _EditError extends StatelessWidget {
           const SizedBox(height: 14),
           Text(message, textAlign: TextAlign.center, style: AppTextStyles.h2),
           const SizedBox(height: 22),
-          PillButton(label: 'Volver', icon: Symbols.arrow_back, onPressed: onBack),
+          PillButton(
+            label: 'Volver',
+            icon: Symbols.arrow_back,
+            onPressed: onBack,
+          ),
         ],
       ),
     );

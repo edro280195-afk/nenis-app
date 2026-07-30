@@ -34,3 +34,46 @@ class ClaimCandidate {
             : null,
       );
 }
+
+/// Desenlace de reclamar un pedido por su token de acceso (camino principal del
+/// deep link). Refleja los estados que el backend devuelve en
+/// `POST /api/client-claims/by-order-token/{token}`.
+enum ClaimByTokenStatus {
+  /// Enlazado (o ya estaba enlazado a esta cuenta: idempotente).
+  linked,
+
+  /// El perfil ya lo reclamó otra cuenta (409).
+  alreadyClaimedByOther,
+
+  /// El pedido/token no existe (404).
+  notFound,
+
+  /// Falta la prueba o la cuenta no puede reclamar (403).
+  noProof,
+  forbidden,
+
+  /// Error transitorio (red / 5xx). Conviene reintentar.
+  error,
+}
+
+/// Resultado tipado de `claimByOrderToken`. `businessName`/`clientName` vienen
+/// del backend cuando el enlace fue exitoso.
+class ClaimByTokenResult {
+  const ClaimByTokenResult({
+    required this.status,
+    this.businessName,
+    this.clientName,
+    this.message,
+  });
+
+  final ClaimByTokenStatus status;
+  final String? businessName;
+  final String? clientName;
+  final String? message;
+
+  bool get isLinked => status == ClaimByTokenStatus.linked;
+
+  /// `true` salvo en errores transitorios: indica que no vale la pena
+  /// reintentar y que el token pendiente ya puede descartarse.
+  bool get isTerminal => status != ClaimByTokenStatus.error;
+}

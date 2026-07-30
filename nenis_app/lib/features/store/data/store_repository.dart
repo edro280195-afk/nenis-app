@@ -72,6 +72,17 @@ class StoreController extends AsyncNotifier<BuyerStoreDetail?> {
     if (id == null) return null;
     return ref.read(storeRepositoryProvider).getStore(id);
   }
+
+  /// Actualiza el detalle ya cargado sin ir a la red (estado optimista de
+  /// `FollowController`: seguir/dejar de seguir, contador de seguidoras).
+  /// No hace nada si todavía no hay datos cargados.
+  void applyLocalUpdate(
+    BuyerStoreDetail Function(BuyerStoreDetail current) transform,
+  ) {
+    final current = state.value;
+    if (current == null) return;
+    state = AsyncData(transform(current));
+  }
 }
 
 final storeControllerProvider =

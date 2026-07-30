@@ -76,6 +76,7 @@ class BuyerRecentOrder {
     required this.itemsCount,
     required this.total,
     required this.createdAt,
+    this.accessToken,
   });
 
   final int orderId;
@@ -86,6 +87,7 @@ class BuyerRecentOrder {
   final int itemsCount;
   final double total;
   final DateTime createdAt;
+  final String? accessToken;
 
   factory BuyerRecentOrder.fromJson(Map<String, dynamic> j) => BuyerRecentOrder(
         orderId: (j['orderId'] as num).toInt(),
@@ -97,6 +99,7 @@ class BuyerRecentOrder {
         total: (j['total'] as num?)?.toDouble() ?? 0,
         createdAt: DateTime.tryParse((j['createdAt'] ?? '') as String) ??
             DateTime.now(),
+        accessToken: j['accessToken'] as String?,
       );
 
   String get initial => businessName.isNotEmpty

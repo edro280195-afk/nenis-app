@@ -84,7 +84,10 @@ class SellerRoutesRepository {
     }
   }
 
-  Future<SellerRoute> createRoute(Iterable<RouteCandidate> candidates) async {
+  Future<CreateRouteResult> createRoute(
+    Iterable<RouteCandidate> candidates,
+    Iterable<RoutePreviewStop> orderedStops,
+  ) async {
     final orderIds = <int>[];
     final tandaIds = <String>[];
     for (final candidate in candidates) {
@@ -93,6 +96,8 @@ class SellerRoutesRepository {
       if (orderId != null) orderIds.add(orderId);
       if (tandaId != null) tandaIds.add(tandaId);
     }
+    final orderedStopIds = orderedStops.toList(growable: false)
+      ..sort((left, right) => left.sortOrder.compareTo(right.sortOrder));
 
     try {
       final res = await _dio.post(
@@ -100,11 +105,13 @@ class SellerRoutesRepository {
         data: {
           'orderIds': orderIds,
           'tandaParticipantIds': tandaIds,
-          'preOptimized': false,
+          'preOptimized': true,
+          'orderedStopIds': orderedStopIds
+              .map((stop) => stop.key)
+              .toList(growable: false),
         },
       );
-      final data = res.data as Map<String, dynamic>;
-      return SellerRoute.fromJson(data['route'] as Map<String, dynamic>);
+      return CreateRouteResult.fromJson(res.data as Map<String, dynamic>);
     } catch (e) {
       throw SellerRoutesException(_friendly(e, 'No pudimos crear la ruta.'));
     }
@@ -133,6 +140,22 @@ class SellerRoutesRepository {
       await _dio.delete('/api/routes/$routeId');
     } catch (e) {
       throw SellerRoutesException(_friendly(e, 'No pudimos eliminar la ruta.'));
+    }
+  }
+
+  Future<void> generatePackages({
+    required int orderId,
+    required int count,
+  }) async {
+    try {
+      await _dio.post(
+        '/api/orders/$orderId/packages/generate',
+        data: {'count': count},
+      );
+    } catch (e) {
+      throw SellerRoutesException(
+        _friendly(e, 'No pudimos crear las bolsas del pedido.'),
+      );
     }
   }
 

@@ -1,65 +1,224 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../storage/credential_storage.dart';
+import '../deeplinks/deep_link_service.dart';
+import '../legal/legal_config.dart';
+import '../notifications/push_service.dart';
 import '../storage/session_storage.dart';
 import 'auth_repository.dart';
 import 'session.dart';
 
-/// Estado de autenticación de la app. `build()` carga la sesión persistida al
-/// arrancar y, si el JWT expiró, intenta un re-login silencioso con las
-/// credenciales guardadas para no pedir acceso en cada apertura.
+/// Estado de autenticación de la app. `build()` carga la sesión persistida y,
+/// si el JWT expiró, la renueva en silencio con el refresh token (ya no se
+/// guarda la contraseña en el dispositivo).
 class AuthController extends AsyncNotifier<Session?> {
-  // Datos del flujo de verificación en curso (registro o confirmación pendiente).
+  // Datos del flujo de verificación en curso.
   String? _pendingPhone;
-  String? _pendingPassword;
   bool _pendingDevMode = false;
+  // Nombre pendiente para el alta passwordless pre-llenada desde el pedido.
+  String? _pendingFirstName;
+  String? _pendingLastName;
+  FacebookAccountType? _pendingAccountType;
+  String? _pendingBusinessName;
+  String? _pendingCity;
+  bool _pendingAcceptedLegal = false;
+  String _pendingLegalVersion = LegalConfig.currentVersion;
 
-  // Datos de Facebook en espera de completar perfil o verificar teléfono.
+  // Datos del Facebook en espera de completar perfil o verificar teléfono.
   FacebookAccessCredential? _pendingFacebookCredential;
-  FacebookAccountType? _pendingFacebookAccountType;
-  String? _pendingFacebookBusinessName;
-  String? _pendingFacebookCity;
+
+  /// Marca que el login passwordless terminó y hay un pedido pendiente por
+  /// deep link que debe "rescatarse" (reclamar). El router la usa para decidir
+  /// a dónde llevar tras autenticar: `/pedido/{token}` (rescate) vs `/home`.
+  bool _needsOrderRescue = false;
 
   /// Teléfono al que se le envió el código de WhatsApp (lo usa la pantalla de
   /// verificación).
   String? get pendingPhone => _pendingPhone;
   bool get pendingDevMode => _pendingDevMode;
+  bool get needsOrderRescue => _needsOrderRescue;
 
   @override
   Future<Session?> build() async {
     final storage = ref.read(sessionStorageProvider);
-    final session = await storage.read();
-
-    if (session != null && !session.isExpired) {
+    // Timeout defensivo: `flutter_secure_storage` puede bloquearse si el
+    // keystore de Android está bloqueado (tras mucho tiempo sin abrir la app
+    // o un reinicio del dispositivo). Sin esto, el `build()` nunca termina y
+    // la app se queda en el splash para siempre. Mejor salir a login.
+    final Session? session;
+    try {
+      session = await storage.read().timeout(const Duration(seconds: 5));
+    } catch (_) {
+      await _safeClear(storage);
+      return null;
+    }
+    if (session == null) return null;
+    if (!session.isExpired) {
+      // Multi-tienda sin negocio activo: autoselecciona el primero y persiste
+      // para que el próximo arranque sea estable (y el header X-Business-Id
+      // se envíe desde el primer hit).
+      if (session.activeBusinessId == null && session.memberships.isNotEmpty) {
+        final normalized = _withDefaultBusiness(session);
+        unawaited(
+          storage
+              .write(normalized)
+              .timeout(const Duration(seconds: 5), onTimeout: () {}),
+        );
+        return normalized;
+      }
       return session;
     }
-    if (session != null && session.isExpired) {
-      await storage.clear();
-    }
+    // JWT expirado: renovar con el refresh token (o limpiar si ya no sirve).
+    return _refreshOrClear(session);
+  }
 
-    // Sin sesión válida: re-login silencioso con las credenciales guardadas.
-    final creds = await ref.read(credentialStorageProvider).read();
-    if (creds == null) return null;
+  Future<Session?> _refreshOrClear(Session stale) async {
+    final storage = ref.read(sessionStorageProvider);
+    final rt = stale.refreshToken;
+    if (rt == null || rt.isEmpty) {
+      await _safeClear(storage);
+      return null;
+    }
     try {
-      final refreshed = await ref
-          .read(authRepositoryProvider)
-          .loginPhone(creds.phone, creds.password);
-      await storage.write(refreshed);
-      return refreshed;
+      final refreshed = await ref.read(authRepositoryProvider).refresh(rt);
+      final normalized = _withDefaultBusiness(refreshed);
+      // El `write` va fire-and-forget con timeout: si el keystore se cuelga,
+      // el `build()` igual retorna y el `state` se setea (evitamos splash
+      // infinito). La sesión vive en memoria; se persiste en background.
+      unawaited(
+        storage
+            .write(normalized)
+            .timeout(const Duration(seconds: 5), onTimeout: () {}),
+      );
+      return normalized;
     } catch (_) {
-      // Credenciales inválidas o teléfono sin confirmar: pedir login manual.
-      await ref.read(credentialStorageProvider).clear();
+      await _safeClear(storage);
       return null;
     }
   }
 
-  /// Paso 1 del registro: crea la cuenta y dispara el código por WhatsApp.
+  Future<void> _safeClear(SessionStorage storage) async {
+    try {
+      await storage.clear().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {},
+      );
+    } catch (_) {
+      // Si ni siquiera podemos borrar, no bloqueamos: el state en null igual
+      // manda a la usuaria a login.
+    }
+  }
+
+  /// Garantiza que la sesión tenga un `activeBusinessId` cuando la cuenta
+  /// tiene memberships. Si tiene varias tiendas y ninguna seleccionada,
+  /// autoselecciona la primera. Sin esto, el header `X-Business-Id` no se
+  /// envía y el backend cae a `DefaultBusinessId = 1`, que puede no
+  /// pertenecer a la vendedora → vería los datos de otro negocio.
+  Session _withDefaultBusiness(Session s) {
+    if (s.activeBusinessId != null) return s;
+    if (s.memberships.isEmpty) return s;
+    return s.copyWith(activeBusinessId: s.memberships.first.businessId);
+  }
+
+  // ── Renovación reactiva (la usa el interceptor Dio ante un 401) ──
+
+  Future<bool>? _refreshing;
+
+  /// Renueva la sesión de forma idempotente ante 401 concurrentes. Devuelve
+  /// `true` si quedó una sesión válida.
+  Future<bool> tryRefresh() =>
+      _refreshing ??= _doRefresh().whenComplete(() => _refreshing = null);
+
+  Future<bool> _doRefresh() async {
+    final rt = state.asData?.value?.refreshToken;
+    if (rt == null || rt.isEmpty) return false;
+    try {
+      final refreshed = await ref.read(authRepositoryProvider).refresh(rt);
+      final normalized = _withDefaultBusiness(refreshed);
+      // El `state` se actualiza síncrono: aunque el storage tarde, la app ya
+      // tiene la sesión nueva en memoria y las llamadas en cola pueden
+      // reintentar. El `write` va con timeout para no colgar el `_refreshing`
+      // compartido (que todas las llamadas 401 esperan).
+      state = AsyncData<Session?>(normalized);
+      unawaited(
+        ref
+            .read(sessionStorageProvider)
+            .write(normalized)
+            .timeout(const Duration(seconds: 5), onTimeout: () {}),
+      );
+      return true;
+    } catch (_) {
+      await _safeClear(ref.read(sessionStorageProvider));
+      state = const AsyncData<Session?>(null);
+      return false;
+    }
+  }
+
+  // ── Passwordless (clienta): teléfono + código, sin contraseña ──
+
+  /// Paso 1: pide el código por WhatsApp y recuerda el teléfono + nombre
+  /// (pre-llenado del pedido) para el paso 2.
+  Future<void> requestPasswordlessOtp(
+    String phone, {
+    String? firstName,
+    String? lastName,
+    bool acceptedLegal = false,
+    String legalVersion = LegalConfig.currentVersion,
+  }) async {
+    final result = await ref
+        .read(authRepositoryProvider)
+        .requestPhoneOtp(phone);
+    _pendingPhone = phone;
+    _pendingFirstName = firstName;
+    _pendingLastName = lastName;
+    _pendingAccountType = FacebookAccountType.client;
+    _pendingBusinessName = null;
+    _pendingCity = null;
+    _pendingAcceptedLegal = acceptedLegal;
+    _pendingLegalVersion = legalVersion;
+    _pendingDevMode = result.devMode;
+  }
+
+  /// Paso 2: valida el código, crea/loguea la cuenta (sin contraseña) y guarda
+  /// la sesión. Si hay un pedido pendiente por deep link, marca
+  /// [needsOrderRescue] para que el router lo lleve a rescatarlo.
+  Future<void> verifyPasswordlessOtp(String code) async {
+    final phone = _pendingPhone;
+    if (phone == null) {
+      throw AuthException('Primero pide un código.');
+    }
+    final session = await ref
+        .read(authRepositoryProvider)
+        .verifyPhoneOtp(
+          phone,
+          code,
+          firstName: _pendingFirstName,
+          lastName: _pendingLastName,
+          acceptedLegal: _pendingAcceptedLegal,
+          legalVersion: _pendingLegalVersion,
+          accountType: _pendingAccountType,
+          businessName: _pendingBusinessName,
+          city: _pendingCity,
+        );
+    _needsOrderRescue = ref.read(pendingDeepLinkProvider) != null;
+    await _apply(session);
+  }
+
+  // ── Registro/login por contraseña (se conserva; ya no guarda la contraseña) ──
+
+  /// Paso 1 del registro con contraseña: crea la cuenta y dispara el código.
   Future<void> registerPhone({
     required String firstName,
     required String lastName,
     required String phone,
     required String email,
     required String password,
+    required FacebookAccountType accountType,
+    required bool acceptedLegal,
+    String legalVersion = LegalConfig.currentVersion,
+    String? businessName,
+    String? city,
   }) async {
     final result = await ref
         .read(authRepositoryProvider)
@@ -69,14 +228,25 @@ class AuthController extends AsyncNotifier<Session?> {
           phone: phone,
           email: email,
           password: password,
+          accountType: accountType,
+          acceptedLegal: acceptedLegal,
+          legalVersion: legalVersion,
+          businessName: businessName,
+          city: city,
         );
     _pendingPhone = phone;
-    _pendingPassword = password;
+    _pendingFirstName = firstName;
+    _pendingLastName = lastName;
+    _pendingAccountType = accountType;
+    _pendingBusinessName = businessName;
+    _pendingCity = city;
+    _pendingAcceptedLegal = acceptedLegal;
+    _pendingLegalVersion = legalVersion;
     _pendingDevMode = result.devMode;
   }
 
   /// Paso 2 del registro (o confirmación de un teléfono pendiente): valida el
-  /// código de WhatsApp, guarda la sesión y las credenciales.
+  /// código de WhatsApp y guarda la sesión.
   Future<void> confirmPhone(String code) async {
     final phone = _pendingPhone;
     if (phone == null) {
@@ -87,11 +257,13 @@ class AuthController extends AsyncNotifier<Session?> {
         .confirmPhone(
           phone,
           code,
-          accountType: _pendingFacebookAccountType,
-          businessName: _pendingFacebookBusinessName,
-          city: _pendingFacebookCity,
+          accountType: _pendingAccountType,
+          businessName: _pendingBusinessName,
+          city: _pendingCity,
+          acceptedLegal: _pendingAcceptedLegal,
+          legalVersion: _pendingLegalVersion,
         );
-    await _persist(session, phone: phone, password: _pendingPassword);
+    await _apply(session);
   }
 
   /// Acceso con teléfono + contraseña. Si el teléfono no está confirmado, lanza
@@ -101,11 +273,15 @@ class AuthController extends AsyncNotifier<Session?> {
       final session = await ref
           .read(authRepositoryProvider)
           .loginPhone(phone, password);
-      await _persist(session, phone: phone, password: password);
+      await _apply(session);
     } on PhoneNotVerifiedException {
       _pendingPhone = phone;
-      _pendingPassword = password;
       _pendingDevMode = false;
+      _pendingAccountType = null;
+      _pendingBusinessName = null;
+      _pendingCity = null;
+      _pendingAcceptedLegal = false;
+      _pendingLegalVersion = LegalConfig.currentVersion;
       rethrow;
     }
   }
@@ -118,15 +294,12 @@ class AuthController extends AsyncNotifier<Session?> {
     _pendingDevMode = result.devMode;
   }
 
-  /// Acceso de vendedora con correo y contraseña. No guarda credenciales para
-  /// re-login automático.
+  /// Acceso de vendedora con correo y contraseña.
   Future<void> loginEmail(String email, String password) async {
     final session = await ref
         .read(authRepositoryProvider)
         .loginEmail(email, password);
-    await ref.read(sessionStorageProvider).write(session);
-    _clearPending();
-    state = AsyncData<Session?>(session);
+    await _apply(session);
   }
 
   /// Acceso con Facebook para clientas o vendedoras. Una cuenta vinculada y
@@ -135,12 +308,18 @@ class AuthController extends AsyncNotifier<Session?> {
     final repo = ref.read(authRepositoryProvider);
     final credential = await repo.facebookAccessToken();
     _pendingFacebookCredential = credential;
-    _pendingFacebookAccountType = accountType;
-    final session = await repo.facebookLogin(
-      credential,
-      accountType: accountType,
-    );
-    await _persistSocial(session);
+    _pendingAccountType = accountType;
+    try {
+      final session = await repo.facebookLogin(
+        credential,
+        accountType: accountType,
+      );
+      await _apply(session);
+    } on FacebookTerminalConflictException {
+      _pendingFacebookCredential = null;
+      await repo.facebookLogout();
+      rethrow;
+    }
   }
 
   /// Completa una cuenta nueva o vincula una existente con Facebook. Si falta
@@ -152,29 +331,77 @@ class AuthController extends AsyncNotifier<Session?> {
     if (credential == null) {
       throw AuthException('Vuelve a intentar con Facebook.');
     }
-    _pendingFacebookAccountType = profile.accountType;
-    _pendingFacebookBusinessName = profile.businessName;
-    _pendingFacebookCity = profile.city;
+    _pendingAccountType = profile.accountType;
+    _pendingBusinessName = profile.businessName;
+    _pendingCity = profile.city;
+    _pendingAcceptedLegal = profile.acceptedLegal;
+    _pendingLegalVersion = profile.legalVersion;
 
     try {
       final session = await ref
           .read(authRepositoryProvider)
           .completeFacebookProfile(credential, profile);
-      await _persistSocial(session);
+      await _apply(session);
     } on FacebookPhoneVerificationRequiredException catch (e) {
       _pendingPhone = e.phone;
-      _pendingPassword = null;
       _pendingDevMode = e.devMode;
+      rethrow;
+    } on FacebookTerminalConflictException {
+      _pendingFacebookCredential = null;
+      await ref.read(authRepositoryProvider).facebookLogout();
       rethrow;
     }
   }
 
   Future<void> logout() async {
-    await ref.read(authRepositoryProvider).facebookLogout();
-    await ref.read(sessionStorageProvider).clear();
-    await ref.read(credentialStorageProvider).clear();
+    // 1. Capturamos lo necesario ANTES de tocar el estado.
+    final rt = state.asData?.value?.refreshToken;
+    final repo = ref.read(authRepositoryProvider);
+    final push = ref.read(pushServiceProvider);
+    final storage = ref.read(sessionStorageProvider);
+
+    // 2. Logout LOCAL inmediato e incondicional: limpiamos estado pendiente,
+    //    storage y `state`. Esto dispara el redirect a /login al instante, sin
+    //    esperar a Firebase ni al backend. Si la red está caída o Firebase no
+    //    responde, la usuaria sale igual. El `state = null` es lo que importa.
     _clearPending();
     state = const AsyncData<Session?>(null);
+    await _safeClear(storage);
+
+    // 3. Cleanup del backend "fire and forget": revocar el refresh token,
+    //    desregistrar el push y cerrar Facebook. Ninguno debe bloquear el
+    //    logout (ya ocurrió) ni fallar de forma visible. El timeout protege
+    //    contra `FirebaseMessaging.getToken()`, que no tiene timeout propio y
+    //    puede colgarse indefinidamente.
+    unawaited(_cleanupAfterLogout(repo: repo, push: push, refreshToken: rt));
+  }
+
+  Future<void> _cleanupAfterLogout({
+    required AuthRepository repo,
+    required PushService push,
+    required String? refreshToken,
+  }) async {
+    try {
+      await Future.any([
+        _doCleanup(repo: repo, push: push, refreshToken: refreshToken),
+        Future<void>.delayed(const Duration(seconds: 8)),
+      ]);
+    } catch (_) {
+      // Silencioso: el logout local ya ocurrió.
+    }
+  }
+
+  Future<void> _doCleanup({
+    required AuthRepository repo,
+    required PushService push,
+    required String? refreshToken,
+  }) async {
+    await Future.wait([
+      if (refreshToken != null && refreshToken.isNotEmpty)
+        repo.revokeRefreshToken(refreshToken),
+      push.unregisterCurrentToken(),
+      repo.facebookLogout(),
+    ]);
   }
 
   void setActiveBusiness(int businessId) {
@@ -185,37 +412,37 @@ class AuthController extends AsyncNotifier<Session?> {
     ref.read(sessionStorageProvider).write(updated);
   }
 
-  Future<void> _persist(
-    Session session, {
-    required String phone,
-    String? password,
-  }) async {
-    await ref.read(sessionStorageProvider).write(session);
-    if (password != null && password.isNotEmpty) {
-      await ref
-          .read(credentialStorageProvider)
-          .write(SavedCredentials(phone: phone, password: password));
-    }
+  /// Guarda la sesión (con su refresh token) y limpia el estado pendiente.
+  Future<void> _apply(Session session) async {
+    final normalized = _withDefaultBusiness(session);
     _clearPending();
-    state = AsyncData<Session?>(session);
-  }
-
-  /// Guarda la sesión de un login social (Facebook). No persiste credenciales
-  /// de teléfono/contraseña porque el acceso no las usa.
-  Future<void> _persistSocial(Session session) async {
-    await ref.read(sessionStorageProvider).write(session);
-    _clearPending();
-    state = AsyncData<Session?>(session);
+    // El `state` se setea síncrono para que el router redirija a /home al
+    // instante. El persistir en storage va en background con timeout: si el
+    // keystore se cuelga, no bloqueamos el login (la sesión vive en memoria).
+    state = AsyncData<Session?>(normalized);
+    unawaited(
+      ref
+          .read(sessionStorageProvider)
+          .write(normalized)
+          .timeout(const Duration(seconds: 5), onTimeout: () {}),
+    );
+    // Best-effort: registra el token de push de este dispositivo para la
+    // cuenta recién autenticada. Nunca debe tumbar el login.
+    unawaited(ref.read(pushServiceProvider).registerCurrentToken());
   }
 
   void _clearPending() {
     _pendingPhone = null;
-    _pendingPassword = null;
+    _pendingFirstName = null;
+    _pendingLastName = null;
+    _pendingAccountType = null;
+    _pendingBusinessName = null;
+    _pendingCity = null;
+    _pendingAcceptedLegal = false;
+    _pendingLegalVersion = LegalConfig.currentVersion;
     _pendingDevMode = false;
+    _needsOrderRescue = false;
     _pendingFacebookCredential = null;
-    _pendingFacebookAccountType = null;
-    _pendingFacebookBusinessName = null;
-    _pendingFacebookCity = null;
   }
 }
 

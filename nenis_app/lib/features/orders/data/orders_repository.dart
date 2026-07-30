@@ -127,6 +127,6 @@ class OrdersController extends AsyncNotifier<BuyerOrdersPage> {
 }
 
 final ordersControllerProvider =
-    AsyncNotifierProvider<OrdersController, BuyerOrdersPage>(
+    AsyncNotifierProvider.autoDispose<OrdersController, BuyerOrdersPage>(
   OrdersController.new,
 );

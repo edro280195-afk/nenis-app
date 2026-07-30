@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +5,7 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/auth/auth_controller.dart';
 import '../../../core/auth/auth_repository.dart';
+import '../../../core/legal/legal_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
@@ -15,7 +14,9 @@ import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/nenis_logo.dart';
 import '../../../shared/widgets/password_field.dart';
+import '../../../shared/widgets/shake_widget.dart';
 import '../widgets/auth_feedback.dart';
+import '../widgets/legal_acceptance.dart';
 
 enum LoginRole { client, seller }
 
@@ -235,10 +236,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           gradient: RadialGradient(
             center: const Alignment(0.0, -1.0),
             radius: 1.0,
-            colors: [
-              gradientColor,
-              AppColors.surfaceCream,
-            ],
+            colors: [gradientColor, AppColors.surfaceCream],
             stops: const [0.0, 1.0],
           ),
         ),
@@ -366,8 +364,12 @@ class _LoginIntro extends StatelessWidget {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        isClient ? const Color(0xFFFFE5EE) : const Color(0xFFF2ECFF),
-                        isClient ? const Color(0xFFFFD0E2) : const Color(0xFFE6DCFF),
+                        isClient
+                            ? const Color(0xFFFFE5EE)
+                            : const Color(0xFFF2ECFF),
+                        isClient
+                            ? const Color(0xFFFFD0E2)
+                            : const Color(0xFFE6DCFF),
                       ],
                     ),
                     border: Border.all(color: Colors.white.withAlpha(200)),
@@ -398,8 +400,11 @@ class _LoginIntro extends StatelessWidget {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: (isClient ? const Color(0xFFE84E83) : const Color(0xFF7450A8))
-                            .withAlpha(128),
+                        color:
+                            (isClient
+                                    ? const Color(0xFFE84E83)
+                                    : const Color(0xFF7450A8))
+                                .withAlpha(128),
                         offset: const Offset(0, 10),
                         blurRadius: 20,
                         spreadRadius: -4,
@@ -410,10 +415,7 @@ class _LoginIntro extends StatelessWidget {
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 250),
                     transitionBuilder: (child, animation) {
-                      return ScaleTransition(
-                        scale: animation,
-                        child: child,
-                      );
+                      return ScaleTransition(scale: animation, child: child);
                     },
                     child: Icon(
                       isClient ? Symbols.shopping_bag : Symbols.storefront,
@@ -431,7 +433,9 @@ class _LoginIntro extends StatelessWidget {
                   right: 35,
                   child: Icon(
                     Symbols.star,
-                    color: isClient ? const Color(0xFFF3B341) : const Color(0xFFFFB703),
+                    color: isClient
+                        ? const Color(0xFFF3B341)
+                        : const Color(0xFFFFB703),
                     size: 20,
                     fill: 1.0,
                   ),
@@ -441,7 +445,9 @@ class _LoginIntro extends StatelessWidget {
                   left: 35,
                   child: Icon(
                     Symbols.star,
-                    color: isClient ? const Color(0xFF9B7BE0) : const Color(0xFFFF6F9C),
+                    color: isClient
+                        ? const Color(0xFF9B7BE0)
+                        : const Color(0xFFFF6F9C),
                     size: 16,
                     fill: 1.0,
                   ),
@@ -572,10 +578,7 @@ class _AuthSurface extends StatelessWidget {
                     begin: const Offset(0.15, 0.0),
                     end: Offset.zero,
                   ).animate(animation),
-                  child: FadeTransition(
-                    opacity: animation,
-                    child: child,
-                  ),
+                  child: FadeTransition(opacity: animation, child: child),
                 );
               },
               child: role == LoginRole.client
@@ -603,14 +606,7 @@ class _AuthSurface extends StatelessWidget {
                     ),
             ),
             const SizedBox(height: 18),
-            Text(
-              'Al continuar aceptas los Términos y el Aviso de privacidad.',
-              textAlign: TextAlign.center,
-              style: AppTextStyles.subtitle.copyWith(
-                fontSize: 10.5,
-                color: AppColors.ink3,
-              ),
-            ),
+            const LegalLinksCaption(),
           ],
         ),
       ),
@@ -786,7 +782,7 @@ class _ClientLoginForm extends StatelessWidget {
           key: const Key('client-phone-field'),
           controller: phone,
           label: 'Teléfono',
-          prefix: '+52',
+          prefix: '🇲🇽 +52',
           hint: '868 145 22 90',
           keyboardType: TextInputType.phone,
           textInputAction: TextInputAction.next,
@@ -826,7 +822,9 @@ class _ClientLoginForm extends StatelessWidget {
         const SizedBox(height: 13),
         Center(
           child: TextButton(
-            onPressed: loading ? null : () => context.go('/register'),
+            onPressed: loading
+                ? null
+                : () => context.go('/register?role=client'),
             style: TextButton.styleFrom(
               foregroundColor: AppColors.neniDeep,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -838,6 +836,33 @@ class _ClientLoginForm extends StatelessWidget {
                 children: [
                   TextSpan(
                     text: 'Crea tu cuenta',
+                    style: AppTextStyles.subtitle.copyWith(
+                      color: AppColors.neniDeep,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 13),
+        // Login passwordless (telefono + codigo, sin contrasena).
+        Center(
+          child: TextButton(
+            onPressed: loading ? null : () => context.go('/login-otp'),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.neniDeep,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            child: Text.rich(
+              TextSpan(
+                text: '¿Sin contraseña? ',
+                style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+                children: [
+                  TextSpan(
+                    text: 'Entrar con código',
                     style: AppTextStyles.subtitle.copyWith(
                       color: AppColors.neniDeep,
                       fontSize: 12.5,
@@ -939,6 +964,36 @@ class _SellerLoginForm extends StatelessWidget {
           loading: loading,
           onPressed: loading ? null : onContinue,
         ),
+        const SizedBox(height: 12),
+        Center(
+          child: TextButton(
+            key: const Key('seller-register-link'),
+            onPressed: loading
+                ? null
+                : () => context.go('/register?role=seller'),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF7450A8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            child: Text.rich(
+              TextSpan(
+                text: 'Aun no tienes tienda? ',
+                style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+                children: [
+                  TextSpan(
+                    text: 'Crea tu cuenta de vendedora',
+                    style: AppTextStyles.subtitle.copyWith(
+                      color: const Color(0xFF7450A8),
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(13),
@@ -1000,8 +1055,10 @@ class _FacebookProfileSheetState extends ConsumerState<_FacebookProfileSheet> {
   late final TextEditingController _existingPassword;
 
   late bool _requiresExistingPassword;
+  bool _acceptedLegal = false;
   bool _saving = false;
   String? _error;
+  FacebookTerminalConflictException? _terminalConflict;
 
   bool get _isSeller => widget.draft.accountType == FacebookAccountType.seller;
 
@@ -1061,6 +1118,13 @@ class _FacebookProfileSheetState extends ConsumerState<_FacebookProfileSheet> {
       setState(() => _error = 'Escribe la contraseña actual de tu cuenta.');
       return;
     }
+    if (!_acceptedLegal) {
+      setState(
+        () => _error =
+            'Acepta los Terminos y el Aviso de privacidad para continuar.',
+      );
+      return;
+    }
 
     setState(() {
       _saving = true;
@@ -1076,6 +1140,8 @@ class _FacebookProfileSheetState extends ConsumerState<_FacebookProfileSheet> {
       businessName: _isSeller ? businessName : null,
       city: _isSeller && city.isNotEmpty ? city : null,
       existingPassword: _requiresExistingPassword ? existingPassword : null,
+      acceptedLegal: _acceptedLegal,
+      legalVersion: LegalConfig.currentVersion,
     );
 
     try {
@@ -1091,6 +1157,13 @@ class _FacebookProfileSheetState extends ConsumerState<_FacebookProfileSheet> {
         _saving = false;
         _requiresExistingPassword = error.requiresExistingPassword;
         _error = error.message;
+      });
+    } on FacebookTerminalConflictException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = null;
+        _terminalConflict = error;
       });
     } on AuthException catch (error) {
       if (!mounted) return;
@@ -1112,6 +1185,14 @@ class _FacebookProfileSheetState extends ConsumerState<_FacebookProfileSheet> {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final role = _isSeller ? LoginRole.seller : LoginRole.client;
     final accent = _isSeller ? const Color(0xFF7450A8) : AppColors.neniDeep;
+    final terminalConflict = _terminalConflict;
+    if (terminalConflict != null) {
+      return _FacebookTerminalConflictView(
+        conflict: terminalConflict,
+        role: role,
+        onClose: () => Navigator.of(context).pop(false),
+      );
+    }
 
     return SafeArea(
       top: false,
@@ -1205,7 +1286,7 @@ class _FacebookProfileSheetState extends ConsumerState<_FacebookProfileSheet> {
                   key: const Key('facebook-phone-field'),
                   controller: _phone,
                   label: 'Teléfono',
-                  prefix: '+52',
+                  prefix: '🇲🇽 +52',
                   hint: '868 145 22 90',
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.next,
@@ -1278,6 +1359,16 @@ class _FacebookProfileSheetState extends ConsumerState<_FacebookProfileSheet> {
                     ),
                   ),
                 ],
+                const SizedBox(height: 16),
+                LegalAcceptanceCheckbox(
+                  key: const Key('facebook-legal-checkbox'),
+                  value: _acceptedLegal,
+                  enabled: !_saving,
+                  onChanged: (value) => setState(() {
+                    _acceptedLegal = value;
+                    if (value) _error = null;
+                  }),
+                ),
                 if (_error != null) ...[
                   const SizedBox(height: 14),
                   AuthFeedbackBanner(
@@ -1303,6 +1394,90 @@ class _FacebookProfileSheetState extends ConsumerState<_FacebookProfileSheet> {
                     color: AppColors.ink3,
                     fontSize: 10.5,
                   ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FacebookTerminalConflictView extends StatelessWidget {
+  const _FacebookTerminalConflictView({
+    required this.conflict,
+    required this.role,
+    required this.onClose,
+  });
+
+  final FacebookTerminalConflictException conflict;
+  final LoginRole role;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final accent = role == LoginRole.seller
+        ? const Color(0xFF7450A8)
+        : AppColors.neniDeep;
+
+    return SafeArea(
+      key: const Key('facebook-terminal-conflict'),
+      top: false,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(22, 14, 22, bottomInset + 22),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.88,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Center(child: _SheetHandle()),
+                const SizedBox(height: 24),
+                Align(
+                  child: Container(
+                    width: 68,
+                    height: 68,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(Symbols.shield_lock, color: accent, size: 34),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'No pudimos vincular las cuentas',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.h1.copyWith(fontSize: 22),
+                ),
+                const SizedBox(height: 12),
+                AuthFeedbackBanner(
+                  key: const Key('facebook-terminal-message'),
+                  message: conflict.message,
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Este caso no se resuelve cambiando los datos del formulario. Vuelve al inicio e ingresa con tu teléfono o correo.',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.subtitle.copyWith(
+                    color: AppColors.ink2,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                _PrimaryAction(
+                  key: const Key('facebook-terminal-close'),
+                  label: 'Volver al inicio de sesión',
+                  icon: Symbols.login,
+                  role: role,
+                  loading: false,
+                  onPressed: onClose,
                 ),
               ],
             ),
@@ -1363,6 +1538,7 @@ class _RoleHeading extends StatelessWidget {
 
 class _PrimaryAction extends StatelessWidget {
   const _PrimaryAction({
+    super.key,
     required this.label,
     required this.icon,
     required this.role,
@@ -1531,59 +1707,6 @@ class _SheetHandle extends StatelessWidget {
         color: AppColors.line,
         borderRadius: AppRadii.pillRadius,
       ),
-    );
-  }
-}
-
-class ShakeWidget extends StatefulWidget {
-  const ShakeWidget({
-    required this.child,
-    super.key,
-  });
-
-  final Widget child;
-
-  @override
-  State<ShakeWidget> createState() => ShakeWidgetState();
-}
-
-class ShakeWidgetState extends State<ShakeWidget>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 400),
-      vsync: this,
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void shake() {
-    _controller.forward(from: 0.0);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        final double translation = 16.0 *
-            math.sin(_controller.value * 4 * math.pi) *
-            (1.0 - _controller.value);
-
-        return Transform.translate(
-          offset: Offset(translation, 0),
-          child: widget.child,
-        );
-      },
     );
   }
 }

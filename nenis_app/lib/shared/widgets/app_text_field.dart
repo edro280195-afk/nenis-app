@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../core/theme/app_colors.dart';
@@ -23,6 +24,7 @@ class AppTextField extends StatelessWidget {
     this.autocorrect = true,
     this.enableSuggestions = true,
     this.maxLines = 1,
+    this.inputFormatters,
     this.onChanged,
     this.onSubmitted,
   });
@@ -41,6 +43,7 @@ class AppTextField extends StatelessWidget {
   final bool autocorrect;
   final bool enableSuggestions;
   final int maxLines;
+  final List<TextInputFormatter>? inputFormatters;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
 
@@ -73,6 +76,7 @@ class AppTextField extends StatelessWidget {
               autocorrect: autocorrect,
               enableSuggestions: enableSuggestions,
               maxLines: maxLines,
+              inputFormatters: inputFormatters,
               onChanged: onChanged,
               onSubmitted: onSubmitted,
               style: AppTextStyles.input,
@@ -110,6 +114,7 @@ class AppTextField extends StatelessWidget {
                     obscureText: obscureText,
                     autocorrect: autocorrect,
                     enableSuggestions: enableSuggestions,
+                    inputFormatters: inputFormatters,
                     onChanged: onChanged,
                     onSubmitted: onSubmitted,
                     style: AppTextStyles.input,

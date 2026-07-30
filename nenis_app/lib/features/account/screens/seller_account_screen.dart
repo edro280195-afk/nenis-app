@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/auth/auth_controller.dart';
+import '../../../core/auth/session.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
-import '../../../shared/widgets/glass_bottom_nav.dart';
 import '../../../shared/widgets/pill_button.dart';
+import '../data/seller_settings_models.dart';
+import '../data/seller_settings_repository.dart';
 
 class SellerAccountScreen extends ConsumerWidget {
   const SellerAccountScreen({super.key});
@@ -16,177 +20,134 @@ class SellerAccountScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(authControllerProvider).value;
+    final businessName = _businessNameFor(session);
+    final sellerName = _sellerNameFor(session);
+    final roleLabel = _roleLabelFor(session);
+    final canManageStoreEngagement = session?.canManageStoreEngagement ?? false;
+    final initial = businessName.isEmpty
+        ? 'N'
+        : businessName.characters.first.toUpperCase();
+
+    final accountsAsync = ref.watch(sellerPayoutAccountsProvider);
+    final mercadoPagoAsync = ref.watch(sellerPaymentSettingsProvider);
+    final businessSettingsAsync = ref.watch(sellerBusinessSettingsProvider);
+    final accountCount = accountsAsync.maybeWhen(
+      data: (accounts) => accounts.length,
+      orElse: () => 0,
+    );
+    final mercadoPagoReady =
+        mercadoPagoAsync.asData?.value.isConfigured ?? false;
+    final paymentReadyCount =
+        (accountCount > 0 ? 1 : 0) + (mercadoPagoReady ? 1 : 0);
+    final paymentSubtitle = _paymentSubtitle(accountCount, mercadoPagoReady);
+    final subscription = businessSettingsAsync.value?.subscription;
+    final planSubtitle = _planSubtitle(subscription);
 
     return Scaffold(
       backgroundColor: AppColors.surfaceCream,
       body: NeniBackground(
         child: SafeArea(
           bottom: false,
-          child: Stack(
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(22, 4, 22, 28),
             children: [
-              ListView(
-                padding: const EdgeInsets.fromLTRB(22, 4, 22, 110),
-                children: [
-                  // Header
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Mi Negocio',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 26,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.ink,
-                          letterSpacing: -0.4,
-                        ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Configura la información pública y ajustes de tu negocio.',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.ink2,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 22),
-
-                  // Business profile details card
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: AppRadii.softRadius,
-                      boxShadow: AppShadows.small,
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 54,
-                          height: 54,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [AppColors.neni, Color(0xFFF3B341)],
-                            ),
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          alignment: Alignment.center,
-                          child: const Text(
-                            'R',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Regi Bazar',
-                                style: TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.ink,
-                                ),
-                              ),
-                              Text(
-                                session != null
-                                    ? '${session.displayName.toLowerCase().replaceAll(' ', '')}@hotmail.com'
-                                    : 'yazmin_vara@hotmail.com',
-                                style: const TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 12,
-                                  color: AppColors.ink2,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFCECD2),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: const Text(
-                                  'PLAN ELITE 💎',
-                                  style: TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.statusPendingFg,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 22),
-
-                  // Menu Actions
-                  const Text(
-                    'HERRAMIENTAS DE VENDEDORA',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.ink3,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: AppRadii.softRadius,
-                      boxShadow: AppShadows.small,
-                    ),
-                    child: Column(
-                      children: [
-                        _buildMenuRow(Symbols.storefront, 'Perfil de la tienda', 'Colores, logo, dirección pública'),
-                        const Divider(height: 1, color: AppColors.lineSoft),
-                        _buildMenuRow(Symbols.payments, 'Métodos de pago', 'Mercado Pago link, Transferencias'),
-                        const Divider(height: 1, color: AppColors.lineSoft),
-                        _buildMenuRow(Symbols.groups, 'Equipo de reparto', 'Administra a tus choferes autorizados'),
-                        const Divider(height: 1, color: AppColors.lineSoft),
-                        _buildMenuRow(Symbols.settings, 'Preferencias generales', 'Notificaciones de ventas, alertas'),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 22),
-
-                  // Sign Out Button
-                  PillButton(
-                    label: 'Cerrar Sesión',
-                    icon: Symbols.logout,
-                    variant: PillButtonVariant.ghost,
-                    onPressed: () {
-                      ref.read(authControllerProvider.notifier).logout();
-                    },
-                  ),
-                ],
+              _SellerHeader(
+                title: 'Mi negocio',
+                subtitle: 'Configura tu tienda y lo que ven tus clientas.',
               ),
-              
-              // Bottom Nav
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: GlassBottomNav(
-                  items: buildSellerNavItems(),
-                  currentRoute: '/account',
-                ),
+              const SizedBox(height: 22),
+              _SellerHeroCard(
+                initial: initial,
+                businessName: businessName,
+                sellerName: sellerName,
+                roleLabel: roleLabel,
+                paymentStatus: 'Cobros $paymentReadyCount/2 listos',
+              ),
+              const SizedBox(height: 22),
+              const _SectionLabel(
+                title: 'Prioridad de hoy',
+                subtitle: 'Lo que más afecta ventas y seguimiento.',
+              ),
+              const SizedBox(height: 10),
+              _SellerMenuTile(
+                icon: Symbols.workspace_premium,
+                title: 'Mi plan',
+                subtitle: planSubtitle,
+                badge: subscription?.isLocked == true ? 'Bloqueada' : null,
+                highlighted: subscription?.isLocked == true,
+                onTap: () => context.push('/seller/plan'),
+              ),
+              const SizedBox(height: 10),
+              _SellerMenuTile(
+                icon: Symbols.payments,
+                title: 'Cuentas de cobro',
+                subtitle: paymentSubtitle,
+                badge: accountCount == 0 ? 'Agregar' : 'Revisar',
+                highlighted: true,
+                onTap: () => context.push('/seller/settings/payments'),
+              ),
+              const SizedBox(height: 12),
+              const _SectionTitle(label: 'Herramientas de vendedora'),
+              const SizedBox(height: 10),
+              _SellerMenuTile(
+                icon: Symbols.storefront,
+                title: 'Perfil de tienda',
+                subtitle: 'Nombre, colores y enlace público.',
+                onTap: () => context.push('/seller/settings/profile'),
+              ),
+              const SizedBox(height: 10),
+              _SellerMenuTile(
+                icon: Symbols.campaign,
+                title: 'Novedades y vivo',
+                subtitle: canManageStoreEngagement
+                    ? 'Publica actualizaciones y avisa cuando estés en vivo.'
+                    : 'Solo disponible para dueña y administradoras.',
+                badge: canManageStoreEngagement ? null : 'Sin permiso',
+                onTap: canManageStoreEngagement
+                    ? () => context.push('/seller/updates')
+                    : null,
+              ),
+              const SizedBox(height: 10),
+              _SellerMenuTile(
+                icon: Symbols.sensors,
+                title: 'Anunciar en vivo',
+                subtitle:
+                    'Toca un producto mientras transmites y aparece al instante en la app.',
+                onTap: () => context.push('/seller/live'),
+              ),
+              const SizedBox(height: 10),
+              _SellerMenuTile(
+                icon: Symbols.workspace_premium,
+                title: 'Grupo VIP',
+                subtitle: canManageStoreEngagement
+                    ? 'Elige a tus seguidoras favoritas para novedades exclusivas.'
+                    : 'Solo disponible para dueña y administradoras.',
+                badge: canManageStoreEngagement ? null : 'Sin permiso',
+                onTap: canManageStoreEngagement
+                    ? () => context.push('/seller/vip')
+                    : null,
+              ),
+              const SizedBox(height: 10),
+              _SellerMenuTile(
+                icon: Symbols.groups,
+                title: 'Equipo de reparto',
+                subtitle: 'Permisos del chofer y mensajes de ruta.',
+                onTap: () => context.push('/seller/settings/team'),
+              ),
+              const SizedBox(height: 10),
+              _SellerMenuTile(
+                icon: Symbols.tune,
+                title: 'Preferencias',
+                subtitle: 'Alertas, mensajes y operación diaria.',
+                onTap: () => context.push('/seller/settings/preferences'),
+              ),
+              const SizedBox(height: 22),
+              PillButton(
+                label: 'Cerrar sesión',
+                icon: Symbols.logout,
+                variant: PillButtonVariant.ghost,
+                onPressed: () => _confirmLogout(context, ref),
               ),
             ],
           ),
@@ -195,43 +156,420 @@ class SellerAccountScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildMenuRow(IconData icon, String title, String subtitle) {
-    return InkWell(
-      onTap: () {},
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            Icon(icon, size: 22, color: AppColors.neniDeep),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.ink,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 11,
-                      color: AppColors.ink2,
-                    ),
-                  ),
-                ],
+  String _businessNameFor(Session? session) {
+    if (session == null || session.memberships.isEmpty) return 'Mi negocio';
+    final activeBusinessId = session.activeBusinessId;
+    for (final membership in session.memberships) {
+      if (membership.businessId == activeBusinessId &&
+          membership.businessName.trim().isNotEmpty) {
+        return membership.businessName.trim();
+      }
+    }
+    final firstName = session.memberships.first.businessName.trim();
+    return firstName.isEmpty ? 'Mi negocio' : firstName;
+  }
+
+  String _sellerNameFor(Session? session) {
+    final name = session?.displayName.trim() ?? '';
+    return name.isEmpty ? 'Cuenta vendedora' : name;
+  }
+
+  String _roleLabelFor(Session? session) {
+    final activeBusinessId = session?.activeBusinessId;
+    for (final membership in session?.memberships ?? const <Membership>[]) {
+      if (membership.businessId == activeBusinessId &&
+          membership.role.trim().isNotEmpty) {
+        return membership.role.trim().toUpperCase();
+      }
+    }
+    return 'CUENTA VENDEDORA';
+  }
+
+  String _planSubtitle(SellerSubscriptionSettings? subscription) {
+    if (subscription == null) return 'Cargando tu plan...';
+    if (subscription.isLocked) {
+      return 'Elige un plan para seguir usando tu tienda.';
+    }
+    if (subscription.subscriptionStatus == 'Trialing') {
+      return 'Prueba ${subscription.effectivePlan} · ${subscription.daysLeft} días restantes.';
+    }
+    return 'Plan ${subscription.effectivePlan} activo.';
+  }
+
+  Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text('¿Cerrar sesión?'),
+        content: const Text(
+          'Tendrás que volver a iniciar sesión para entrar a tu negocio.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Cerrar sesión',
+              style: TextStyle(
+                color: AppColors.neniDeep,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            const Icon(Symbols.chevron_right, size: 18, color: AppColors.ink3),
-          ],
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await ref.read(authControllerProvider.notifier).logout();
+  }
+}
+
+class _SellerHeader extends StatelessWidget {
+  const _SellerHeader({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: AppTextStyles.h1.copyWith(fontSize: 26)),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          width: 44,
+          height: 44,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.line),
+            boxShadow: AppShadows.small,
+          ),
+          child: const Icon(
+            Symbols.notifications,
+            size: 22,
+            color: AppColors.ink,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SellerHeroCard extends StatelessWidget {
+  const _SellerHeroCard({
+    required this.initial,
+    required this.businessName,
+    required this.sellerName,
+    required this.roleLabel,
+    required this.paymentStatus,
+  });
+
+  final String initial;
+  final String businessName;
+  final String sellerName;
+  final String roleLabel;
+  final String paymentStatus;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: AppRadii.cardRadius,
+        boxShadow: AppShadows.card,
+        gradient: const LinearGradient(
+          colors: [AppColors.neniDeep, AppColors.neni, AppColors.gold],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 62,
+                height: 62,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.55),
+                    width: 2,
+                  ),
+                ),
+                child: Text(
+                  initial,
+                  style: AppTextStyles.h1.copyWith(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      businessName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.h2.copyWith(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '$sellerName · $roleLabel',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.subtitle.copyWith(
+                        color: Colors.white.withValues(alpha: 0.86),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              const _HeroPill(icon: Symbols.storefront, label: 'Tienda activa'),
+              _HeroPill(icon: Symbols.payments, label: paymentStatus),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroPill extends StatelessWidget {
+  const _HeroPill({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: Colors.white),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: AppTextStyles.chip.copyWith(
+              color: Colors.white,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: AppTextStyles.h2.copyWith(fontSize: 17)),
+        const SizedBox(height: 2),
+        Text(subtitle, style: AppTextStyles.subtitle.copyWith(fontSize: 12.5)),
+      ],
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label.toUpperCase(),
+      style: AppTextStyles.eyebrow(
+        AppColors.neniDeep,
+      ).copyWith(letterSpacing: 1.0),
+    );
+  }
+}
+
+class _SellerMenuTile extends StatelessWidget {
+  const _SellerMenuTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.onTap,
+    this.badge,
+    this.highlighted = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback? onTap;
+  final String? badge;
+  final bool highlighted;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return Opacity(
+      opacity: enabled ? 1 : 0.68,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(22),
+          child: Ink(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: highlighted ? const Color(0xFFF7FAFF) : AppColors.surface,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: highlighted
+                    ? AppColors.statusRouteFg.withValues(alpha: 0.2)
+                    : AppColors.line,
+              ),
+              boxShadow: AppShadows.small,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: highlighted
+                        ? AppColors.statusRouteBg
+                        : AppColors.neni.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: highlighted
+                        ? AppColors.statusRouteFg
+                        : AppColors.neniDeep,
+                    size: 23,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: AppTextStyles.body.copyWith(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.subtitle.copyWith(fontSize: 11.5),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                if (badge != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: enabled
+                          ? AppColors.statusDeliveredBg
+                          : AppColors.statusPendingBg,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      badge!,
+                      style: AppTextStyles.chip.copyWith(
+                        color: enabled
+                            ? AppColors.statusDeliveredFg
+                            : AppColors.statusPendingFg,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  )
+                else
+                  const Icon(
+                    Symbols.chevron_right,
+                    size: 20,
+                    color: AppColors.ink3,
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
+}
+
+String _paymentSubtitle(int accountCount, bool mercadoPagoReady) {
+  if (accountCount == 0 && !mercadoPagoReady) {
+    return 'Agrega una cuenta para compartir datos de pago.';
+  }
+  if (accountCount == 0) {
+    return 'Mercado Pago listo. Falta una cuenta de respaldo.';
+  }
+  if (!mercadoPagoReady) {
+    return 'Cuenta bancaria lista. Mercado Pago pendiente.';
+  }
+  return 'Cuenta bancaria y Mercado Pago listos.';
 }

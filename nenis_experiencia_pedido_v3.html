@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Nenis App · Experiencia de pedido V3</title>
+<style>
+:root{
+  --ink:#2a2027;
+  --muted:#8b7d85;
+  --paper:#fbf8fa;
+  --rose:#e95d92;
+  --rose-deep:#c83d74;
+  --rose-soft:#ffe8f0;
+  --plum:#64364f;
+  --green:#4e9b77;
+  --green-soft:#e9f6ef;
+  --gold:#f7b84a;
+  --cream:#fff8ee;
+  --white:#fff;
+  --line:rgba(71,45,60,.09);
+  --shadow:0 30px 90px rgba(70,39,56,.16);
+  --shadow-soft:0 16px 44px rgba(70,39,56,.09);
+  --spring:cubic-bezier(.2,.85,.25,1.15);
+  --ease:cubic-bezier(.22,1,.36,1);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  color:var(--ink);
+  background:
+    radial-gradient(circle at 12% 18%, rgba(233,93,146,.14), transparent 26%),
+    radial-gradient(circle at 88% 78%, rgba(255,209,226,.62), transparent 28%),
+    linear-gradient(145deg,#f8f4f7 0%,#fffafb 52%,#f1ebf0 100%);
+  overflow:hidden;
+}
+button,textarea{font:inherit}
+button{border:0;cursor:pointer}
+button:focus-visible,textarea:focus-visible{outline:3px solid rgba(233,93,146,.24);outline-offset:3px}
+
+/* presentation */
+.stage{
+  width:min(1240px,100%);height:100%;margin:auto;padding:24px 30px;
+  display:grid;grid-template-columns:minmax(390px,1fr) 412px;gap:84px;align-items:center;
+}
+.pitch{max-width:610px}
+.badge{display:inline-flex;align-items:center;gap:9px;padding:8px 13px 8px 8px;border-radius:999px;background:rgba(255,255,255,.74);border:1px solid rgba(255,255,255,.9);backdrop-filter:blur(18px);box-shadow:0 12px 36px rgba(87,48,68,.08);font-size:13px;font-weight:850;color:#6c5060}
+.badge-mark{width:31px;height:31px;border-radius:11px;display:grid;place-items:center;color:white;background:linear-gradient(145deg,#f37daa,#cf467d);box-shadow:0 8px 18px rgba(207,70,125,.24);font-weight:950}
+.pitch h1{font-size:clamp(47px,5vw,74px);line-height:.98;letter-spacing:-.057em;margin:24px 0 18px;max-width:730px}
+.pitch h1 em{font-style:normal;color:var(--rose-deep)}
+.pitch p{font-size:18px;line-height:1.6;color:#796d74;max-width:540px;margin:0}
+.principles{display:flex;gap:9px;flex-wrap:wrap;margin-top:28px}
+.principles span{padding:9px 12px;border-radius:999px;background:rgba(255,255,255,.58);border:1px solid rgba(81,48,66,.06);font-size:12px;font-weight:800;color:#775f6d}
+.hint{margin-top:18px;font-size:12px!important;color:#9a8c94!important;display:flex;align-items:center;gap:8px}
+.hint:before{content:"";width:18px;height:1px;background:#c7b7bf}
+
+.phone{width:408px;height:812px;position:relative;padding:10px;border-radius:52px;background:#171417;box-shadow:0 48px 120px rgba(55,31,43,.28),inset 0 0 0 1px rgba(255,255,255,.07)}
+.screen{height:100%;border-radius:43px;overflow:hidden;position:relative;isolation:isolate;background:var(--paper)}
+.island{position:absolute;z-index:100;top:10px;left:50%;transform:translateX(-50%);width:116px;height:31px;border-radius:999px;background:#171417}
+.statusbar{position:absolute;z-index:95;top:0;left:0;right:0;height:48px;padding:13px 22px 0;display:flex;justify-content:space-between;font-size:11px;font-weight:850;pointer-events:none}
+.status-icons{display:flex;gap:6px;align-items:center}.signal{display:inline-flex;align-items:flex-end;gap:2px}.signal i{width:2.5px;background:currentColor;border-radius:3px}.signal i:nth-child(1){height:4px}.signal i:nth-child(2){height:6px}.signal i:nth-child(3){height:8px}.signal i:nth-child(4){height:10px}.battery{width:17px;height:8px;border:1.5px solid currentColor;border-radius:2.5px;position:relative}.battery:before{content:"";position:absolute;inset:1.5px;background:currentColor;border-radius:1px}.battery:after{content:"";position:absolute;right:-3px;top:2px;width:1.5px;height:3px;background:currentColor;border-radius:1px}
+
+.app{height:100%;overflow:auto;scrollbar-width:none;padding:54px 18px 34px;background:radial-gradient(circle at 88% 4%,rgba(255,221,233,.7),transparent 22%),linear-gradient(#fdfafb,#f9f5f7)}
+.app::-webkit-scrollbar{display:none}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:4px 2px 14px}
+.icon-btn{width:42px;height:42px;border-radius:15px;display:grid;place-items:center;background:rgba(255,255,255,.8);border:1px solid rgba(64,39,53,.06);box-shadow:0 10px 26px rgba(82,43,64,.07);color:#5c4452}
+.icon-btn svg{width:19px;height:19px}
+.brand{text-align:center}.brand small{display:block;color:var(--muted);font-size:10px;font-weight:750;letter-spacing:.02em;margin-bottom:3px}.brand strong{font-size:15px;letter-spacing:-.02em}
+
+/* tracking hero */
+.hero{position:relative;min-height:360px;border-radius:32px;overflow:hidden;background:linear-gradient(155deg,#fff 0%,#fff8fb 58%,#ffeef5 100%);border:1px solid rgba(94,51,73,.07);box-shadow:var(--shadow-soft)}
+.hero-ambient{position:absolute;border-radius:50%;filter:blur(.2px);pointer-events:none}.a1{width:210px;height:210px;right:-110px;top:-120px;background:rgba(233,93,146,.11)}.a2{width:160px;height:160px;left:-100px;bottom:-105px;background:rgba(200,61,116,.07)}
+.hero-copy{position:relative;z-index:4;padding:22px 22px 0;transition:opacity .3s ease,transform .5s var(--ease)}
+.eyebrow{display:flex;align-items:center;gap:8px;font-size:10px;text-transform:uppercase;letter-spacing:.13em;color:#a36d86;font-weight:950}.live-dot{width:7px;height:7px;border-radius:50%;background:var(--rose);box-shadow:0 0 0 0 rgba(233,93,146,.35);animation:pulse 1.8s infinite}@keyframes pulse{70%{box-shadow:0 0 0 9px rgba(233,93,146,0)}100%{box-shadow:0 0 0 0 rgba(233,93,146,0)}}
+.hero-copy h2{font-size:29px;line-height:1.04;letter-spacing:-.047em;margin:9px 0 8px;max-width:270px}.hero-copy p{font-size:12px;line-height:1.45;color:#907a86;margin:0;max-width:255px}
+
+.route-art{position:relative;height:196px;margin-top:4px}
+.route-art svg.route{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.route-shadow{fill:none;stroke:rgba(111,71,92,.10);stroke-width:7;stroke-linecap:round}
+.route-base{fill:none;stroke:#e4d4dc;stroke-width:2.1;stroke-linecap:round;stroke-dasharray:4 7}
+.route-progress{fill:none;stroke:url(#threadGradient);stroke-width:3.7;stroke-linecap:round;stroke-dasharray:500;stroke-dashoffset:135;filter:drop-shadow(0 3px 6px rgba(233,93,146,.16));transition:stroke-dashoffset 1.5s var(--ease)}
+.route-progress.arrived{stroke-dashoffset:0}
+.pin{position:absolute;width:48px;height:48px;border-radius:18px;display:grid;place-items:center;z-index:5;box-shadow:0 13px 28px rgba(80,43,63,.14)}
+.pin.shop{left:34px;bottom:29px;background:#fff;color:#a84671;border:1px solid rgba(155,73,109,.1)}
+.pin.home{right:27px;top:19px;background:linear-gradient(145deg,#713f59,#a94f78);color:white;box-shadow:0 14px 30px rgba(133,67,99,.23)}
+.pin svg{width:22px;height:22px}
+.home-ripple{position:absolute;right:19px;top:11px;width:64px;height:64px;border-radius:24px;border:1px solid rgba(233,93,146,.25);opacity:0;transform:scale(.55);pointer-events:none}
+.home-ripple.go{animation:rippleHome 1.5s ease-out forwards}@keyframes rippleHome{0%{opacity:.7;transform:scale(.55)}100%{opacity:0;transform:scale(1.45)}}
+.courier{position:absolute;z-index:7;left:54%;top:92px;width:52px;height:52px;border-radius:19px;background:#fff;display:grid;place-items:center;color:#9b466b;box-shadow:0 15px 30px rgba(93,49,71,.18);transform:translate(-50%,-50%);transition:left 1.45s var(--ease),top 1.45s var(--ease),transform .7s var(--spring)}
+.courier svg{width:25px;height:25px}.courier.float{animation:float 2.6s ease-in-out infinite}@keyframes float{50%{transform:translate(-50%,-56%) rotate(-2deg)}}
+.courier.arrive{left:82%;top:50px;transform:translate(-50%,-50%) scale(.92);animation:none}
+.eta{position:absolute;left:21px;right:21px;bottom:14px;display:flex;align-items:end;justify-content:space-between;padding-top:13px;border-top:1px solid rgba(86,51,70,.08);z-index:4}.eta small{display:block;color:#a09099;font-size:10px;font-weight:700;margin-bottom:3px}.eta strong{font-size:16px;letter-spacing:-.02em}.eta-time{text-align:right}.eta-time strong{font-size:23px;color:#6d3e58}
+
+/* thread timeline */
+.storyline{padding:21px 6px 2px;position:relative}
+.storyline-head{display:flex;align-items:end;justify-content:space-between;margin-bottom:14px}.storyline-head h3{margin:0;font-size:18px;letter-spacing:-.028em}.storyline-head span{font-size:11px;font-weight:850;color:var(--rose-deep)}
+.thread{position:relative;padding-left:28px}
+.thread:before{content:"";position:absolute;left:7px;top:8px;bottom:17px;width:2px;border-radius:2px;background:linear-gradient(var(--rose) 0 67%,#e8dde3 67%)}
+.step{position:relative;padding:0 0 15px}.step:last-child{padding-bottom:0}.step:before{content:"";position:absolute;left:-26px;top:3px;width:12px;height:12px;border-radius:50%;background:#fff;border:3px solid var(--rose);box-shadow:0 0 0 4px #fdf9fb}.step.pending:before{border-color:#d9cbd3;background:#fff}.step.current:before{background:var(--rose);box-shadow:0 0 0 5px #fde7ef}.step strong{font-size:12px;display:block;margin-bottom:2px}.step span{font-size:10px;color:var(--muted)}
+
+.merchant-strip{margin-top:18px;border-radius:23px;padding:14px 15px;background:#fff;border:1px solid rgba(80,45,64,.07);box-shadow:0 12px 32px rgba(75,42,60,.07);display:flex;align-items:center;gap:12px}.logo{width:45px;height:45px;border-radius:16px;background:linear-gradient(145deg,#ffe0eb,#f5a8c3);display:grid;place-items:center;color:#9c456c;font-weight:950;font-size:13px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.65)}.merchant-strip div:nth-child(2){flex:1}.merchant-strip strong{font-size:13px;display:block}.merchant-strip span{font-size:10px;color:var(--muted);margin-top:3px;display:block}.price{text-align:right}.price small{font-size:9px;color:var(--muted);display:block}.price b{font-size:14px}
+
+.primary{margin-top:16px;width:100%;height:57px;border-radius:19px;background:linear-gradient(145deg,#ef6f9f,#ce467c);color:#fff;font-size:14px;font-weight:900;letter-spacing:.002em;box-shadow:0 15px 30px rgba(207,70,125,.25);position:relative;overflow:hidden;transition:transform .18s ease,opacity .2s ease}.primary:before{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.22) 48%,transparent 76%);transform:translateX(-120%);animation:shine 3.8s ease infinite}@keyframes shine{0%,60%{transform:translateX(-120%)}88%,100%{transform:translateX(120%)}}.primary:active{transform:scale(.985)}.primary:disabled{opacity:.65;cursor:default}
+.powered{text-align:center;font-size:9px;color:#b4a7ae;font-weight:750;margin:13px 0 0;letter-spacing:.03em}.powered b{color:#d05b88}
+
+/* scene transition */
+.arrival-vignette{position:absolute;z-index:20;inset:0;pointer-events:none;background:radial-gradient(circle at 73% 30%,rgba(255,255,255,.15),transparent 22%),linear-gradient(rgba(255,247,250,0),rgba(255,247,250,.05));opacity:0;transition:opacity .5s ease}.arrival-vignette.show{opacity:1}
+.toast{position:absolute;z-index:120;top:54px;left:50%;transform:translate(-50%,-16px);opacity:0;display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:999px;background:rgba(38,29,35,.94);color:#fff;box-shadow:0 16px 34px rgba(35,27,33,.22);font-size:11px;font-weight:850;white-space:nowrap;transition:.42s var(--ease)}.toast.show{opacity:1;transform:translate(-50%,0)}.toast-check{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:#60b187;font-size:10px}
+
+/* scrim and rating sheet */
+.scrim{position:absolute;z-index:40;inset:0;background:rgba(42,28,36,.48);backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity .42s ease}.scrim.show{opacity:1;pointer-events:auto}
+.sheet{position:absolute;z-index:50;left:0;right:0;bottom:0;min-height:636px;border-radius:35px 35px 0 0;background:linear-gradient(180deg,#fff 0%,#fffdfd 100%);box-shadow:0 -30px 70px rgba(48,29,40,.25);padding:10px 21px 28px;transform:translateY(103%);transition:transform .64s var(--ease);overflow:hidden}.sheet.show{transform:translateY(0)}
+.grabber{width:42px;height:5px;border-radius:999px;background:#e9e1e5;margin:2px auto 10px}.close{position:absolute;right:17px;top:16px;width:36px;height:36px;border-radius:50%;background:#f7f2f5;color:#6e5b67;display:grid;place-items:center;z-index:5}.close svg{width:17px;height:17px}
+.sheet-glow{position:absolute;width:240px;height:240px;border-radius:50%;top:-150px;left:50%;transform:translateX(-50%);background:rgba(233,93,146,.1);filter:blur(2px)}
+.rating-view{position:relative;z-index:2;transition:opacity .34s ease,transform .48s var(--ease)}.rating-view.hide{opacity:0;transform:translateY(-18px) scale(.985);pointer-events:none}
+.merchant-medal{width:68px;height:68px;border-radius:24px;margin:3px auto 11px;display:grid;place-items:center;background:linear-gradient(145deg,#ffe0eb,#f4a8c3);color:#9a456c;font-size:18px;font-weight:950;box-shadow:0 16px 34px rgba(198,89,132,.17),inset 0 0 0 1px rgba(255,255,255,.75);opacity:0;transform:scale(.65) rotate(-6deg)}.sheet.show .merchant-medal{animation:medalIn .62s .18s var(--spring) forwards}@keyframes medalIn{to{opacity:1;transform:scale(1) rotate(0)}}
+.rating-view h2{text-align:center;font-size:25px;line-height:1.08;letter-spacing:-.04em;margin:0}.rating-view .lead{text-align:center;color:var(--muted);font-size:12px;line-height:1.45;margin:8px auto 17px;max-width:290px}
+.stars{display:flex;justify-content:center;gap:8px;height:54px;margin:3px 0 6px}.star{width:48px;height:48px;padding:0;background:transparent;color:#ded4da;opacity:0;transform:scale(.6);transition:color .2s ease,filter .2s ease}.star.ready{opacity:1;transform:scale(1);transition:opacity .22s ease,transform .45s var(--spring),color .2s ease,filter .2s ease}.star svg{width:100%;height:100%;overflow:visible}.star path{fill:currentColor;stroke:currentColor;stroke-width:1.3}.star.active{color:var(--gold);filter:drop-shadow(0 8px 10px rgba(247,184,74,.25))}.star.bump{animation:bump .5s cubic-bezier(.18,.89,.32,1.35)}@keyframes bump{0%{transform:scale(.7) rotate(-7deg)}55%{transform:scale(1.28) rotate(4deg)}100%{transform:scale(1)}}
+.caption{text-align:center;height:23px;margin-bottom:13px;font-size:13px;font-weight:850;color:#6f5966}
+.reason-title{text-align:center;font-size:11px;font-weight:900;color:#8d7884;margin:0 0 11px;letter-spacing:.01em}
+.stickers{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;min-height:78px}.sticker{position:relative;padding:10px 13px 10px 11px;border-radius:15px;background:#faf6f8;border:1px solid #eee5ea;color:#776873;font-size:11px;font-weight:850;transition:background .2s ease,border-color .2s ease,color .2s ease,box-shadow .2s ease;transform-origin:center}.sticker.selected{background:#fff0f5;border-color:#f0b0c9;color:var(--rose-deep);box-shadow:0 9px 18px rgba(203,82,132,.11);animation:stick .48s var(--spring)}@keyframes stick{0%{transform:scale(.86) rotate(-5deg)}60%{transform:scale(1.08) rotate(2deg)}100%{transform:scale(1) rotate(0)}}
+.sticker .tiny-heart{position:absolute;right:-5px;top:-7px;font-size:12px;opacity:0;transform:scale(.4) rotate(-12deg)}.sticker.selected .tiny-heart{animation:heartPop .5s .1s var(--spring) forwards}@keyframes heartPop{to{opacity:1;transform:scale(1) rotate(8deg)}}
+textarea{width:100%;height:67px;resize:none;margin-top:12px;border-radius:17px;border:1px solid #eee4e9;background:#fbf8fa;padding:12px 13px;color:var(--ink);font-size:12px;line-height:1.4;transition:.2s ease}textarea:focus{background:#fff;border-color:#e9abc3;box-shadow:0 0 0 4px rgba(233,93,146,.08)}
+.send{width:100%;height:53px;margin-top:11px;border-radius:18px;background:linear-gradient(145deg,#ef6f9f,#cf467d);color:#fff;font-weight:900;font-size:13px;box-shadow:0 13px 27px rgba(207,70,125,.23);position:relative;transition:transform .18s ease,opacity .2s ease}.send:active{transform:scale(.985)}.send:disabled{opacity:.42;box-shadow:none}.send.loading{color:transparent}.send.loading:after{content:"";position:absolute;left:50%;top:50%;width:19px;height:19px;margin:-11px;border-radius:50%;border:2px solid rgba(255,255,255,.36);border-top-color:#fff;animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.skip{display:block;margin:10px auto 0;background:transparent;color:#a6979f;font-size:10px;font-weight:800}
+
+/* success */
+.success-view{position:absolute;z-index:3;inset:62px 22px 28px;display:grid;place-content:center;text-align:center;opacity:0;transform:translateY(24px) scale(.96);pointer-events:none;transition:opacity .4s ease,transform .55s var(--ease)}.success-view.show{opacity:1;transform:none;pointer-events:auto}
+.return-thread{width:142px;height:96px;margin:0 auto 4px;position:relative}.return-thread svg{width:100%;height:100%;overflow:visible}.return-path{fill:none;stroke:url(#returnGradient);stroke-width:3.2;stroke-linecap:round;stroke-dasharray:220;stroke-dashoffset:220}.success-view.show .return-path{animation:drawReturn 1.1s .2s var(--ease) forwards}@keyframes drawReturn{to{stroke-dashoffset:0}}.return-heart{position:absolute;right:6px;top:1px;width:48px;height:48px;border-radius:18px;background:linear-gradient(145deg,#f27ba7,#cf467d);color:#fff;display:grid;place-items:center;box-shadow:0 14px 27px rgba(207,70,125,.24);opacity:0;transform:scale(.55) rotate(-10deg)}.success-view.show .return-heart{animation:heartArrive .65s 1s var(--spring) forwards}@keyframes heartArrive{to{opacity:1;transform:scale(1) rotate(0)}}
+.success-view h2{font-size:27px;letter-spacing:-.043em;margin:7px 0 9px}.success-view p{font-size:13px;line-height:1.55;color:var(--muted);margin:0 auto;max-width:280px}.thank-note{margin:20px auto 0;padding:12px 14px;border-radius:17px;max-width:285px;background:var(--cream);border:1px solid rgba(215,165,93,.18);font-size:11px;line-height:1.4;color:#8f7658}.thank-note strong{color:#7b5d3a}
+
+/* flower flight layer */
+.flight-layer{position:absolute;z-index:58;inset:0;pointer-events:none;display:none}.flight-layer.show{display:block}.petal{position:absolute;width:26px;height:38px;border-radius:70% 70% 58% 58%;background:linear-gradient(160deg,#ffb5cf,#eb6f9f);box-shadow:0 10px 18px rgba(205,74,124,.17);transform-origin:50% 100%;opacity:0}.flower-core{position:absolute;width:20px;height:20px;border-radius:50%;background:#ffd37b;box-shadow:0 0 0 7px rgba(255,211,123,.16);opacity:0}
+.confetti{position:absolute;z-index:59;inset:0;pointer-events:none;overflow:hidden}.confetti i{position:absolute;width:6px;height:12px;border-radius:3px;top:225px;left:73%;opacity:0;animation:confetti 1.55s ease-out forwards}@keyframes confetti{0%{opacity:1;transform:translate(0,0) rotate(0) scale(1)}100%{opacity:0;transform:translate(var(--x),var(--y)) rotate(var(--r)) scale(.7)}}
+
+@media(max-width:900px){
+  body{overflow:auto;background:var(--paper)}
+  .stage{display:block;padding:0;width:100%;height:auto;min-height:100vh}.pitch{display:none}
+  .phone{width:100%;height:100vh;border-radius:0;padding:0;background:transparent;box-shadow:none}.screen{border-radius:0}.island{display:none}.app{padding-top:49px}.sheet{min-height:min(650px,88vh)}
+}
+</style>
+</head>
+<body>
+<main class="stage">
+  <section class="pitch">
+    <div class="badge"><span class="badge-mark">N</span> Nenis App · V3</div>
+    <h1>Un pedido no termina al llegar. <em>Termina al sentirse.</em></h1>
+    <p>Seguimiento claro para la clienta, identidad del negocio al frente y un cierre propio de Nenis: el hilo completa el recorrido, florece y se transforma en una experiencia de evaluación.</p>
+    <div class="principles"><span>Negocio protagonista</span><span>Hilo Nenis</span><span>Motion con propósito</span><span>Feedback humano</span></div>
+    <p class="hint">Pulsa “Simular entrega” y recorre el flujo completo.</p>
+  </section>
+
+  <section class="phone" aria-label="Mockup interactivo Nenis App V3">
+    <div class="screen" id="screen">
+      <div class="island"></div>
+      <div class="statusbar"><span>5:12</span><span class="status-icons"><span class="signal"><i></i><i></i><i></i><i></i></span><span>5G</span><span class="battery"></span></span></div>
+      <div class="toast" id="toast"><span class="toast-check">✓</span><span>Pedido entregado</span></div>
+      <div class="arrival-vignette" id="vignette"></div>
+      <div class="confetti" id="confetti"></div>
+      <div class="flight-layer" id="flightLayer"><div class="flower-core" id="flowerCore"></div></div>
+
+      <div class="app" id="app">
+        <header class="topbar">
+          <button class="icon-btn" aria-label="Volver"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+          <div class="brand"><small>REGI BAZAR</small><strong>Pedido #1048</strong></div>
+          <button class="icon-btn" aria-label="Más opciones"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
+        </header>
+
+        <section class="hero" id="hero">
+          <span class="hero-ambient a1"></span><span class="hero-ambient a2"></span>
+          <div class="hero-copy" id="heroCopy">
+            <div class="eyebrow"><span class="live-dot" id="liveDot"></span><span id="eyebrowText">EN CAMINO</span></div>
+            <h2 id="heroTitle">Tu pedido ya va contigo 💕</h2>
+            <p id="heroSubtitle">Regina salió con tu pedido. Puedes seguir su recorrido aquí.</p>
+          </div>
+
+          <div class="route-art" id="routeArt">
+            <svg class="route" viewBox="0 0 372 196" preserveAspectRatio="none" aria-hidden="true">
+              <defs><linearGradient id="threadGradient" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#c83d74"/><stop offset=".58" stop-color="#e95d92"/><stop offset="1" stop-color="#f5a9c5"/></linearGradient></defs>
+              <path class="route-shadow" d="M51 156 C86 129, 104 172, 139 139 S175 77, 215 101 S262 125, 298 75 S321 52, 337 41"/>
+              <path class="route-base" d="M51 156 C86 129, 104 172, 139 139 S175 77, 215 101 S262 125, 298 75 S321 52, 337 41"/>
+              <path class="route-progress" id="routeProgress" d="M51 156 C86 129, 104 172, 139 139 S175 77, 215 101 S262 125, 298 75 S321 52, 337 41"/>
+            </svg>
+            <div class="pin shop" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h16"/><path d="M5 10V7l2-3h10l2 3v3"/><path d="M6 10v9h12v-9"/><path d="M9 19v-5h6v5"/></svg></div>
+            <div class="pin home" id="homePin" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9.5 20v-6h5v6"/></svg></div>
+            <div class="home-ripple" id="homeRipple"></div>
+            <div class="courier float" id="courier" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="17" r="2.5"/><circle cx="18" cy="17" r="2.5"/><path d="M8.5 17h5l2-6H9l-1.5-3H5"/><path d="m15.5 11 2-3h2.5"/></svg></div>
+            <div class="eta"><div><small id="etaLabel">Llegada estimada</small><strong id="etaRange">5:18 – 5:25 PM</strong></div><div class="eta-time"><small id="etaSmall">Faltan aprox.</small><strong id="etaBig">12 min</strong></div></div>
+          </div>
+        </section>
+
+        <section class="storyline">
+          <div class="storyline-head"><h3>Así va tu pedido</h3><span id="statusLabel">3 de 4</span></div>
+          <div class="thread" id="thread">
+            <div class="step"><strong>Pedido confirmado</strong><span>Hoy · 3:42 PM</span></div>
+            <div class="step"><strong>Listo para entregar</strong><span>Hoy · 4:48 PM</span></div>
+            <div class="step current" id="stepRoute"><strong>En camino</strong><span>Actualizado hace un momento</span></div>
+            <div class="step pending" id="stepDelivered"><strong>Entregado</strong><span id="deliveredTime">Esperando confirmación</span></div>
+          </div>
+        </section>
+
+        <section class="merchant-strip">
+          <div class="logo">RB</div>
+          <div><strong>Regi Bazar</strong><span>2 productos · Entrega a domicilio</span></div>
+          <div class="price"><small>TOTAL</small><b>$1,250</b></div>
+        </section>
+
+        <button class="primary" id="deliverBtn">Simular entrega ✨</button>
+        <p class="powered">experiencia impulsada por <b>nenis ✦</b></p>
+      </div>
+
+      <div class="scrim" id="scrim"></div>
+      <section class="sheet" id="sheet" aria-label="Evaluación del pedido">
+        <div class="sheet-glow"></div>
+        <div class="grabber"></div>
+        <button class="close" id="closeSheet" aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+
+        <div class="rating-view" id="ratingView">
+          <div class="merchant-medal">RB</div>
+          <h2>¿Cómo llegó tu pedido?</h2>
+          <p class="lead">Tu opinión es para <strong>Regi Bazar</strong> y ayuda a mejorar tus próximas entregas.</p>
+          <div class="stars" id="stars">
+            <button class="star" data-value="1" aria-label="1 estrella"><svg viewBox="0 0 24 24"><path d="M12 2.8 14.8 8.5l6.3.9-4.6 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2-4.6-4.4 6.3-.9Z"/></svg></button>
+            <button class="star" data-value="2" aria-label="2 estrellas"><svg viewBox="0 0 24 24"><path d="M12 2.8 14.8 8.5l6.3.9-4.6 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2-4.6-4.4 6.3-.9Z"/></svg></button>
+            <button class="star" data-value="3" aria-label="3 estrellas"><svg viewBox="0 0 24 24"><path d="M12 2.8 14.8 8.5l6.3.9-4.6 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2-4.6-4.4 6.3-.9Z"/></svg></button>
+            <button class="star" data-value="4" aria-label="4 estrellas"><svg viewBox="0 0 24 24"><path d="M12 2.8 14.8 8.5l6.3.9-4.6 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2-4.6-4.4 6.3-.9Z"/></svg></button>
+            <button class="star" data-value="5" aria-label="5 estrellas"><svg viewBox="0 0 24 24"><path d="M12 2.8 14.8 8.5l6.3.9-4.6 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2-4.6-4.4 6.3-.9Z"/></svg></button>
+          </div>
+          <div class="caption" id="caption">Toca una estrella</div>
+          <p class="reason-title" id="reasonTitle">CUÉNTANOS QUÉ DESTACÓ</p>
+          <div class="stickers" id="stickers">
+            <button class="sticker">🎀 El producto <span class="tiny-heart">💕</span></button>
+            <button class="sticker">⚡ La entrega <span class="tiny-heart">💕</span></button>
+            <button class="sticker">💬 La atención <span class="tiny-heart">💕</span></button>
+            <button class="sticker">📦 El empaque <span class="tiny-heart">💕</span></button>
+          </div>
+          <textarea id="comment" placeholder="¿Quieres contarle algo a Regi Bazar? (opcional)"></textarea>
+          <button class="send" id="sendBtn" disabled>Enviar mi opinión</button>
+          <button class="skip" id="skipBtn">Ahora no</button>
+        </div>
+
+        <div class="success-view" id="successView">
+          <div class="return-thread">
+            <svg viewBox="0 0 142 96"><defs><linearGradient id="returnGradient" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#f2a2bf"/><stop offset="1" stop-color="#cf467d"/></linearGradient></defs><path class="return-path" d="M9 76 C34 79, 28 44, 58 48 S73 80, 93 58 S106 23, 126 23"/></svg>
+            <div class="return-heart">♥</div>
+          </div>
+          <h2>Tu opinión ya viajó 💌</h2>
+          <p>Gracias por cerrar esta historia con Regi Bazar. Tu experiencia ayuda a que cada pedido llegue un poquito mejor.</p>
+          <div class="thank-note"><strong>Un detalle Nenis:</strong> tu reseña queda ligada a este pedido, no a una encuesta genérica.</div>
+          <p class="powered" style="margin-top:22px">powered by <b>nenis ✦</b></p>
+        </div>
+      </section>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const deliverBtn = $('#deliverBtn');
+const routeProgress = $('#routeProgress');
+const courier = $('#courier');
+const homeRipple = $('#homeRipple');
+const heroTitle = $('#heroTitle');
+const heroSubtitle = $('#heroSubtitle');
+const eyebrowText = $('#eyebrowText');
+const liveDot = $('#liveDot');
+const etaLabel = $('#etaLabel');
+const etaRange = $('#etaRange');
+const etaSmall = $('#etaSmall');
+const etaBig = $('#etaBig');
+const statusLabel = $('#statusLabel');
+const stepRoute = $('#stepRoute');
+const stepDelivered = $('#stepDelivered');
+const deliveredTime = $('#deliveredTime');
+const toast = $('#toast');
+const vignette = $('#vignette');
+const sheet = $('#sheet');
+const scrim = $('#scrim');
+const flightLayer = $('#flightLayer');
+const flowerCore = $('#flowerCore');
+const stars = $$('.star');
+const stickers = $$('.sticker');
+const caption = $('#caption');
+const reasonTitle = $('#reasonTitle');
+const sendBtn = $('#sendBtn');
+const ratingView = $('#ratingView');
+const successView = $('#successView');
+const confetti = $('#confetti');
+const screen = $('#screen');
+let rating = 0;
+let delivered = false;
+let selectedReasons = new Set();
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function showToast(){toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),1800)}
+function burstConfetti(){
+  confetti.innerHTML='';
+  const palette=['#e95d92','#f7b84a','#7dbb9a','#8b6bb8','#f5a9c5'];
+  for(let i=0;i<22;i++){
+    const p=document.createElement('i');
+    p.style.background=palette[i%palette.length];
+    p.style.left=`${66+Math.random()*15}%`;
+    p.style.setProperty('--x',`${(Math.random()-.5)*240}px`);
+    p.style.setProperty('--y',`${80+Math.random()*210}px`);
+    p.style.setProperty('--r',`${(Math.random()>.5?1:-1)*(240+Math.random()*520)}deg`);
+    p.style.animationDelay=`${Math.random()*.22}s`;
+    confetti.appendChild(p);
+  }
+}
+
+function placeFlower(){
+  flightLayer.classList.add('show');
+  flightLayer.querySelectorAll('.petal').forEach(p=>p.remove());
+  const screenRect=screen.getBoundingClientRect();
+  const homeRect=$('#homePin').getBoundingClientRect();
+  const cx=homeRect.left-screenRect.left+homeRect.width/2;
+  const cy=homeRect.top-screenRect.top+homeRect.height/2;
+  flowerCore.style.left=`${cx-10}px`; flowerCore.style.top=`${cy-10}px`;
+  flowerCore.animate([{opacity:0,transform:'scale(.4)'},{opacity:1,transform:'scale(1.15)',offset:.65},{opacity:1,transform:'scale(1)'}],{duration:560,fill:'forwards',easing:'cubic-bezier(.2,.85,.25,1.15)'});
+  for(let i=0;i<5;i++){
+    const p=document.createElement('div');p.className='petal';p.dataset.i=i;
+    p.style.left=`${cx-13}px`;p.style.top=`${cy-37}px`;
+    flightLayer.appendChild(p);
+    const angle=i*72;
+    p.animate([
+      {opacity:0,transform:`rotate(${angle}deg) translateY(8px) scale(.45)`},
+      {opacity:1,transform:`rotate(${angle}deg) translateY(-18px) scale(1.08)`,offset:.72},
+      {opacity:1,transform:`rotate(${angle}deg) translateY(-15px) scale(1)`}
+    ],{duration:620,delay:i*55,fill:'forwards',easing:'cubic-bezier(.2,.85,.25,1.15)'});
+  }
+}
+
+async function petalsToStars(){
+  const screenRect=screen.getBoundingClientRect();
+  const homeRect=$('#homePin').getBoundingClientRect();
+  const cx=homeRect.left-screenRect.left+homeRect.width/2;
+  const cy=homeRect.top-screenRect.top+homeRect.height/2;
+  const petals=$$('.petal');
+  petals.forEach((p,i)=>{
+    const target=stars[i].getBoundingClientRect();
+    const tx=target.left-screenRect.left+target.width/2;
+    const ty=target.top-screenRect.top+target.height/2;
+    const dx=tx-cx, dy=ty-cy;
+    p.animate([
+      {opacity:1,transform:`rotate(${i*72}deg) translateY(-15px) scale(1)`},
+      {opacity:1,transform:`translate(${dx}px,${dy}px) rotate(${180+i*35}deg) scale(.55)`,offset:.82},
+      {opacity:0,transform:`translate(${dx}px,${dy}px) rotate(${220+i*35}deg) scale(.25)`}
+    ],{duration:780,delay:i*65,fill:'forwards',easing:'cubic-bezier(.22,1,.36,1)'});
+  });
+  flowerCore.animate([{opacity:1,transform:'scale(1)'},{opacity:0,transform:'scale(.2)'}],{duration:420,fill:'forwards'});
+  await sleep(620);
+  stars.forEach((s,i)=>setTimeout(()=>s.classList.add('ready'),i*65));
+  await sleep(500);
+  flightLayer.classList.remove('show');
+}
+
+async function deliverFlow(){
+  if(delivered) return;
+  delivered=true;deliverBtn.disabled=true;deliverBtn.textContent='Actualizando estado…';
+  routeProgress.classList.add('arrived');courier.classList.remove('float');courier.classList.add('arrive');
+  await sleep(1000);
+  homeRipple.classList.add('go');vignette.classList.add('show');showToast();burstConfetti();
+  heroTitle.animate([{opacity:1,transform:'translateY(0)'},{opacity:0,transform:'translateY(-8px)'}],{duration:240,fill:'forwards'});
+  heroSubtitle.animate([{opacity:1},{opacity:0}],{duration:220,fill:'forwards'});
+  await sleep(250);
+  heroTitle.textContent='¡Ya llegó! ✨';heroSubtitle.textContent='Tu pedido fue entregado. Esperamos que te encante.';eyebrowText.textContent='ENTREGADO';
+  liveDot.style.background='var(--green)';etaLabel.textContent='Entregado';etaRange.textContent='Hoy · 5:13 PM';etaSmall.textContent='Estado';etaBig.textContent='Listo ✓';
+  heroTitle.animate([{opacity:0,transform:'translateY(10px)'},{opacity:1,transform:'translateY(0)'}],{duration:500,fill:'forwards',easing:'cubic-bezier(.22,1,.36,1)'});
+  heroSubtitle.animate([{opacity:0},{opacity:1}],{duration:420,fill:'forwards'});
+  statusLabel.textContent='4 de 4';stepRoute.classList.remove('current');stepDelivered.classList.remove('pending');stepDelivered.classList.add('current');deliveredTime.textContent='Hoy · 5:13 PM';
+  deliverBtn.textContent='Pedido entregado ✓';
+  placeFlower();
+  await sleep(900);
+  scrim.classList.add('show');sheet.classList.add('show');
+  await sleep(700);
+  await petalsToStars();
+}
+
+deliverBtn.addEventListener('click',deliverFlow);
+
+const ratingLabels=['','Necesitamos mejorar','Puede mejorar','Bien','¡Muy bien!','¡Nos encantó saberlo!'];
+stars.forEach(star=>star.addEventListener('click',()=>{
+  rating=Number(star.dataset.value);
+  stars.forEach((s,i)=>{s.classList.toggle('active',i<rating);s.classList.remove('bump')});
+  for(let i=0;i<rating;i++) setTimeout(()=>{stars[i].classList.remove('bump');void stars[i].offsetWidth;stars[i].classList.add('bump')},i*70);
+  caption.textContent=ratingLabels[rating];
+  reasonTitle.textContent=rating>=4?'¿QUÉ FUE LO QUE MÁS TE GUSTÓ?':'¿QUÉ PODRÍAMOS MEJORAR?';
+  sendBtn.disabled=false;
+}));
+
+stickers.forEach(s=>s.addEventListener('click',()=>{
+  s.classList.toggle('selected');
+  const key=s.textContent.trim();
+  s.classList.contains('selected')?selectedReasons.add(key):selectedReasons.delete(key);
+}));
+
+async function submitRating(){
+  if(!rating) return;
+  sendBtn.classList.add('loading');sendBtn.disabled=true;
+  await sleep(750);
+  ratingView.classList.add('hide');
+  await sleep(300);
+  successView.classList.add('show');
+}
+sendBtn.addEventListener('click',submitRating);
+$('#skipBtn').addEventListener('click',submitRating);
+
+function closeSheet(){sheet.classList.remove('show');scrim.classList.remove('show')}
+$('#closeSheet').addEventListener('click',closeSheet);scrim.addEventListener('click',closeSheet);
+</script>
+</body>
+</html>

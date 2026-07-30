@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mis pagos — Nenis App (mockup rediseño)</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Tokens ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --cream:#FDF4F7;--surface:#FFFCFD;
+  --ink:#3A2233;--ink2:#8A6F82;--ink3:#B6A4B1;
+  --line:rgba(58,34,51,.09);--line-soft:rgba(58,34,51,.05);
+  --neni:#FB6F9C;--neni-deep:#E84E83;--lavender:#9B7BE0;--gold:#F3B341;
+  --pend-bg:#FCECD2;--pend-fg:#B5730A;
+  --route-bg:#E4ECFF;--route-fg:#2E6BD6;
+  --deliv-bg:#D9F3E6;--deliv-fg:#1F9A6A;
+  --oxxo-bg:#FFEBEE;--oxxo-fg:#E53935;
+  --depo-bg:#F3E8FF;--depo-fg:#7C3AED;
+  --glass:rgba(255,255,255,.72);--glass-brd:rgba(255,255,255,.72);
+  --sh-card:0 18px 40px -12px rgba(214,51,108,.24), 0 6px 16px -8px rgba(58,34,51,.10);
+  --sh-sm:0 10px 22px -12px rgba(214,51,108,.28);
+  --grad-rosa:linear-gradient(135deg,#FB6F9C 0%,#E84E83 100%);
+  --grad-gold:linear-gradient(135deg,#F3B341 0%,#E6A020 100%);
+}
+
+body{
+  font-family:'Poppins',sans-serif;
+  background:linear-gradient(135deg,#1a0a12 0%,#2d1b28 40%,#1a1025 100%);
+  display:flex;align-items:center;justify-content:center;
+  min-height:100vh;padding:40px 20px;
+}
+
+/* ── Phone Frame ── */
+.phone{
+  width:390px;height:844px;background:var(--cream);
+  border-radius:44px;overflow:hidden;position:relative;
+  box-shadow:
+    0 0 0 3px #1a1a1a,
+    0 0 0 6px #2a2a2a,
+    0 0 0 8px #1a1a1a,
+    0 20px 60px rgba(0,0,0,.5);
+}
+.notch{
+  position:absolute;top:12px;left:50%;transform:translateX(-50%);
+  width:120px;height:28px;background:#1a1a1a;border-radius:20px;z-index:999;
+}
+
+/* ── Scroll View ── */
+.scroll{
+  height:100%;overflow-y:auto;overflow-x:hidden;
+  padding-top:52px;padding-bottom:100px;
+  scroll-behavior:smooth;
+}
+.scroll::-webkit-scrollbar{width:0}
+
+/* ── Header ── */
+.header{
+  padding:8px 22px 0;
+  display:flex;align-items:flex-start;gap:12px;
+}
+.back-btn{
+  width:40px;height:40px;min-width:40px;background:var(--surface);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 12px rgba(0,0,0,.08);
+  cursor:pointer;transition:transform .15s;
+}
+.back-btn:active{transform:scale(.92)}
+.back-btn svg{width:18px;height:18px;color:var(--ink)}
+.header-text h1{
+  font-size:24px;font-weight:700;color:var(--ink);line-height:1.1;
+}
+.header-text p{
+  font-size:12px;font-weight:400;color:var(--ink2);margin-top:2px;
+}
+
+/* ── Summary Hero Card ── */
+.hero{
+  margin:14px 22px 0;
+  padding:18px 20px;
+  border-radius:24px;
+  background:var(--surface);
+  box-shadow:var(--sh-sm);
+  position:relative;overflow:hidden;
+}
+.hero::before{
+  content:'';position:absolute;top:-30px;right:-30px;
+  width:120px;height:120px;border-radius:50%;
+  background:radial-gradient(circle,rgba(251,111,156,.08) 0%,transparent 70%);
+}
+.hero::after{
+  content:'';position:absolute;bottom:-20px;left:-40px;
+  width:100px;height:100px;border-radius:50%;
+  background:radial-gradient(circle,rgba(243,179,65,.12) 0%,transparent 70%);
+}
+.hero-row{
+  display:flex;align-items:center;gap:14px;
+  position:relative;z-index:1;
+}
+.hero-icon{
+  width:50px;height:50px;min-width:50px;border-radius:16px;
+  background:var(--grad-gold);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 8px 20px rgba(243,179,65,.35);
+}
+.hero-icon svg{width:24px;height:24px;color:#fff}
+.hero-amount{
+  flex:1;
+}
+.hero-amount .label{
+  font-size:11px;font-weight:500;color:var(--ink3);
+  text-transform:uppercase;letter-spacing:.6px;
+}
+.hero-amount .value{
+  font-size:28px;font-weight:800;color:var(--ink);
+  letter-spacing:-.5px;line-height:1.1;
+  margin-top:1px;
+}
+.hero-amount .sub{
+  font-size:11.5px;color:var(--ink2);margin-top:1px;
+}
+
+/* ── Quick Stats ── */
+.quick-stats{
+  margin:12px 22px 0;
+  display:flex;gap:10px;position:relative;z-index:1;
+}
+.stat-pill{
+  flex:1;padding:12px 14px;border-radius:16px;
+  background:var(--surface);box-shadow:0 4px 16px rgba(0,0,0,.04);
+  text-align:center;transition:transform .15s;cursor:default;
+}
+.stat-pill:hover{transform:translateY(-2px)}
+.stat-pill .icon{
+  width:32px;height:32px;margin:0 auto 6px;
+  border-radius:10px;display:flex;align-items:center;justify-content:center;
+}
+.stat-pill .icon.effectivo{background:var(--deliv-bg);color:var(--deliv-fg)}
+.stat-pill .icon.tarjeta{background:var(--route-bg);color:var(--route-fg)}
+.stat-pill .icon.total{background:#FFF2D4;color:var(--gold)}
+.stat-pill .value{
+  font-size:17px;font-weight:700;color:var(--ink);
+}
+.stat-pill .label{
+  font-size:10.5px;color:var(--ink3);font-weight:500;
+  text-transform:uppercase;letter-spacing:.3px;margin-top:1px;
+}
+
+/* ── Month Section ── */
+.month-section{margin:20px 22px 0}
+.month-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 2px;margin-bottom:12px;
+}
+.month-header .month-label{
+  font-size:13px;font-weight:700;color:var(--ink);
+  text-transform:uppercase;letter-spacing:.8px;
+}
+.month-header .month-total{
+  font-size:12px;font-weight:600;color:var(--ink2);
+  padding:4px 10px;background:rgba(58,34,51,.04);border-radius:8px;
+}
+
+/* ── Payment Card ── */
+.payment-card{
+  background:var(--surface);border-radius:18px;
+  margin-bottom:10px;position:relative;overflow:hidden;
+  box-shadow:0 4px 18px rgba(0,0,0,.04);
+  cursor:pointer;transition:all .2s;
+  border-left:4px solid transparent;
+}
+.payment-card:active{transform:scale(.98)}
+.payment-card.efectivo{border-left-color:var(--deliv-fg)}
+.payment-card.tarjeta{border-left-color:var(--route-fg)}
+.payment-card.transferencia{border-left-color:var(--pend-fg)}
+.payment-card.oxxo{border-left-color:var(--oxxo-fg)}
+.payment-card.deposito{border-left-color:var(--depo-fg)}
+
+.card-main{
+  padding:14px 16px;
+  display:flex;align-items:center;gap:12px;
+}
+
+/* Store avatar with brand color */
+.store-avatar{
+  width:44px;height:44px;min-width:44px;
+  border-radius:14px;display:flex;align-items:center;justify-content:center;
+  font-size:17px;font-weight:700;color:#fff;
+}
+.card-info{flex:1;min-width:0}
+.card-info .store{
+  font-size:14px;font-weight:600;color:var(--ink);line-height:1.2;
+}
+.card-info .meta{
+  display:flex;align-items:center;gap:8px;margin-top:2px;
+}
+.card-info .meta .ref{
+  font-size:11.5px;color:var(--ink3);font-weight:500;
+}
+.card-info .meta .dot{
+  width:3px;height:3px;border-radius:50%;background:var(--ink3);opacity:.4;
+}
+.card-info .meta .date{
+  font-size:11.5px;color:var(--ink3);font-weight:400;
+}
+
+/* Method chip */
+.method-chip{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:3px 9px;border-radius:20px;margin-top:5px;
+  font-size:11px;font-weight:700;letter-spacing:.2px;
+}
+.method-chip.efectivo{background:var(--deliv-bg);color:var(--deliv-fg)}
+.method-chip.tarjeta{background:var(--route-bg);color:var(--route-fg)}
+.method-chip.transferencia{background:var(--pend-bg);color:var(--pend-fg)}
+.method-chip.oxxo{background:var(--oxxo-bg);color:var(--oxxo-fg)}
+.method-chip.deposito{background:var(--depo-bg);color:var(--depo-fg)}
+.method-chip svg{width:12px;height:12px}
+
+/* Amount */
+.card-amount{text-align:right;min-width:70px}
+.card-amount .val{
+  font-size:17px;font-weight:700;color:var(--ink);
+  letter-spacing:-.3px;
+}
+.card-amount .context{
+  font-size:10.5px;color:var(--ink3);font-weight:400;margin-top:1px;
+}
+
+/* Expandable detail */
+.card-detail{
+  max-height:0;overflow:hidden;
+  transition:max-height .3s ease, padding .3s ease;
+  background:rgba(58,34,51,.015);
+  border-top:1px solid var(--line-soft);
+}
+.card-detail.open{max-height:150px}
+.detail-content{
+  padding:10px 16px 14px;
+  display:flex;flex-direction:column;gap:8px;
+}
+.detail-row{
+  display:flex;align-items:center;justify-content:space-between;
+}
+.detail-row .key{font-size:11.5px;color:var(--ink3);font-weight:500}
+.detail-row .val{font-size:12px;color:var(--ink);font-weight:600}
+
+.order-chip{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;
+}
+.order-chip.Pending{background:var(--pend-bg);color:var(--pend-fg)}
+.order-chip.Confirmed{background:rgba(251,111,156,.12);color:var(--neni-deep)}
+.order-chip.Delivered{background:var(--deliv-bg);color:var(--deliv-fg)}
+.order-chip.Shipped,
+.order-chip.InRoute{background:var(--route-bg);color:var(--route-fg)}
+
+/* ── Empty State ── */
+.empty-state{
+  margin:60px 22px;text-align:center;padding:40px 20px;
+}
+.empty-state .icon-wrap{
+  width:90px;height:90px;margin:0 auto 20px;
+  border-radius:28px;background:linear-gradient(135deg,#FFF2D4,#FFE8CC);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 14px 32px rgba(243,179,65,.2);
+}
+.empty-state .icon-wrap svg{width:40px;height:40px;color:var(--gold)}
+.empty-state h3{font-size:19px;font-weight:700;color:var(--ink);margin-bottom:6px}
+.empty-state p{font-size:13px;color:var(--ink2);line-height:1.5;max-width:260px;margin:0 auto}
+
+/* ── Error State ── */
+.error-state{
+  margin:60px 22px;text-align:center;padding:40px 20px;
+}
+.error-state svg{width:52px;height:52px;color:var(--ink3);margin-bottom:16px}
+.error-state h3{font-size:18px;font-weight:700;color:var(--ink);margin-bottom:6px}
+.error-state p{font-size:13px;color:var(--ink2);margin-bottom:22px}
+.retry-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:10px 24px;border-radius:20px;
+  background:var(--neni);color:#fff;font-size:13px;font-weight:600;
+  border:none;cursor:pointer;font-family:inherit;
+  transition:transform .15s, box-shadow .15s;
+  box-shadow:0 8px 22px rgba(251,111,156,.3);
+}
+.retry-btn:active{transform:scale(.95)}
+
+/* ── Skeleton ── */
+@keyframes shimmer{0%{background-position:-200px 0}100%{background-position:calc(200px + 100%) 0}}
+.sk-base{
+  background:linear-gradient(90deg,var(--line-soft) 25%,rgba(58,34,51,.03) 37%,var(--line-soft) 63%);
+  background-size:200px 100%;animation:shimmer 1.4s ease infinite;
+  border-radius:8px;
+}
+.skeleton-hero{
+  margin:14px 22px 0;height:90px;border-radius:24px;
+  background:var(--surface);padding:16px 20px;
+  display:flex;align-items:center;gap:14px;
+}
+.skeleton-hero .sk-icon{width:50px;height:50px;border-radius:16px;flex-shrink:0}
+.skeleton-hero .sk-lines{flex:1;display:flex;flex-direction:column;gap:10px}
+.skeleton-card{
+  margin:0 22px 10px;height:82px;border-radius:18px;
+  background:var(--surface);padding:14px 16px;
+  display:flex;align-items:center;gap:12px;
+}
+.skeleton-card .sk-ava{width:44px;height:44px;border-radius:14px;flex-shrink:0}
+.skeleton-card .sk-lines{flex:1;display:flex;flex-direction:column;gap:8px}
+
+/* ── Search / Filter bar ── */
+.filter-bar{
+  margin:14px 22px 0;
+  display:flex;gap:8px;
+}
+.filter-chip{
+  padding:7px 14px;border-radius:20px;font-size:12.5px;font-weight:600;
+  background:var(--surface);color:var(--ink2);border:1.5px solid var(--line);
+  cursor:pointer;transition:all .15s;font-family:inherit;
+}
+.filter-chip.active{
+  background:var(--ink);color:#fff;border-color:var(--ink);
+}
+
+/* ── Bottom Nav ── */
+.bottom-nav{
+  position:absolute;bottom:12px;left:20px;right:20px;
+  height:64px;border-radius:28px;
+  background:rgba(255,255,255,.78);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  display:flex;align-items:center;justify-content:space-around;
+  padding:0 10px;
+  box-shadow:0 22px 44px -18px rgba(124,31,74,.42);
+  z-index:100;
+}
+.nav-item{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  cursor:pointer;padding:6px 12px;border-radius:16px;
+  transition:all .15s;position:relative;
+}
+.nav-item svg{width:20px;height:20px;color:var(--ink3);transition:color .15s}
+.nav-item span{font-size:10px;font-weight:600;color:var(--ink3);transition:color .15s}
+.nav-item.active svg,
+.nav-item.active span{color:var(--neni)}
+.nav-item.active::before{
+  content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:20px;height:3px;background:var(--neni);border-radius:0 0 3px 3px;
+}
+.nav-center{
+  width:50px;height:50px;border-radius:18px;
+  background:var(--grad-rosa);display:flex;align-items:center;justify-content:center;
+  margin-top:-24px;box-shadow:0 10px 26px rgba(251,111,156,.45);
+  transition:transform .15s;
+}
+.nav-center:active{transform:scale(.92)}
+.nav-center svg{width:22px;height:22px;color:#fff}
+
+/* ── Title Bar (Status mock) ── */
+.title-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 26px;position:absolute;top:52px;left:0;right:0;z-index:50;
+}
+.title-bar .time{font-size:13px;font-weight:600;color:var(--ink);}
+.title-bar .icons{display:flex;gap:6px;align-items:center}
+.title-bar .icons svg{width:15px;height:15px;color:var(--ink)}
+
+/* ── Tab switcher for Design/Loading/Error/Empty ── */
+.tab-switcher{
+  position:fixed;top:16px;right:16px;z-index:9999;
+  display:flex;gap:6px;
+}
+.tab-switcher button{
+  padding:8px 14px;border-radius:10px;font-size:12px;font-weight:600;
+  border:2px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);
+  color:rgba(255,255,255,.7);cursor:pointer;font-family:inherit;
+  transition:all .15s;
+}
+.tab-switcher button.active,
+.tab-switcher button:hover{
+  background:rgba(255,255,255,.16);color:#fff;border-color:rgba(255,255,255,.4);
+}
+
+/* ── Responsive note ── */
+.note{
+  position:fixed;bottom:16px;left:50%;transform:translateX(-50%);
+  font-size:11px;color:rgba(255,255,255,.3);
+  font-family:inherit;pointer-events:none;
+}
+
+/* SVG icons inline */
+i-svg{display:inline-flex;align-items:center;justify-content:center}
+</style>
+</head>
+<body>
+
+<div class="tab-switcher">
+  <button onclick="showState('design')" id="btn-design" class="active">Diseño</button>
+  <button onclick="showState('loading')" id="btn-loading">Loading</button>
+  <button onclick="showState('error')" id="btn-error">Error</button>
+  <button onclick="showState('empty')" id="btn-empty">Vacío</button>
+</div>
+<div class="note">Mockup — Mis Pagos (Compradora) · Nenis App Fase 2</div>
+
+<div class="phone" id="phone">
+  <div class="notch"></div>
+
+  <div class="scroll" id="scrollView">
+    <!-- ── DESIGN STATE ── -->
+    <div id="state-design">
+      <!-- Header -->
+      <div class="title-bar">
+        <span class="time">9:41</span>
+        <span class="icons">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C17.93 3.93 6.07 3.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-6-6l2 2c2.76-2.76 7.24-2.76 10 0l2-2C14.33 8.33 9.67 8.33 3 15z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor"><rect x="1" y="6" width="20" height="12" rx="2"/><rect x="3" y="9" width="16" height="6" rx="1"/></svg>
+        </span>
+      </div>
+
+      <div class="header">
+        <div class="back-btn" onclick="this.style.transform='scale(.9)';setTimeout(()=>this.style.transform='',150)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </div>
+        <div class="header-text">
+          <h1>Mis pagos</h1>
+          <p>Tu historial de pagos con todas tus tiendas</p>
+        </div>
+      </div>
+
+      <!-- Hero summary -->
+      <div class="hero">
+        <div class="hero-row">
+          <div class="hero-icon">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+          </div>
+          <div class="hero-amount">
+            <div class="label">Total pagado</div>
+            <div class="value">$3,850</div>
+            <div class="sub">en 7 pagos · 3 tiendas</div>
+          </div>
+          <div style="text-align:right">
+            <svg width="40" height="40" viewBox="0 0 40 40" style="opacity:.15">
+              <circle cx="20" cy="20" r="18" fill="none" stroke="var(--neni)" stroke-width="2"/>
+              <path d="M12 22l4-6 4 3 8-8" stroke="var(--neni)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick stats -->
+      <div class="quick-stats">
+        <div class="stat-pill">
+          <div class="icon efectivo">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+          </div>
+          <div class="value">3</div>
+          <div class="label">Efectivo</div>
+        </div>
+        <div class="stat-pill">
+          <div class="icon tarjeta">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+          </div>
+          <div class="value">2</div>
+          <div class="label">Tarjeta</div>
+        </div>
+        <div class="stat-pill">
+          <div class="icon total">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-4v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>
+          </div>
+          <div class="value">$550</div>
+          <div class="label">Promedio</div>
+        </div>
+      </div>
+
+      <!-- Filter bar -->
+      <div class="filter-bar">
+        <button class="filter-chip active">Todos</button>
+        <button class="filter-chip" onclick="toggleFilter(this)">Efectivo</button>
+        <button class="filter-chip" onclick="toggleFilter(this)">Tarjeta</button>
+        <button class="filter-chip" onclick="toggleFilter(this)">Transferencia</button>
+      </div>
+
+      <!-- July 2026 -->
+      <div class="month-section">
+        <div class="month-header">
+          <span class="month-label">Julio 2026</span>
+          <span class="month-total">$1,650</span>
+        </div>
+
+        <!-- Payment 1: Tarjeta -->
+        <div class="payment-card tarjeta" onclick="toggleDetail(this)">
+          <div class="card-main">
+            <div class="store-avatar" style="background:linear-gradient(135deg,#FB6F9C,#E84E83)">N</div>
+            <div class="card-info">
+              <div class="store">Neni's</div>
+              <div class="meta">
+                <span class="ref">Pago #1047</span>
+                <span class="dot"></span>
+                <span class="date">6 jul, 14:22</span>
+              </div>
+              <span class="method-chip tarjeta">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+                Tarjeta
+              </span>
+            </div>
+            <div class="card-amount">
+              <div class="val">$850</div>
+              <div class="context">Pedido #312</div>
+            </div>
+          </div>
+          <div class="card-detail">
+            <div class="detail-content">
+              <div class="detail-row">
+                <span class="key">Estado del pedido</span>
+                <span class="order-chip Confirmed">Confirmado</span>
+              </div>
+              <div class="detail-row">
+                <span class="key">Total del pedido</span>
+                <span class="val">$850</span>
+              </div>
+              <div class="detail-row">
+                <span class="key">Registrado por</span>
+                <span class="val">Admin</span>
+              </div>
+              <div class="detail-row">
+                <span class="key">Notas</span>
+                <span class="val">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment 2: Efectivo -->
+        <div class="payment-card efectivo" onclick="toggleDetail(this)">
+          <div class="card-main">
+            <div class="store-avatar" style="background:linear-gradient(135deg,#FF0072,#CC005B)">R</div>
+            <div class="card-info">
+              <div class="store">Regi Bazar</div>
+              <div class="meta">
+                <span class="ref">Pago #1046</span>
+                <span class="dot"></span>
+                <span class="date">4 jul, 11:05</span>
+              </div>
+              <span class="method-chip efectivo">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+                Efectivo
+              </span>
+            </div>
+            <div class="card-amount">
+              <div class="val">$460</div>
+              <div class="context">Pedido #308</div>
+            </div>
+          </div>
+          <div class="card-detail">
+            <div class="detail-content">
+              <div class="detail-row">
+                <span class="key">Estado del pedido</span>
+                <span class="order-chip Delivered">Entregado</span>
+              </div>
+              <div class="detail-row">
+                <span class="key">Total del pedido</span>
+                <span class="val">$460</span>
+              </div>
+              <div class="detail-row">
+                <span class="key">Registrado por</span>
+                <span class="val">Conductor</span>
+              </div>
+              <div class="detail-row">
+                <span class="key">Notas</span>
+                <span class="val">Pagó al recibir</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment 3: Efectivo -->
+        <div class="payment-card efectivo" onclick="toggleDetail(this)">
+          <div class="card-main">
+            <div class="store-avatar" style="background:linear-gradient(135deg,#FB6F9C,#E84E83)">N</div>
+            <div class="card-info">
+              <div class="store">Neni's</div>
+              <div class="meta">
+                <span class="ref">Pago #1045</span>
+                <span class="dot"></span>
+                <span class="date">1 jul, 16:40</span>
+              </div>
+              <span class="method-chip efectivo">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+                Efectivo
+              </span>
+            </div>
+            <div class="card-amount">
+              <div class="val">$340</div>
+              <div class="context">Pedido #301</div>
+            </div>
+          </div>
+          <div class="card-detail">
+            <div class="detail-content">
+              <div class="detail-row">
+                <span class="key">Estado del pedido</span>
+                <span class="order-chip Delivered">Entregado</span>
+              </div>
+              <div class="detail-row">
+                <span class="key">Total del pedido</span>
+                <span class="val">$340</span>
+              </div>
+              <div class="detail-row">
+                <span class="key">Registrado por</span>
+                <span class="val">Admin</span>
+              </div>
+              <div class="detail-row">
+                <span class="key">Notas</span>
+                <span class="val">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- June 2026 -->
+      <div class="month-section">
+        <div class="month-header">
+          <span class="month-label">Junio 2026</span>
+          <span class="month-total">$2,200</span>
+        </div>
+
+        <!-- Payment 4: Tarjeta -->
+        <div class="payment-card tarjeta" onclick="toggleDetail(this)">
+          <div class="card-main">
+            <div class="store-avatar" style="background:linear-gradient(135deg,#8E6BE6,#6E4EBE)">A</div>
+            <div class="card-info">
+              <div class="store">Aurora</div>
+              <div class="meta">
+                <span class="ref">Pago #1040</span>
+                <span class="dot"></span>
+                <span class="date">28 jun, 10:15</span>
+              </div>
+              <span class="method-chip tarjeta">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+                Tarjeta
+              </span>
+            </div>
+            <div class="card-amount">
+              <div class="val">$1,200</div>
+              <div class="context">Pedido #287</div>
+            </div>
+          </div>
+          <div class="card-detail">
+            <div class="detail-content">
+              <div class="detail-row">
+                <span class="key">Estado del pedido</span>
+                <span class="order-chip Delivered">Entregado</span>
+              </div>
+              <div class="detail-row">
+                <span class="key">Total del pedido</span>
+                <span class="val">$1,200</span>
+              </div>
+              <div class="detail-row">
+                <span class="key">Registrado por</span>
+                <span class="val">Link de pago</span>
+              </div>
+              <div class="detail-row">
+                <span class="key">Notas</span>
+                <span class="val">Pagado en línea</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment 5: Transferencia -->
+        <div class="payment-card transferencia" onclick="toggleDetail(this)">
+          <div class="card-main">
+            <div class="store-avatar" style="background:linear-gradient(135deg,#FF7A59,#CC623F)">L</div>
+            <div class="card-info">
+              <div class="store">Luna Bella</div>
+              <div class="meta">
+                <span class="ref">Pago #1035</span>
+                <span class="dot"></span>
+                <span class="date">15 jun, 09:30</span>
+              </div>
+              <span class="method-chip transferencia">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 10v7h3v-7H4zm6 0v7h3v-7h-3zM2 22h19v-3H2v3zm14-12v7h3v-7h-3zm-4.5-9L2 6v2h19V6l-9.5-5z"/></svg>
+                Transferencia
+              </span>
+            </div>
+            <div class="card-amount">
+              <div class="val">$550</div>
+              <div class="context">Pedido #275</div>
+            </div>
+          </div>
+          <div class="card-detail">
+            <div class="detail-content">
+              <div class="detail-row">
+                <span class="key">Estado del pedido</span>
+                <span class="order-chip Delivered">Entregado</span>
+              </div>
+              <div class="detail-row">
+                <span class="key">Total del pedido</span>
+                <span class="val">$550</span>
+              </div>
+              <div class="detail-row">
+                <span class="key">Registrado por</span>
+                <span class="val">Admin</span>
+              </div>
+              <div class="detail-row">
+                <span class="key">Notas</span>
+                <span class="val">Transferencia BBVA</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment 6: OXXO -->
+        <div class="payment-card oxxo" onclick="toggleDetail(this)">
+          <div class="card-main">
+            <div class="store-avatar" style="background:linear-gradient(135deg,#FF0072,#CC005B)">R</div>
+            <div class="card-info">
+              <div class="store">Regi Bazar</div>
+              <div class="meta">
+                <span class="ref">Pago #1030</span>
+                <span class="dot"></span>
+                <span class="date">8 jun, 18:45</span>
+              </div>
+              <span class="method-chip oxxo">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5.5 12.5H15V16h-1.5v-1.5zm-2-6H13V11h-1.5V9.5zm4 4H17v1.5h-1.5v-1.5z"/><path d="M7 7h2.5v2.5H7zm0 4h2.5v2.5H7zm4-4h2.5v2.5H11zm0 4h2.5v2.5H11z" opacity=".4"/></svg>
+                OXXO
+              </span>
+            </div>
+            <div class="card-amount">
+              <div class="val">$250</div>
+              <div class="context">Pedido #268</div>
+            </div>
+          </div>
+          <div class="card-detail">
+            <div class="detail-content">
+              <div class="detail-row">
+                <span class="key">Estado del pedido</span>
+                <span class="order-chip Delivered">Entregado</span>
+              </div>
+              <div class="detail-row">
+                <span class="key">Total del pedido</span>
+                <span class="val">$250</span>
+              </div>
+              <div class="detail-row">
+                <span class="key">Registrado por</span>
+                <span class="val">Sistema</span>
+              </div>
+              <div class="detail-row">
+                <span class="key">Notas</span>
+                <span class="val">Pago en tienda OXXO</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment 7: Deposito -->
+        <div class="payment-card deposito" onclick="toggleDetail(this)">
+          <div class="card-main">
+            <div class="store-avatar" style="background:linear-gradient(135deg,#16B5A0,#0F8C7C)">M</div>
+            <div class="card-info">
+              <div class="store">Mía Joya</div>
+              <div class="meta">
+                <span class="ref">Pago #1025</span>
+                <span class="dot"></span>
+                <span class="date">3 jun, 12:00</span>
+              </div>
+              <span class="method-chip deposito">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 10v7h3v-7H4zm6 0v7h3v-7h-3zM2 22h19v-3H2v3zm14-12v7h3v-7h-3zm-4.5-9L2 6v2h19V6l-9.5-5z"/></svg>
+                Depósito
+              </span>
+            </div>
+            <div class="card-amount">
+              <div class="val">$200</div>
+              <div class="context">Pedido #260</div>
+            </div>
+          </div>
+          <div class="card-detail">
+            <div class="detail-content">
+              <div class="detail-row">
+                <span class="key">Estado del pedido</span>
+                <span class="order-chip Pending">Pendiente</span>
+              </div>
+              <div class="detail-row">
+                <span class="key">Total del pedido</span>
+                <span class="val">$400</span>
+              </div>
+              <div class="detail-row">
+                <span class="key">Registrado por</span>
+                <span class="val">Admin</span>
+              </div>
+              <div class="detail-row">
+                <span class="key">Notas</span>
+                <span class="val">Anticipo, falta $200</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /state-design -->
+
+    <!-- ── LOADING STATE ── -->
+    <div id="state-loading" style="display:none">
+      <div class="title-bar">
+        <span class="time">9:41</span>
+        <span class="icons">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C17.93 3.93 6.07 3.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-6-6l2 2c2.76-2.76 7.24-2.76 10 0l2-2C14.33 8.33 9.67 8.33 3 15z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor"><rect x="1" y="6" width="20" height="12" rx="2"/><rect x="3" y="9" width="16" height="6" rx="1"/></svg>
+        </span>
+      </div>
+
+      <div class="header">
+        <div class="back-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </div>
+        <div class="header-text">
+          <h1>Mis pagos</h1>
+          <p>Tu historial de pagos con todas tus tiendas</p>
+        </div>
+      </div>
+
+      <div class="skeleton-hero">
+        <div class="sk-icon sk-base"></div>
+        <div class="sk-lines">
+          <div class="sk-base" style="width:60%;height:12px"></div>
+          <div class="sk-base" style="width:80%;height:22px"></div>
+          <div class="sk-base" style="width:40%;height:10px"></div>
+        </div>
+      </div>
+
+      <div class="quick-stats" style="margin-top:12px">
+        <div class="stat-pill" style="box-shadow:none;background:var(--surface);padding:14px">
+          <div class="sk-base" style="width:32px;height:32px;border-radius:10px;margin:0 auto 8px"></div>
+          <div class="sk-base" style="width:40px;height:16px;margin:0 auto 4px"></div>
+          <div class="sk-base" style="width:50px;height:10px;margin:0 auto"></div>
+        </div>
+        <div class="stat-pill" style="box-shadow:none;background:var(--surface);padding:14px">
+          <div class="sk-base" style="width:32px;height:32px;border-radius:10px;margin:0 auto 8px"></div>
+          <div class="sk-base" style="width:40px;height:16px;margin:0 auto 4px"></div>
+          <div class="sk-base" style="width:50px;height:10px;margin:0 auto"></div>
+        </div>
+        <div class="stat-pill" style="box-shadow:none;background:var(--surface);padding:14px">
+          <div class="sk-base" style="width:32px;height:32px;border-radius:10px;margin:0 auto 8px"></div>
+          <div class="sk-base" style="width:40px;height:16px;margin:0 auto 4px"></div>
+          <div class="sk-base" style="width:50px;height:10px;margin:0 auto"></div>
+        </div>
+      </div>
+
+      <div style="margin:20px 22px 0"><div class="sk-base" style="width:100px;height:14px;border-radius:6px;margin-bottom:12px"></div></div>
+      <div class="skeleton-card"><div class="sk-ava sk-base"></div><div class="sk-lines"><div class="sk-base" style="width:55%;height:13px"></div><div class="sk-base" style="width:35%;height:10px"></div><div class="sk-base" style="width:25%;height:18px;border-radius:12px"></div></div></div>
+      <div class="skeleton-card"><div class="sk-ava sk-base"></div><div class="sk-lines"><div class="sk-base" style="width:60%;height:13px"></div><div class="sk-base" style="width:40%;height:10px"></div><div class="sk-base" style="width:20%;height:18px;border-radius:12px"></div></div></div>
+      <div class="skeleton-card"><div class="sk-ava sk-base"></div><div class="sk-lines"><div class="sk-base" style="width:50%;height:13px"></div><div class="sk-base" style="width:30%;height:10px"></div><div class="sk-base" style="width:30%;height:18px;border-radius:12px"></div></div></div>
+      <div class="skeleton-card"><div class="sk-ava sk-base"></div><div class="sk-lines"><div class="sk-base" style="width:55%;height:13px"></div><div class="sk-base" style="width:45%;height:10px"></div><div class="sk-base" style="width:22%;height:18px;border-radius:12px"></div></div></div>
+    </div>
+
+    <!-- ── ERROR STATE ── -->
+    <div id="state-error" style="display:none">
+      <div class="title-bar">
+        <span class="time">9:41</span>
+        <span class="icons">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C17.93 3.93 6.07 3.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-6-6l2 2c2.76-2.76 7.24-2.76 10 0l2-2C14.33 8.33 9.67 8.33 3 15z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor"><rect x="1" y="6" width="20" height="12" rx="2"/><rect x="3" y="9" width="16" height="6" rx="1"/></svg>
+        </span>
+      </div>
+
+      <div class="header">
+        <div class="back-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </div>
+        <div class="header-text">
+          <h1>Mis pagos</h1>
+          <p>Tu historial de pagos con todas tus tiendas</p>
+        </div>
+      </div>
+
+      <div class="error-state">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM13 17h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+        <h3>No pudimos cargar tus pagos</h3>
+        <p>Revisa tu conexión a internet e intenta de nuevo. Si el problema persiste, contáctanos.</p>
+        <button class="retry-btn" onclick="showState('loading');setTimeout(()=>showState('design'),1400)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+          Reintentar
+        </button>
+      </div>
+    </div>
+
+    <!-- ── EMPTY STATE ── -->
+    <div id="state-empty" style="display:none">
+      <div class="title-bar">
+        <span class="time">9:41</span>
+        <span class="icons">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C17.93 3.93 6.07 3.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-6-6l2 2c2.76-2.76 7.24-2.76 10 0l2-2C14.33 8.33 9.67 8.33 3 15z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor"><rect x="1" y="6" width="20" height="12" rx="2"/><rect x="3" y="9" width="16" height="6" rx="1"/></svg>
+        </span>
+      </div>
+
+      <div class="header">
+        <div class="back-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </div>
+        <div class="header-text">
+          <h1>Mis pagos</h1>
+          <p>Tu historial de pagos con todas tus tiendas</p>
+        </div>
+      </div>
+
+      <div class="empty-state">
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+        </div>
+        <h3>Aún no tienes pagos registrados</h3>
+        <p>Cuando liquides un pedido en tienda o con tarjeta desde el link de pago, tu historial aparecerá aquí.</p>
+      </div>
+    </div>
+
+  </div><!-- /scroll -->
+
+  <!-- Bottom Nav -->
+  <div class="bottom-nav">
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <span>Inicio</span>
+    </div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 21h-1l1-7H7.5c-.58 0-.57-.32-.38-.66.19-.34.05-.08.07-.12C8.48 10.94 10.42 7.54 13 3h1l-1 7h3.5c.49 0 .56.33.47.51l-.05.15C12.96 17.55 11 21 11 21z"/></svg>
+      <span>Pedidos</span>
+    </div>
+    <div class="nav-center" style="cursor:pointer">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div class="nav-item active">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+      <span>Pagos</span>
+    </div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      <span>Cuenta</span>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleDetail(el) {
+  const detail = el.querySelector('.card-detail');
+  detail.classList.toggle('open');
+}
+
+function toggleFilter(btn) {
+  btn.classList.toggle('active');
+  const allBtn = document.querySelectorAll('.filter-chip')[0];
+  const anyActive = Array.from(document.querySelectorAll('.filter-chip')).some((b,i) => i>0 && b.classList.contains('active'));
+  if (!anyActive) allBtn.classList.add('active');
+  else allBtn.classList.remove('active');
+}
+
+function showState(state) {
+  ['design','loading','error','empty'].forEach(s => {
+    document.getElementById('state-'+s).style.display = s === state ? 'block' : 'none';
+    document.getElementById('btn-'+s).classList.toggle('active', s === state);
+  });
+  document.getElementById('scrollView').scrollTop = 0;
+}
+</script>
+
+</body>
+</html>

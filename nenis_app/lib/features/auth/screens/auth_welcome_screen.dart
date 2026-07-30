@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -47,7 +48,7 @@ class AuthWelcomeScreen extends StatelessWidget {
                 const SizedBox(height: 24),
                 PillButton(
                   label: 'Empezar',
-                  icon: Icons.arrow_forward,
+                  icon: Symbols.arrow_forward,
                   variant: PillButtonVariant.brand,
                   onPressed: () => context.go('/login'),
                 ),

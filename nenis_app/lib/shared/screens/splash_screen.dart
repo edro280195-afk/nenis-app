@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_text_styles.dart';
 import '../widgets/nenis_logo.dart';
 
 /// Splash inicial. Muestra el logo + un spinner mientras el
@@ -21,23 +20,11 @@ class SplashScreen extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const NenisMark(size: 144),
-            const SizedBox(height: 8),
-            Text(
-              "Neni's",
-              style: AppTextStyles.h1.copyWith(
-                fontSize: 32,
-                color: AppColors.ink,
-              ),
-            ),
-            const SizedBox(height: 2),
-            const Text(
-              'Compradora',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: AppColors.ink2,
-              ),
+            const NenisLogo(
+              markSize: 88,
+              wordmarkSize: 32,
+              subtitle: 'Compradora',
+              crossAxisAlignment: CrossAxisAlignment.center,
             ),
             const SizedBox(height: 28),
             const SizedBox(

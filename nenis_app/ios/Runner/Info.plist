@@ -26,6 +26,14 @@
 				<string>fb1427323549158529</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>app.sellgeneral.nenis</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>nenis</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleShortVersionString</key>
 	<string>$(FLUTTER_BUILD_NAME)</string>
@@ -37,6 +45,8 @@
 	<true/>
 	<key>GMSApiKey</key>
 	<string>$(GOOGLE_MAPS_API_KEY)</string>
+	<key>NFCReaderUsageDescription</key>
+	<string>Usamos NFC para abrir y vincular cajas de tu inventario.</string>
 	<key>FacebookAppID</key>
 	<string>1427323549158529</string>
 	<key>FacebookClientToken</key>

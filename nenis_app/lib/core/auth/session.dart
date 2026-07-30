@@ -13,16 +13,16 @@ class Membership {
   final String role;
 
   factory Membership.fromJson(Map<String, dynamic> j) => Membership(
-        businessId: (j['businessId'] as num).toInt(),
-        businessName: (j['businessName'] ?? '') as String,
-        role: (j['role'] ?? 'None') as String,
-      );
+    businessId: (j['businessId'] as num).toInt(),
+    businessName: (j['businessName'] ?? '') as String,
+    role: (j['role'] ?? 'None') as String,
+  );
 
   Map<String, dynamic> toJson() => {
-        'businessId': businessId,
-        'businessName': businessName,
-        'role': role,
-      };
+    'businessId': businessId,
+    'businessName': businessName,
+    'role': role,
+  };
 }
 
 /// Sesión autenticada de la compradora. El JWT trae `sub = AccountId`.
@@ -35,6 +35,7 @@ class Session {
     required this.expiresAt,
     required this.memberships,
     this.activeBusinessId,
+    this.refreshToken,
   });
 
   final String token;
@@ -48,8 +49,45 @@ class Session {
   /// memberships lo deja en null; con una sola, se autoselecciona.
   final int? activeBusinessId;
 
+  /// Refresh token opaco (90 días) para renovar el JWT sin re-autenticar.
+  /// Reemplaza al guardado de contraseña en el dispositivo.
+  final String? refreshToken;
+
   bool get isExpired => DateTime.now().isAfter(expiresAt);
   bool get hasMembership => memberships.isNotEmpty;
+  Membership? get activeMembership {
+    if (memberships.isEmpty) return null;
+    final active = activeBusinessId;
+    if (active == null) {
+      return memberships.length == 1 ? memberships.first : null;
+    }
+    for (final membership in memberships) {
+      if (membership.businessId == active) return membership;
+    }
+    return null;
+  }
+
+  bool hasActiveBusinessRole(Set<String> allowedRoles) {
+    final normalizedRoles = allowedRoles
+        .map((role) => role.trim().toLowerCase())
+        .toSet();
+
+    bool isAllowed(Membership membership) =>
+        normalizedRoles.contains(membership.role.trim().toLowerCase());
+
+    final active = activeMembership;
+    if (active != null) return isAllowed(active);
+    if (activeBusinessId != null) return false;
+    return memberships.any(isAllowed);
+  }
+
+  bool get canAccessRoutes =>
+      hasActiveBusinessRole(const {'Owner', 'Admin', 'Driver'});
+
+  bool get canManageLabels => hasActiveBusinessRole(const {'Owner', 'Admin'});
+
+  bool get canManageStoreEngagement =>
+      hasActiveBusinessRole(const {'Owner', 'Admin'});
 
   /// Construye desde el `LoginResponse` del backend (camelCase).
   factory Session.fromLoginJson(Map<String, dynamic> j) {
@@ -61,11 +99,14 @@ class Session {
       accountId: (j['accountId'] as num).toInt(),
       displayName: (j['name'] ?? '') as String,
       role: (j['role'] ?? 'None') as String,
-      expiresAt: DateTime.tryParse((j['expiresAt'] ?? '') as String)?.toLocal() ??
+      expiresAt:
+          DateTime.tryParse((j['expiresAt'] ?? '') as String)?.toLocal() ??
           DateTime.now().add(const Duration(days: 7)),
       memberships: memberships,
-      activeBusinessId:
-          memberships.length == 1 ? memberships.first.businessId : null,
+      activeBusinessId: memberships.length == 1
+          ? memberships.first.businessId
+          : null,
+      refreshToken: j['refreshToken'] as String?,
     );
   }
 
@@ -82,28 +123,31 @@ class Session {
           DateTime.tryParse((j['expiresAt'] ?? '') as String) ?? DateTime.now(),
       memberships: memberships,
       activeBusinessId: (j['activeBusinessId'] as num?)?.toInt(),
+      refreshToken: j['refreshToken'] as String?,
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'token': token,
-        'accountId': accountId,
-        'name': displayName,
-        'role': role,
-        'expiresAt': expiresAt.toIso8601String(),
-        'memberships': memberships.map((m) => m.toJson()).toList(),
-        'activeBusinessId': activeBusinessId,
-      };
+    'token': token,
+    'accountId': accountId,
+    'name': displayName,
+    'role': role,
+    'expiresAt': expiresAt.toIso8601String(),
+    'memberships': memberships.map((m) => m.toJson()).toList(),
+    'activeBusinessId': activeBusinessId,
+    'refreshToken': refreshToken,
+  };
 
-  Session copyWith({int? activeBusinessId}) => Session(
-        token: token,
-        accountId: accountId,
-        displayName: displayName,
-        role: role,
-        expiresAt: expiresAt,
-        memberships: memberships,
-        activeBusinessId: activeBusinessId ?? this.activeBusinessId,
-      );
+  Session copyWith({int? activeBusinessId, String? refreshToken}) => Session(
+    token: token,
+    accountId: accountId,
+    displayName: displayName,
+    role: role,
+    expiresAt: expiresAt,
+    memberships: memberships,
+    activeBusinessId: activeBusinessId ?? this.activeBusinessId,
+    refreshToken: refreshToken ?? this.refreshToken,
+  );
 
   String encode() => jsonEncode(toJson());
 

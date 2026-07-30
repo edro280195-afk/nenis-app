@@ -6,7 +6,6 @@
 build/
 .flutter-plugins
 .flutter-plugins-dependencies
-pubspec.lock
 
 # Android
 android/.gradle/
@@ -23,6 +22,7 @@ android/key.properties
 *.pem
 *.key
 secrets.json
+/google-services-*.json
 
 # iOS / macOS
 ios/Pods/
@@ -46,6 +46,7 @@ Thumbs.db
 # Misc
 *.log
 *.lock
+!pubspec.lock
 .env
 .env.*
 !.env.example

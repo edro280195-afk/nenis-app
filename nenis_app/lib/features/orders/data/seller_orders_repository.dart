@@ -83,6 +83,8 @@ class SellerOrdersRepository {
     String? deliveryInstructions,
     DateTime? scheduledDeliveryDate,
     int? clientId,
+    int? targetOrderId,
+    bool forceNew = false,
     required String type,
     required SellerDeliveryType orderType,
     required List<DraftOrderItem> items,
@@ -104,6 +106,8 @@ class SellerOrdersRepository {
             'deliveryInstructions': deliveryInstructions.trim(),
           'scheduledDeliveryDate': ?scheduledDeliveryDate?.toIso8601String(),
           'clientId': ?clientId,
+          'targetOrderId': ?targetOrderId,
+          if (forceNew) 'forceNew': true,
           'type': type,
           'orderType': orderType.api,
           'status': 'Pending',
@@ -115,6 +119,33 @@ class SellerOrdersRepository {
       throw SellerOrdersException(_friendly(e, 'No pudimos crear el pedido.'));
     }
   }
+
+  /// Pedidos "abiertos" (no cancelados) de una clienta, con sus artículos.
+  /// `GET /api/orders/open?clientId=&name=`. El frontend lo usa para preguntarle
+  /// a la dueña si crea un pedido nuevo o agrega a uno existente. Se resuelve por
+  /// `clientId` si viene; si no, por `name` (match exact-lower-trim en backend).
+  Future<List<SellerOrder>> getOpenOrders({
+    int? clientId,
+    String? name,
+  }) async {
+    try {
+      final res = await _dio.get(
+        '/api/orders/open',
+        queryParameters: {
+          'clientId': ?clientId,
+          if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
+        },
+      );
+      return ((res.data as List?) ?? const [])
+          .map((e) => SellerOrder.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      throw SellerOrdersException(
+        _friendly(e, 'No pudimos cargar los pedidos abiertos.'),
+      );
+    }
+  }
+
 
   Future<List<SellerClient>> getClients() async {
     try {
@@ -142,6 +173,17 @@ class SellerOrdersRepository {
     }
   }
 
+  Future<OrderCaptureSettings> getCaptureSettings() async {
+    try {
+      final res = await _dio.get('/api/orders/capture-settings');
+      return OrderCaptureSettings.fromJson(res.data as Map<String, dynamic>);
+    } catch (e) {
+      throw SellerOrdersException(
+        _friendly(e, 'No pudimos cargar la configuracion de captura.'),
+      );
+    }
+  }
+
   Future<void> deleteOrder(int id) async {
     try {
       await _dio.delete('/api/orders/$id');
@@ -152,11 +194,21 @@ class SellerOrdersRepository {
     }
   }
 
-  Future<SellerOrder> updateStatus(int id, SellerOrderStatus status) async {
+  Future<SellerOrder> updateStatus(
+    int id,
+    SellerOrderStatus status, {
+    DateTime? postponedAt,
+    String? postponedNote,
+  }) async {
     try {
       final res = await _dio.patch(
         '/api/orders/$id/status',
-        data: {'status': status.api},
+        data: {
+          'status': status.api,
+          if (postponedAt != null) 'postponedAt': postponedAt.toIso8601String(),
+          if (postponedNote != null && postponedNote.trim().isNotEmpty)
+            'postponedNote': postponedNote.trim(),
+        },
       );
       return SellerOrder.fromJson(res.data as Map<String, dynamic>);
     } catch (e) {
@@ -340,6 +392,6 @@ class SellerOrdersController extends AsyncNotifier<SellerOrdersPage> {
 }
 
 final sellerOrdersControllerProvider =
-    AsyncNotifierProvider<SellerOrdersController, SellerOrdersPage>(
+    AsyncNotifierProvider.autoDispose<SellerOrdersController, SellerOrdersPage>(
       SellerOrdersController.new,
     );

@@ -3,6 +3,7 @@ import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/dio_provider.dart';
+import '../legal/legal_config.dart';
 import 'session.dart';
 
 /// Error de autenticación con un mensaje listo para mostrar a la usuaria.
@@ -11,6 +12,24 @@ class AuthException implements Exception {
   final String message;
   @override
   String toString() => message;
+}
+
+enum PasswordResetFailure {
+  invalidCode,
+  invalidCodeFormat,
+  other;
+
+  bool get requiresCodeEntry =>
+      this == PasswordResetFailure.invalidCode ||
+      this == PasswordResetFailure.invalidCodeFormat;
+}
+
+/// Fallo al confirmar un restablecimiento, clasificado con el campo `error`
+/// estable del backend. La UI no debe inferir el tipo desde el texto traducido.
+class PasswordResetException extends AuthException {
+  PasswordResetException(super.message, {required this.failure});
+
+  final PasswordResetFailure failure;
 }
 
 /// La cuenta existe y la contraseña es correcta, pero el teléfono no se ha
@@ -64,6 +83,8 @@ class FacebookProfileCompletion {
     this.businessName,
     this.city,
     this.existingPassword,
+    required this.acceptedLegal,
+    this.legalVersion = LegalConfig.currentVersion,
   });
 
   final FacebookAccountType accountType;
@@ -74,6 +95,8 @@ class FacebookProfileCompletion {
   final String? businessName;
   final String? city;
   final String? existingPassword;
+  final bool acceptedLegal;
+  final String legalVersion;
 
   Map<String, dynamic> toJson(FacebookAccessCredential credential) {
     return {
@@ -84,6 +107,8 @@ class FacebookProfileCompletion {
       'lastName': lastName,
       'email': email,
       'phone': phone,
+      'acceptedLegal': acceptedLegal,
+      'legalVersion': legalVersion,
       if (businessName?.trim().isNotEmpty == true)
         'businessName': businessName!.trim(),
       if (city?.trim().isNotEmpty == true) 'city': city!.trim(),
@@ -143,6 +168,38 @@ class FacebookProfileRequiredException implements Exception {
 
   @override
   String toString() => message;
+}
+
+enum FacebookTerminalConflictType {
+  identityConflict,
+  verifiedPhoneChangeNotAllowed,
+  unknown,
+}
+
+/// Conflicto de identidad que no puede resolverse editando y reenviando el
+/// formulario de Facebook. La UI debe cerrar ese flujo y volver al acceso
+/// habitual.
+class FacebookTerminalConflictException extends AuthException {
+  FacebookTerminalConflictException(super.message, {required this.type});
+
+  final FacebookTerminalConflictType type;
+
+  factory FacebookTerminalConflictException.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    final message = (json['message'] as String?)?.trim();
+    return FacebookTerminalConflictException(
+      message != null && message.isNotEmpty && message.length <= 240
+          ? message
+          : 'No pudimos vincular tu Facebook con esa cuenta. Entra con tu método habitual.',
+      type: switch (json['error']) {
+        'identity_conflict' => FacebookTerminalConflictType.identityConflict,
+        'verified_phone_change_not_allowed' =>
+          FacebookTerminalConflictType.verifiedPhoneChangeNotAllowed,
+        _ => FacebookTerminalConflictType.unknown,
+      },
+    );
+  }
 }
 
 /// El perfil ya se guardó, pero todavía falta confirmar el teléfono por
@@ -211,6 +268,11 @@ class AuthRepository {
     required String phone,
     required String email,
     required String password,
+    required FacebookAccountType accountType,
+    required bool acceptedLegal,
+    String legalVersion = LegalConfig.currentVersion,
+    String? businessName,
+    String? city,
   }) async {
     try {
       final res = await _dio.post(
@@ -221,6 +283,12 @@ class AuthRepository {
           'phone': phone,
           'email': email,
           'password': password,
+          'accountType': accountType.apiValue,
+          'acceptedLegal': acceptedLegal,
+          'legalVersion': legalVersion,
+          if (businessName?.trim().isNotEmpty == true)
+            'businessName': businessName!.trim(),
+          if (city?.trim().isNotEmpty == true) 'city': city!.trim(),
         },
       );
       return OtpRequestResult.fromJson(res.data as Map<String, dynamic>);
@@ -238,6 +306,8 @@ class AuthRepository {
     FacebookAccountType? accountType,
     String? businessName,
     String? city,
+    bool acceptedLegal = false,
+    String legalVersion = LegalConfig.currentVersion,
   }) async {
     try {
       final res = await _dio.post(
@@ -245,6 +315,8 @@ class AuthRepository {
         data: {
           'phone': phone,
           'code': code,
+          'acceptedLegal': acceptedLegal,
+          'legalVersion': legalVersion,
           if (accountType != null) 'accountType': accountType.apiValue,
           if (businessName?.trim().isNotEmpty == true)
             'businessName': businessName!.trim(),
@@ -280,6 +352,88 @@ class AuthRepository {
         );
       }
       throw AuthException(_message(e, 'Teléfono o contraseña incorrectos.'));
+    }
+  }
+
+  /// Passwordless paso 1: pide el código de WhatsApp para entrar o registrarse
+  /// por teléfono, sin contraseña.
+  Future<OtpRequestResult> requestPhoneOtp(String phone) async {
+    try {
+      final res = await _dio.post(
+        '/api/auth/phone/request-otp',
+        data: {'phone': phone},
+      );
+      return OtpRequestResult.fromJson(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw AuthException(
+        _message(e, 'No pudimos enviar el código. Intenta de nuevo.'),
+      );
+    }
+  }
+
+  /// Passwordless paso 2: valida el código y devuelve la sesión (con refresh
+  /// token). Si el teléfono no existía, crea la cuenta usando el nombre si
+  /// viene. No usa contraseña.
+  Future<Session> verifyPhoneOtp(
+    String phone,
+    String code, {
+    String? firstName,
+    String? lastName,
+    required bool acceptedLegal,
+    String legalVersion = LegalConfig.currentVersion,
+    FacebookAccountType? accountType,
+    String? businessName,
+    String? city,
+  }) async {
+    try {
+      final res = await _dio.post(
+        '/api/auth/phone/verify',
+        data: {
+          'phone': phone,
+          'code': code,
+          'acceptedLegal': acceptedLegal,
+          'legalVersion': legalVersion,
+          if (accountType != null) 'accountType': accountType.apiValue,
+          if (businessName?.trim().isNotEmpty == true)
+            'businessName': businessName!.trim(),
+          if (city?.trim().isNotEmpty == true) 'city': city!.trim(),
+          if (firstName?.trim().isNotEmpty == true)
+            'firstName': firstName!.trim(),
+          if (lastName?.trim().isNotEmpty == true) 'lastName': lastName!.trim(),
+        },
+      );
+      return Session.fromLoginJson(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw AuthException(
+        _message(e, 'Código incorrecto. Revísalo e intenta de nuevo.'),
+      );
+    }
+  }
+
+  /// Renueva la sesión con el refresh token (lo rota). Lanza si es
+  /// inválido/expirado para que la app pida entrar de nuevo.
+  ///
+  /// El backend (Render Free) puede estar dormido y tardar hasta ~60s en
+  /// despertar al primer hit. Como el refresh es un POST con rotación
+  /// one-time-use, NO se puede reintentar a ciegas: si el primer POST llegó
+  /// al backend pero la respuesta se perdió, reintentarlo con el mismo token
+  /// (ya revocado) dispara la detección de robo y revoca TODOS los tokens de
+  /// la cuenta. Por eso le damos un `receiveTimeout` amplio en lugar de retry.
+  Future<Session> refresh(String refreshToken) async {
+    final res = await _dio.post(
+      '/api/auth/refresh',
+      data: {'refreshToken': refreshToken},
+      options: Options(receiveTimeout: const Duration(seconds: 60)),
+    );
+    return Session.fromLoginJson(res.data as Map<String, dynamic>);
+  }
+
+  /// Revoca el refresh token en el backend (best-effort al cerrar sesión).
+  Future<void> revokeRefreshToken(String refreshToken) async {
+    try {
+      await _dio.post('/api/auth/logout', data: {'refreshToken': refreshToken});
+    } catch (_) {
+      // Silencioso: el cierre de sesión local no debe fallar por esto.
     }
   }
 
@@ -334,8 +488,14 @@ class AuthRepository {
             'Contraseña actualizada. Ya puedes iniciar sesión.',
       );
     } on DioException catch (e) {
-      throw AuthException(
+      final data = _responseMap(e.response?.data);
+      throw PasswordResetException(
         _message(e, 'No pudimos actualizar la contraseña. Revisa el código.'),
+        failure: switch (data?['error']) {
+          'invalid_code' => PasswordResetFailure.invalidCode,
+          'invalid_code_format' => PasswordResetFailure.invalidCodeFormat,
+          _ => PasswordResetFailure.other,
+        },
       );
     }
   }
@@ -415,10 +575,13 @@ class AuthRepository {
     } on DioException catch (e) {
       final data = _responseMap(e.response?.data);
       if (e.response?.statusCode == 409 && data != null) {
-        throw FacebookProfileRequiredException.fromJson(
-          data,
-          fallbackAccountType: accountType,
-        );
+        if (_isFacebookContinuation(data)) {
+          throw FacebookProfileRequiredException.fromJson(
+            data,
+            fallbackAccountType: accountType,
+          );
+        }
+        throw FacebookTerminalConflictException.fromJson(data);
       }
       throw AuthException(_message(e, 'No pudimos entrar con Facebook.'));
     }
@@ -453,10 +616,13 @@ class AuthRepository {
     } on DioException catch (e) {
       final data = _responseMap(e.response?.data);
       if (e.response?.statusCode == 409 && data != null) {
-        throw FacebookProfileRequiredException.fromJson(
-          data,
-          fallbackAccountType: profile.accountType,
-        );
+        if (_isFacebookContinuation(data)) {
+          throw FacebookProfileRequiredException.fromJson(
+            data,
+            fallbackAccountType: profile.accountType,
+          );
+        }
+        throw FacebookTerminalConflictException.fromJson(data);
       }
       throw AuthException(
         _message(e, 'No pudimos completar tu cuenta de Facebook.'),
@@ -494,7 +660,6 @@ class AuthRepository {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
-      case DioExceptionType.transformTimeout:
         return 'La conexión tardó demasiado. Inténtalo nuevamente.';
       case DioExceptionType.connectionError:
         return 'No pudimos conectar con el servidor. Revisa tu internet.';
@@ -516,6 +681,14 @@ class AuthRepository {
       return data.map((key, value) => MapEntry(key.toString(), value));
     }
     return null;
+  }
+
+  bool _isFacebookContinuation(Map<String, dynamic> data) {
+    final error = data['error'];
+    return error == 'facebook_profile_required' ||
+        error == 'facebook_account_link_required' ||
+        data['needsProfile'] == true ||
+        data.containsKey('requiresExistingPassword');
   }
 }
 

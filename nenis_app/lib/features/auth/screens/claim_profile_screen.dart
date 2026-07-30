@@ -7,6 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../../claim/data/claim_models.dart';
 import '../../claim/data/claim_repository.dart';
 import '../../../shared/widgets/background.dart';
@@ -50,7 +51,9 @@ class _ClaimProfileScreenState extends ConsumerState<ClaimProfileScreen> {
     if (!mounted) return;
     if (failures > 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Algunas tiendas no se pudieron reclamar ($failures).')),
+        SnackBar(
+          content: Text('Algunas tiendas no se pudieron reclamar ($failures).'),
+        ),
       );
     }
     context.go('/home');
@@ -86,46 +89,62 @@ class _ClaimProfileScreenState extends ConsumerState<ClaimProfileScreen> {
                   ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(22, 18, 22, 4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Te reconocimos 🌸',
-                        style: AppTextStyles.eyebrow(AppColors.neniDeep)),
-                    const SizedBox(height: 8),
-                    Text('Encontramos tu historial\nen estas tiendas',
-                        style: AppTextStyles.h1),
-                    const SizedBox(height: 9),
-                    Text(
-                      'Reclámalo para ver tus pedidos pasados y juntar tus puntos. Tú eliges cuáles.',
-                      style: AppTextStyles.subtitle,
-                    ),
-                  ],
-                ),
-              ),
               Expanded(
                 child: candidatesAsync.when(
-                  loading: () => const Center(
-                    child: CircularProgressIndicator(color: AppColors.neni),
-                  ),
+                  loading: () => const _CandidatesLoading(),
                   error: (err, _) => _ErrorState(
                     onRetry: () => ref.invalidate(claimCandidatesProvider),
                     onEnter: () => context.go('/home'),
                   ),
                   data: (candidates) {
                     if (candidates.isEmpty) {
-                      return _EmptyState(onEnter: () => context.go('/home'));
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) {
+                          context.go('/home');
+                        }
+                      });
+                      return const SizedBox.shrink();
                     }
                     _selected ??= candidates.map((c) => c.clientId).toSet();
-                    return _CandidateList(
-                      candidates: candidates,
-                      selected: _selected!,
-                      onToggle: (id) => setState(() {
-                        _selected!.contains(id)
-                            ? _selected!.remove(id)
-                            : _selected!.add(id);
-                      }),
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(22, 18, 22, 4),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Te reconocimos 🌸',
+                                style: AppTextStyles.eyebrow(
+                                  AppColors.neniDeep,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Encontramos tu historial\nen estas tiendas',
+                                style: AppTextStyles.h1,
+                              ),
+                              const SizedBox(height: 9),
+                              Text(
+                                'Reclámalo para ver tus pedidos pasados y juntar tus puntos. Tú eliges cuáles.',
+                                style: AppTextStyles.subtitle,
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: _CandidateList(
+                            candidates: candidates,
+                            selected: _selected!,
+                            onToggle: (id) => setState(() {
+                              _selected!.contains(id)
+                                  ? _selected!.remove(id)
+                                  : _selected!.add(id);
+                            }),
+                          ),
+                        ),
+                      ],
                     );
                   },
                 ),
@@ -185,8 +204,12 @@ class _CandidateList extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Symbols.verified_user,
-                  color: AppColors.statusDeliveredFg, size: 20, fill: 1),
+              const Icon(
+                Symbols.verified_user,
+                color: AppColors.statusDeliveredFg,
+                size: 20,
+                fill: 1,
+              ),
               const SizedBox(width: 9),
               Expanded(
                 child: Text(
@@ -266,17 +289,26 @@ class _CandidateRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(candidate.businessName,
-                      style: AppTextStyles.body
-                          .copyWith(fontSize: 15, fontWeight: FontWeight.w600)),
+                  Text(
+                    candidate.businessName,
+                    style: AppTextStyles.body.copyWith(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      const Icon(Symbols.shopping_bag,
-                          size: 14, color: AppColors.ink2),
+                      const Icon(
+                        Symbols.shopping_bag,
+                        size: 14,
+                        color: AppColors.ink2,
+                      ),
                       const SizedBox(width: 5),
-                      Text(meta,
-                          style: AppTextStyles.subtitle.copyWith(fontSize: 12.5)),
+                      Text(
+                        meta,
+                        style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+                      ),
                     ],
                   ),
                 ],
@@ -294,8 +326,11 @@ class _CandidateRow extends StatelessWidget {
                 ),
               ),
               child: isSelected
-                  ? const Icon(Symbols.check,
-                      color: AppColors.surface, size: 18)
+                  ? const Icon(
+                      Symbols.check,
+                      color: AppColors.surface,
+                      size: 18,
+                    )
                   : null,
             ),
           ],
@@ -305,6 +340,7 @@ class _CandidateRow extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.onEnter});
   final VoidCallback onEnter;
@@ -324,12 +360,18 @@ class _EmptyState extends StatelessWidget {
               color: AppColors.surface,
               boxShadow: AppShadows.small,
             ),
-            child: const Icon(Symbols.storefront,
-                size: 38, color: AppColors.neniDeep),
+            child: const Icon(
+              Symbols.storefront,
+              size: 38,
+              color: AppColors.neniDeep,
+            ),
           ),
           const SizedBox(height: 18),
-          Text('Aún no encontramos compras',
-              textAlign: TextAlign.center, style: AppTextStyles.h2),
+          Text(
+            'Aún no encontramos compras',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.h2,
+          ),
           const SizedBox(height: 8),
           Text(
             'Cuando una tienda registre tu número o abras un pedido desde su link, aparecerá aquí para reclamarlo.',
@@ -358,22 +400,33 @@ class _ErrorState extends StatelessWidget {
         children: [
           const Icon(Symbols.cloud_off, size: 46, color: AppColors.ink3),
           const SizedBox(height: 14),
-          Text('No pudimos cargar tus tiendas',
-              textAlign: TextAlign.center, style: AppTextStyles.h2),
+          Text(
+            'No pudimos cargar tus tiendas',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.h2,
+          ),
           const SizedBox(height: 8),
-          Text('Revisa tu conexión e intenta de nuevo.',
-              textAlign: TextAlign.center, style: AppTextStyles.subtitle),
+          Text(
+            'Revisa tu conexión e intenta de nuevo.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.subtitle,
+          ),
           const SizedBox(height: 22),
           PillButton(
-              label: 'Reintentar', icon: Symbols.refresh, onPressed: onRetry),
+            label: 'Reintentar',
+            icon: Symbols.refresh,
+            onPressed: onRetry,
+          ),
           const SizedBox(height: 10),
           GestureDetector(
             onTap: onEnter,
-            child: Text('Entrar de todas formas',
-                style: AppTextStyles.subtitle.copyWith(
-                  color: AppColors.neniDeep,
-                  fontWeight: FontWeight.w600,
-                )),
+            child: Text(
+              'Entrar de todas formas',
+              style: AppTextStyles.subtitle.copyWith(
+                color: AppColors.neniDeep,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -399,9 +452,39 @@ class _LoadingPill extends StatelessWidget {
           width: 24,
           height: 24,
           child: CircularProgressIndicator(
-              strokeWidth: 2.5, color: AppColors.surface),
+            strokeWidth: 2.5,
+            color: AppColors.surface,
+          ),
         ),
       ),
+    );
+  }
+}
+
+class _CandidatesLoading extends StatelessWidget {
+  const _CandidatesLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
+      physics: const NeverScrollableScrollPhysics(),
+      children: const [
+        SizedBox(height: 18),
+        Skeleton.text(width: 140, height: 16),
+        SizedBox(height: 12),
+        Skeleton.text(width: 240, height: 28),
+        SizedBox(height: 8),
+        Skeleton.text(width: 200, height: 28),
+        SizedBox(height: 12),
+        Skeleton.text(width: 280, height: 14),
+        SizedBox(height: 24),
+        Skeleton(height: 76, borderRadius: 20),
+        SizedBox(height: 14),
+        Skeleton(height: 76, borderRadius: 20),
+        SizedBox(height: 14),
+        Skeleton(height: 76, borderRadius: 20),
+      ],
     );
   }
 }

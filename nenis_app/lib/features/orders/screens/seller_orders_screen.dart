@@ -9,8 +9,9 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
-import '../../../shared/widgets/glass_bottom_nav.dart';
 import '../../../shared/widgets/segmented.dart';
+import '../../../shared/widgets/skeleton.dart';
+import '../../../shared/widgets/slow_load_hint.dart';
 import '../data/seller_orders_models.dart';
 import '../data/seller_orders_repository.dart';
 import '../widgets/seller_status_chip.dart';
@@ -23,12 +24,25 @@ class SellerOrdersScreen extends ConsumerStatefulWidget {
 }
 
 class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen> {
-  int _filter = 0;
+  String _filter = '';
   final _searchCtrl = TextEditingController();
+  final _advancingOrderIds = <int>{};
   Timer? _debounce;
 
-  static const _labels = ['Todos', 'Pendientes', 'En ruta', 'Entregados'];
-  static const _statuses = ['', 'Pending', 'InRoute', 'Delivered'];
+  // Un filtro por cada estado real del backend. Así ningún pedido queda
+  // "huérfano" (antes Confirmed/Shipped/NotDelivered/Canceled/Postponed solo
+  // aparecían en "Todos" y la vendedora los perdía de vista).
+  static const _filters = <(String label, String status)>[
+    ('Todos', ''),
+    ('Pendientes', 'Pending'),
+    ('Confirmados', 'Confirmed'),
+    ('Empacados', 'Shipped'),
+    ('En ruta', 'InRoute'),
+    ('Entregados', 'Delivered'),
+    ('No entregados', 'NotDelivered'),
+    ('Pospuestos', 'Postponed'),
+    ('Cancelados', 'Canceled'),
+  ];
 
   @override
   void dispose() {
@@ -42,6 +56,31 @@ class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen> {
     _debounce = Timer(const Duration(milliseconds: 350), () {
       ref.read(sellerOrdersControllerProvider.notifier).setSearch(value);
     });
+  }
+
+  Future<void> _advanceOrderStatus(
+    SellerOrder order,
+    SellerOrderStatus next,
+  ) async {
+    if (_advancingOrderIds.contains(order.id)) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _advancingOrderIds.add(order.id));
+    try {
+      await ref
+          .read(sellerOrdersRepositoryProvider)
+          .updateStatus(order.id, next);
+      ref.invalidate(sellerOrdersControllerProvider);
+      ref.invalidate(sellerDashboardProvider);
+    } catch (e) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(_snack(e.toString(), color: const Color(0xFFE11D5B)));
+    } finally {
+      if (mounted) {
+        setState(() => _advancingOrderIds.remove(order.id));
+      }
+    }
   }
 
   @override
@@ -60,51 +99,95 @@ class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.fromLTRB(22, 6, 22, 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
-                        RichText(
-                          text: TextSpan(
-                            style: AppTextStyles.h1.copyWith(fontSize: 27),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const TextSpan(text: 'Pedidos '),
-                              TextSpan(
-                                text: 'recibidos',
-                                style: AppTextStyles.h1.copyWith(
-                                  fontSize: 27,
-                                  color: AppColors.neniDeep,
-                                  fontStyle: FontStyle.italic,
-                                  fontWeight: FontWeight.w600,
+                              RichText(
+                                text: TextSpan(
+                                  style: AppTextStyles.h1.copyWith(
+                                    fontSize: 27,
+                                  ),
+                                  children: [
+                                    const TextSpan(text: 'Pedidos '),
+                                    TextSpan(
+                                      text: 'recibidos',
+                                      style: AppTextStyles.h1.copyWith(
+                                        fontSize: 27,
+                                        color: AppColors.neniDeep,
+                                        fontStyle: FontStyle.italic,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Gestiona entregas y cobros de tu negocio.',
+                                style: AppTextStyles.subtitle.copyWith(
+                                  fontSize: 12.5,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Text('Gestiona entregas y cobros de tu negocio.',
-                            style:
-                                AppTextStyles.subtitle.copyWith(fontSize: 12.5)),
+                        const SizedBox(width: 10),
+                        Tooltip(
+                          message: 'Imprimir etiquetas',
+                          child: Material(
+                            color: AppColors.surface,
+                            shape: const CircleBorder(),
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: () => context.push('/seller/labels'),
+                              child: const SizedBox(
+                                width: 44,
+                                height: 44,
+                                child: Icon(
+                                  Symbols.print,
+                                  size: 21,
+                                  color: AppColors.neniDeep,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(22, 14, 22, 0),
                     child: _SearchField(
-                        controller: _searchCtrl, onChanged: _onSearch),
+                      controller: _searchCtrl,
+                      onChanged: _onSearch,
+                    ),
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(22, 12, 22, 0),
-                    child: SegmentedControl(
-                      items: _labels
-                          .map((l) => SegmentedItem(label: l))
-                          .toList(),
-                      selectedIndex: _filter,
-                      onChanged: (i) {
-                        setState(() => _filter = i);
-                        ref
-                            .read(sellerOrdersControllerProvider.notifier)
-                            .setStatus(_statuses[i]);
-                      },
+                    child: SizedBox(
+                      height: 40,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _filters.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 8),
+                        itemBuilder: (context, i) {
+                          final (label, status) = _filters[i];
+                          final isActive = _filter == status;
+                          return TabChip(
+                            label: label,
+                            isActive: isActive,
+                            onTap: () {
+                              setState(() => _filter = status);
+                              ref
+                                  .read(sellerOrdersControllerProvider.notifier)
+                                  .setStatus(status);
+                            },
+                          );
+                        },
+                      ),
                     ),
                   ),
                   Padding(
@@ -115,15 +198,15 @@ class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen> {
                             'Mostrando ${p.items.length} de ${p.totalCount} pedidos',
                         orElse: () => 'Cargando pedidos…',
                       ),
-                      style: AppTextStyles.subtitle
-                          .copyWith(fontSize: 11.5, color: AppColors.ink3),
+                      style: AppTextStyles.subtitle.copyWith(
+                        fontSize: 11.5,
+                        color: AppColors.ink3,
+                      ),
                     ),
                   ),
                   Expanded(
                     child: async.when(
-                      loading: () => const Center(
-                          child:
-                              CircularProgressIndicator(color: AppColors.neni)),
+                      loading: () => const _SellerOrdersLoading(),
                       error: (e, _) => _ErrorState(
                         message: e.toString(),
                         onRetry: () => ref
@@ -137,27 +220,35 @@ class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen> {
                             .reload(),
                         child: page.isEmpty
                             ? ListView(
-                                physics:
-                                    const AlwaysScrollableScrollPhysics(),
+                                physics: const AlwaysScrollableScrollPhysics(),
                                 children: const [
                                   SizedBox(height: 60),
                                   _EmptyOrders(),
                                 ],
                               )
                             : ListView.builder(
-                                physics:
-                                    const AlwaysScrollableScrollPhysics(),
-                                padding:
-                                    const EdgeInsets.fromLTRB(22, 0, 22, 120),
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.fromLTRB(
+                                  22,
+                                  0,
+                                  22,
+                                  120,
+                                ),
                                 itemCount: page.items.length + 1,
                                 itemBuilder: (context, i) {
                                   if (i == page.items.length) {
                                     return _Pager(page: page);
                                   }
+                                  final order = page.items[i];
                                   return Padding(
-                                    padding:
-                                        const EdgeInsets.only(bottom: 14),
-                                    child: _OrderCard(order: page.items[i]),
+                                    padding: const EdgeInsets.only(bottom: 14),
+                                    child: _OrderCard(
+                                      order: order,
+                                      advancing: _advancingOrderIds.contains(
+                                        order.id,
+                                      ),
+                                      onAdvanceStatus: _advanceOrderStatus,
+                                    ),
                                   );
                                 },
                               ),
@@ -168,18 +259,8 @@ class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen> {
               ),
               Positioned(
                 right: 22,
-                bottom: 104,
-                child: _NewOrderFab(
-                    onTap: () => context.push('/orders/new')),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: GlassBottomNav(
-                  items: buildSellerNavItems(),
-                  currentRoute: '/orders',
-                ),
+                bottom: 16,
+                child: _NewOrderFab(onTap: () => context.push('/orders/new')),
               ),
             ],
           ),
@@ -189,10 +270,35 @@ class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen> {
   }
 }
 
-class _SearchField extends StatelessWidget {
+class _SearchField extends StatefulWidget {
   const _SearchField({required this.controller, required this.onChanged});
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
+
+  @override
+  State<_SearchField> createState() => _SearchFieldState();
+}
+
+class _SearchFieldState extends State<_SearchField> {
+  bool _hasText = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _hasText = widget.controller.text.isNotEmpty;
+    widget.controller.addListener(_onChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onChanged);
+    super.dispose();
+  }
+
+  void _onChanged() {
+    final has = widget.controller.text.isNotEmpty;
+    if (has != _hasText) setState(() => _hasText = has);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -204,14 +310,36 @@ class _SearchField extends StatelessWidget {
         boxShadow: AppShadows.small,
       ),
       child: TextField(
-        controller: controller,
-        onChanged: onChanged,
+        controller: widget.controller,
+        onChanged: widget.onChanged,
         style: AppTextStyles.body.copyWith(fontSize: 13.5),
         decoration: InputDecoration(
           isCollapsed: true,
           contentPadding: const EdgeInsets.symmetric(vertical: 14),
-          prefixIcon:
-              const Icon(Symbols.search, size: 20, color: AppColors.ink3),
+          prefixIcon: const Icon(
+            Symbols.search,
+            size: 20,
+            color: AppColors.ink3,
+          ),
+          suffixIcon: _hasText
+              ? IconButton(
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 36,
+                    minHeight: 36,
+                  ),
+                  icon: const Icon(
+                    Symbols.close,
+                    size: 18,
+                    color: AppColors.ink3,
+                  ),
+                  onPressed: () {
+                    widget.controller.clear();
+                    widget.onChanged('');
+                  },
+                )
+              : null,
           hintText: 'Buscar clienta, artículo o #folio…',
           hintStyle: AppTextStyles.fieldPlaceholder.copyWith(fontSize: 13.5),
           border: InputBorder.none,
@@ -259,8 +387,15 @@ class _NewOrderFab extends StatelessWidget {
 }
 
 class _OrderCard extends ConsumerWidget {
-  const _OrderCard({required this.order});
+  const _OrderCard({
+    required this.order,
+    required this.advancing,
+    required this.onAdvanceStatus,
+  });
   final SellerOrder order;
+  final bool advancing;
+  final Future<void> Function(SellerOrder order, SellerOrderStatus next)
+  onAdvanceStatus;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -314,8 +449,9 @@ class _OrderCard extends ConsumerWidget {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: AppTextStyles.body.copyWith(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w700),
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                                 ),
                                 if (o.isFrequent) ...[
@@ -329,11 +465,14 @@ class _OrderCard extends ConsumerWidget {
                               ],
                             ),
                             const SizedBox(height: 1),
-                            Text('Pedido #${o.id}',
-                                style: AppTextStyles.subtitle.copyWith(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.ink3)),
+                            Text(
+                              'Pedido #${o.id}',
+                              style: AppTextStyles.subtitle.copyWith(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.ink3,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -355,15 +494,18 @@ class _OrderCard extends ConsumerWidget {
                   const SizedBox(height: 13),
                   _FinancialPanel(order: o),
                   const SizedBox(height: 13),
-                  _OrderActions(order: o),
+                  _OrderActions(
+                    order: o,
+                    advancing: advancing,
+                    onAdvanceStatus: onAdvanceStatus,
+                  ),
                 ],
               ),
             ),
             Positioned(
               top: -9,
               right: -9,
-              child: _TrashButton(
-                  onTap: () => _confirmDelete(context, ref, o)),
+              child: _TrashButton(onTap: () => _confirmDelete(context, ref, o)),
             ),
           ],
         ),
@@ -373,7 +515,10 @@ class _OrderCard extends ConsumerWidget {
 }
 
 Future<void> _confirmDelete(
-    BuildContext context, WidgetRef ref, SellerOrder o) async {
+  BuildContext context,
+  WidgetRef ref,
+  SellerOrder o,
+) async {
   final messenger = ScaffoldMessenger.of(context);
   await showDialog<void>(
     context: context,
@@ -395,13 +540,18 @@ Future<void> _confirmDelete(
                 borderRadius: BorderRadius.circular(22),
               ),
               alignment: Alignment.center,
-              child: const Icon(Symbols.delete,
-                  size: 34, color: Color(0xFFE11D5B)),
+              child: const Icon(
+                Symbols.delete,
+                size: 34,
+                color: Color(0xFFE11D5B),
+              ),
             ),
             const SizedBox(height: 16),
-            Text('¿Eliminar este pedido?',
-                textAlign: TextAlign.center,
-                style: AppTextStyles.h2.copyWith(fontSize: 18)),
+            Text(
+              '¿Eliminar este pedido?',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.h2.copyWith(fontSize: 18),
+            ),
             const SizedBox(height: 8),
             Text.rich(
               TextSpan(
@@ -409,16 +559,21 @@ Future<void> _confirmDelete(
                 children: [
                   const TextSpan(text: 'Se quitará el pedido '),
                   TextSpan(
-                      text: '#${o.id}',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700, color: AppColors.ink)),
+                    text: '#${o.id}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
+                  ),
                   const TextSpan(text: ' de '),
                   TextSpan(
-                      text: o.clientName,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700, color: AppColors.ink)),
-                  const TextSpan(
-                      text: '. Esta acción no se puede deshacer.'),
+                    text: o.clientName,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  const TextSpan(text: '. Esta acción no se puede deshacer.'),
                 ],
               ),
               textAlign: TextAlign.center,
@@ -454,8 +609,12 @@ Future<void> _confirmDelete(
                       } catch (e) {
                         messenger
                           ..hideCurrentSnackBar()
-                          ..showSnackBar(_snack(e.toString(),
-                              color: const Color(0xFFE11D5B)));
+                          ..showSnackBar(
+                            _snack(
+                              e.toString(),
+                              color: const Color(0xFFE11D5B),
+                            ),
+                          );
                       }
                     },
                   ),
@@ -470,11 +629,10 @@ Future<void> _confirmDelete(
 }
 
 SnackBar _snack(String msg, {Color? color}) => SnackBar(
-      behavior: SnackBarBehavior.floating,
-      backgroundColor: color ?? AppColors.ink,
-      content:
-          Text(msg, style: AppTextStyles.body.copyWith(color: Colors.white)),
-    );
+  behavior: SnackBarBehavior.floating,
+  backgroundColor: color ?? AppColors.ink,
+  content: Text(msg, style: AppTextStyles.body.copyWith(color: Colors.white)),
+);
 
 class _DialogButton extends StatelessWidget {
   const _DialogButton({
@@ -501,22 +659,29 @@ class _DialogButton extends StatelessWidget {
           height: 48,
           decoration: BoxDecoration(
             color: bg,
-            gradient: gradient != null ? LinearGradient(colors: gradient!) : null,
+            gradient: gradient != null
+                ? LinearGradient(colors: gradient!)
+                : null,
             borderRadius: BorderRadius.circular(14),
             boxShadow: gradient != null
                 ? const [
                     BoxShadow(
-                        color: Color(0x66E11D5B),
-                        offset: Offset(0, 10),
-                        blurRadius: 20,
-                        spreadRadius: -8)
+                      color: Color(0x66E11D5B),
+                      offset: Offset(0, 10),
+                      blurRadius: 20,
+                      spreadRadius: -8,
+                    ),
                   ]
                 : null,
           ),
           child: Center(
-            child: Text(label,
-                style: AppTextStyles.body
-                    .copyWith(fontWeight: FontWeight.w700, color: fg)),
+            child: Text(
+              label,
+              style: AppTextStyles.body.copyWith(
+                fontWeight: FontWeight.w700,
+                color: fg,
+              ),
+            ),
           ),
         ),
       ),
@@ -533,9 +698,11 @@ class _Avatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = switch (status) {
       SellerOrderStatus.inRoute ||
-      SellerOrderStatus.shipped =>
-        const [Color(0xFFB79BF0), Color(0xFF9B7BE0)],
-      SellerOrderStatus.delivered => const [Color(0xFF7FB0F2), Color(0xFF4E82D6)],
+      SellerOrderStatus.shipped => const [Color(0xFFB79BF0), Color(0xFF9B7BE0)],
+      SellerOrderStatus.delivered => const [
+        Color(0xFF7FB0F2),
+        Color(0xFF4E82D6),
+      ],
       _ => const [AppColors.neni, AppColors.neniDeep],
     };
     return Container(
@@ -554,13 +721,18 @@ class _Avatar extends StatelessWidget {
             offset: const Offset(0, 8),
             blurRadius: 16,
             spreadRadius: -8,
-          )
+          ),
         ],
       ),
       alignment: Alignment.center,
-      child: Text(initial,
-          style: const TextStyle(
-              color: Colors.white, fontWeight: FontWeight.w800, fontSize: 17)),
+      child: Text(
+        initial,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
+          fontSize: 17,
+        ),
+      ),
     );
   }
 }
@@ -575,14 +747,19 @@ class _MiniTag extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-      decoration:
-          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
-      child: Text(label.toUpperCase(),
-          style: TextStyle(
-              color: fg,
-              fontSize: 8.5,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.3)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label.toUpperCase(),
+        style: TextStyle(
+          color: fg,
+          fontSize: 8.5,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.3,
+        ),
+      ),
     );
   }
 }
@@ -600,11 +777,15 @@ class _MetaLine extends StatelessWidget {
         Icon(icon, size: 15, color: AppColors.neni),
         const SizedBox(width: 6),
         Expanded(
-          child: Text(text,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.subtitle
-                  .copyWith(fontSize: 11.5, color: AppColors.ink2)),
+          child: Text(
+            text,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.subtitle.copyWith(
+              fontSize: 11.5,
+              color: AppColors.ink2,
+            ),
+          ),
         ),
       ],
     );
@@ -638,32 +819,47 @@ class _FinancialPanel extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('TOTAL (${o.itemsCount} ARTS)',
-                        style: const TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.6,
-                            color: AppColors.ink3)),
+                    Text(
+                      'TOTAL (${o.itemsCount} ARTS)',
+                      style: const TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.6,
+                        color: AppColors.ink3,
+                      ),
+                    ),
                     const SizedBox(height: 3),
-                    GradientText(money(o.total), fontSize: 23),
+                    Text(
+                      money(o.total),
+                      style: AppTextStyles.h1.copyWith(
+                        fontSize: 23,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.neniDeep,
+                        letterSpacing: 0,
+                        height: 1,
+                      ),
+                    ),
                   ],
                 ),
               ),
               if (o.isPaid)
                 const _StatusPill(
-                    label: '✅ Pagado',
-                    fg: Color(0xFF1F9A6A),
-                    bg: Color(0xFFD9F3E6))
+                  label: '✅ Pagado',
+                  fg: Color(0xFF1F9A6A),
+                  bg: Color(0xFFD9F3E6),
+                )
               else if (o.amountPaid > 0)
                 _StatusPill(
-                    label: 'Resta ${money(o.balanceDue)}',
-                    fg: const Color(0xFFE11D5B),
-                    bg: const Color(0xFFFFE4E9))
+                  label: 'Resta ${money(o.balanceDue)}',
+                  fg: const Color(0xFFE11D5B),
+                  bg: const Color(0xFFFFE4E9),
+                )
               else
                 _StatusPill(
-                    label: 'Por cobrar',
-                    fg: const Color(0xFFE11D5B),
-                    bg: const Color(0xFFFFE4E9)),
+                  label: 'Por cobrar',
+                  fg: const Color(0xFFE11D5B),
+                  bg: const Color(0xFFFFE4E9),
+                ),
             ],
           ),
           const SizedBox(height: 11),
@@ -684,11 +880,14 @@ class _StatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration:
-          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
-      child: Text(label,
-          style: TextStyle(
-              color: fg, fontSize: 10, fontWeight: FontWeight.w700)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(color: fg, fontSize: 10, fontWeight: FontWeight.w700),
+      ),
     );
   }
 }
@@ -731,46 +930,47 @@ class _ProgressBar extends StatelessWidget {
   }
 }
 
-class _OrderActions extends ConsumerWidget {
-  const _OrderActions({required this.order});
+class _OrderActions extends StatelessWidget {
+  const _OrderActions({
+    required this.order,
+    required this.advancing,
+    required this.onAdvanceStatus,
+  });
   final SellerOrder order;
+  final bool advancing;
+  final Future<void> Function(SellerOrder order, SellerOrderStatus next)
+  onAdvanceStatus;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final o = order;
 
-    final (SellerOrderStatus? next, String? label, IconData icon) =
-        switch (o.status) {
+    final (
+      SellerOrderStatus? next,
+      String? label,
+      IconData icon,
+    ) = switch (o.status) {
       SellerOrderStatus.pending => (
-          SellerOrderStatus.confirmed,
-          'Confirmar',
-          Symbols.favorite
-        ),
+        SellerOrderStatus.confirmed,
+        'Confirmar',
+        Symbols.favorite,
+      ),
       SellerOrderStatus.confirmed => (
-          SellerOrderStatus.inRoute,
-          'Poner en ruta',
-          Symbols.local_shipping
-        ),
+        SellerOrderStatus.inRoute,
+        'Poner en ruta',
+        Symbols.local_shipping,
+      ),
       SellerOrderStatus.inRoute => (
-          SellerOrderStatus.delivered,
-          'Marcar entregado',
-          Symbols.check_circle
-        ),
+        SellerOrderStatus.delivered,
+        'Marcar entregado',
+        Symbols.check_circle,
+      ),
       _ => (null, null, Symbols.check_circle),
     };
 
     Future<void> advance() async {
-      if (next == null) return;
-      final messenger = ScaffoldMessenger.of(context);
-      try {
-        await ref.read(sellerOrdersRepositoryProvider).updateStatus(o.id, next);
-        ref.invalidate(sellerOrdersControllerProvider);
-        ref.invalidate(sellerDashboardProvider);
-      } catch (e) {
-        messenger
-          ..hideCurrentSnackBar()
-          ..showSnackBar(_snack(e.toString(), color: const Color(0xFFE11D5B)));
-      }
+      if (next == null || advancing) return;
+      await onAdvanceStatus(o, next);
     }
 
     return Column(
@@ -781,7 +981,11 @@ class _OrderActions extends ConsumerWidget {
         ),
         if (label != null) ...[
           const SizedBox(height: 9),
-          _SoftButton(label: label, icon: icon, onTap: advance),
+          _SoftButton(
+            label: advancing ? 'Actualizando...' : label,
+            icon: advancing ? Symbols.hourglass_top : icon,
+            onTap: advancing ? null : advance,
+          ),
         ],
       ],
     );
@@ -826,14 +1030,18 @@ class _PrimaryButton extends StatelessWidget {
 }
 
 class _SoftButton extends StatelessWidget {
-  const _SoftButton(
-      {required this.label, required this.icon, required this.onTap});
+  const _SoftButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
   final String label;
   final IconData icon;
-  final Future<void> Function() onTap;
+  final Future<void> Function()? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final disabled = onTap == null;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -842,20 +1050,27 @@ class _SoftButton extends StatelessWidget {
         child: Ink(
           height: 42,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: disabled ? const Color(0xFFF7F3F6) : Colors.white,
             borderRadius: BorderRadius.circular(15),
             border: Border.all(color: const Color(0x2EE84E83)),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 16, color: AppColors.neniDeep),
+              Icon(
+                icon,
+                size: 16,
+                color: disabled ? AppColors.ink3 : AppColors.neniDeep,
+              ),
               const SizedBox(width: 6),
-              Text(label,
-                  style: AppTextStyles.body.copyWith(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.neniDeep)),
+              Text(
+                label,
+                style: AppTextStyles.body.copyWith(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: disabled ? AppColors.ink3 : AppColors.neniDeep,
+                ),
+              ),
             ],
           ),
         ),
@@ -885,10 +1100,11 @@ class _TrashButton extends StatelessWidget {
             border: Border.all(color: const Color(0x2EE84E83)),
             boxShadow: const [
               BoxShadow(
-                  color: Color(0x40D6336C),
-                  offset: Offset(0, 6),
-                  blurRadius: 14,
-                  spreadRadius: -6)
+                color: Color(0x40D6336C),
+                offset: Offset(0, 6),
+                blurRadius: 14,
+                spreadRadius: -6,
+              ),
             ],
           ),
           alignment: Alignment.center,
@@ -909,8 +1125,10 @@ class _Pager extends ConsumerWidget {
       return Padding(
         padding: const EdgeInsets.only(top: 4),
         child: Center(
-          child: Text('${page.totalCount} pedidos',
-              style: AppTextStyles.subtitle.copyWith(fontSize: 12)),
+          child: Text(
+            '${page.totalCount} pedidos',
+            style: AppTextStyles.subtitle.copyWith(fontSize: 12),
+          ),
         ),
       );
     }
@@ -921,18 +1139,22 @@ class _Pager extends ConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           _PagerBtn(
-              icon: Symbols.chevron_left,
-              label: 'Anterior',
-              onTap: page.hasPrev ? notifier.prevPage : null),
+            icon: Symbols.chevron_left,
+            label: 'Anterior',
+            onTap: page.hasPrev ? notifier.prevPage : null,
+          ),
           const SizedBox(width: 12),
-          Text('Página ${page.currentPage} de ${page.totalPages}',
-              style: AppTextStyles.subtitle.copyWith(fontSize: 12.5)),
+          Text(
+            'Página ${page.currentPage} de ${page.totalPages}',
+            style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+          ),
           const SizedBox(width: 12),
           _PagerBtn(
-              icon: Symbols.chevron_right,
-              label: 'Siguiente',
-              trailing: true,
-              onTap: page.hasNext ? notifier.nextPage : null),
+            icon: Symbols.chevron_right,
+            label: 'Siguiente',
+            trailing: true,
+            onTap: page.hasNext ? notifier.nextPage : null,
+          ),
         ],
       ),
     );
@@ -940,11 +1162,12 @@ class _Pager extends ConsumerWidget {
 }
 
 class _PagerBtn extends StatelessWidget {
-  const _PagerBtn(
-      {required this.icon,
-      required this.label,
-      required this.onTap,
-      this.trailing = false});
+  const _PagerBtn({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.trailing = false,
+  });
   final IconData icon;
   final String label;
   final VoidCallback? onTap;
@@ -971,9 +1194,14 @@ class _PagerBtn extends StatelessWidget {
             children: [
               if (!trailing) Icon(icon, size: 16, color: fg),
               if (!trailing) const SizedBox(width: 4),
-              Text(label,
-                  style: AppTextStyles.body.copyWith(
-                      fontSize: 13, fontWeight: FontWeight.w600, color: fg)),
+              Text(
+                label,
+                style: AppTextStyles.body.copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: fg,
+                ),
+              ),
               if (trailing) const SizedBox(width: 4),
               if (trailing) Icon(icon, size: 16, color: fg),
             ],
@@ -1002,13 +1230,18 @@ class _EmptyOrders extends StatelessWidget {
                 color: const Color(0xFFFFE1EC),
                 borderRadius: BorderRadius.circular(28),
               ),
-              child: const Icon(Symbols.receipt_long,
-                  color: AppColors.neniDeep, size: 40),
+              child: const Icon(
+                Symbols.receipt_long,
+                color: AppColors.neniDeep,
+                size: 40,
+              ),
             ),
             const SizedBox(height: 18),
-            Text('Sin pedidos aquí',
-                textAlign: TextAlign.center,
-                style: AppTextStyles.h2.copyWith(fontSize: 18)),
+            Text(
+              'Sin pedidos aquí',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.h2.copyWith(fontSize: 18),
+            ),
             const SizedBox(height: 8),
             Text(
               'Ajusta los filtros o crea un pedido nuevo con el botón rosa.',
@@ -1037,13 +1270,17 @@ class _ErrorState extends StatelessWidget {
           children: [
             const Icon(Symbols.cloud_off, size: 46, color: AppColors.ink3),
             const SizedBox(height: 14),
-            Text('No pudimos cargar los pedidos',
-                textAlign: TextAlign.center,
-                style: AppTextStyles.h2.copyWith(fontSize: 17)),
+            Text(
+              'No pudimos cargar los pedidos',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.h2.copyWith(fontSize: 17),
+            ),
             const SizedBox(height: 6),
-            Text(message,
-                textAlign: TextAlign.center,
-                style: AppTextStyles.subtitle.copyWith(fontSize: 12.5)),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+            ),
             const SizedBox(height: 18),
             Material(
               color: Colors.transparent,
@@ -1051,21 +1288,30 @@ class _ErrorState extends StatelessWidget {
                 onTap: onRetry,
                 borderRadius: BorderRadius.circular(999),
                 child: Ink(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 22,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                        colors: [AppColors.neni, AppColors.neniDeep]),
+                      colors: [AppColors.neni, AppColors.neniDeep],
+                    ),
                     borderRadius: BorderRadius.circular(999),
                     boxShadow: AppShadows.brandSmall(AppColors.neniDeep),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Symbols.refresh, size: 18, color: Colors.white),
+                      const Icon(
+                        Symbols.refresh,
+                        size: 18,
+                        color: Colors.white,
+                      ),
                       const SizedBox(width: 7),
-                      Text('Reintentar',
-                          style: AppTextStyles.button.copyWith(fontSize: 14)),
+                      Text(
+                        'Reintentar',
+                        style: AppTextStyles.button.copyWith(fontSize: 14),
+                      ),
                     ],
                   ),
                 ),
@@ -1078,28 +1324,30 @@ class _ErrorState extends StatelessWidget {
   }
 }
 
-/// Texto con degradado rosa→lavanda (para los totales).
-class GradientText extends StatelessWidget {
-  const GradientText(this.text, {super.key, this.fontSize = 22});
-  final String text;
-  final double fontSize;
+class _SellerOrdersLoading extends StatelessWidget {
+  const _SellerOrdersLoading();
 
   @override
   Widget build(BuildContext context) {
-    return ShaderMask(
-      shaderCallback: (bounds) => const LinearGradient(
-        colors: [AppColors.neniDeep, Color(0xFFB15AD8)],
-      ).createShader(bounds),
-      child: Text(
-        text,
-        style: AppTextStyles.h1.copyWith(
-          fontSize: fontSize,
-          fontWeight: FontWeight.w800,
-          color: Colors.white,
-          letterSpacing: -0.5,
-          height: 1,
+    return Stack(
+      children: [
+        ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: 4,
+          itemBuilder: (_, _) => const Padding(
+            padding: EdgeInsets.only(bottom: 14),
+            child: Skeleton(height: 120, borderRadius: 20),
+          ),
         ),
-      ),
+        const Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: EdgeInsets.only(bottom: 24),
+            child: SlowLoadHint(),
+          ),
+        ),
+      ],
     );
   }
 }
