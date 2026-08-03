@@ -295,6 +295,65 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     }
   }
 
+  /// Fusiona ESTE pedido (origen) dentro de otro que la vendedora elija
+  /// (destino). Sirve tanto para juntar dos pedidos duplicados de la misma
+  /// clienta como para el caso "agrega lo de mi hija a la bolsa de mi mamá":
+  /// se busca el pedido de la mamá y este (el de la hija) se fusiona ahí.
+  Future<void> _mergeInto() async {
+    final current = ref.read(sellerOrderDetailProvider(_id)).asData?.value;
+    if (current == null) return;
+
+    final target = await showModalBottomSheet<SellerOrder>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _MergeOrderPicker(excludeOrderId: _id, repo: _repo),
+    );
+    if (target == null || !mounted) return;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('¿Fusionar pedidos?'),
+        content: Text(
+          'Los ${current.items.length} artículo${current.items.length == 1 ? '' : 's'} '
+          'del pedido #$_id (${current.clientName}) se moverán al pedido '
+          '#${target.id} (${target.clientName}). El pedido #$_id quedará '
+          'cancelado — solo #${target.id} seguirá vigente para entregar y cobrar.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Sí, fusionar'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    setState(() => _busy = true);
+    try {
+      await _repo.mergeOrders(targetOrderId: target.id, sourceOrderId: _id);
+      _invalidate();
+      ref.invalidate(sellerOrderDetailProvider(target.id));
+      if (!mounted) return;
+      _snack(
+        'Pedido #$_id fusionado con #${target.id} 💕',
+        color: const Color(0xFF12A150),
+      );
+      context.pushReplacement('/orders/detail/${target.id}');
+    } catch (e) {
+      _snack(e.toString(), color: const Color(0xFFE11D5B));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   void _goBack() {
     if (context.canPop()) {
       context.pop();
@@ -344,12 +403,29 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             ),
             data: (o) => Column(
               children: [
-                _TopBar(title: 'Detalle del pedido', onBack: _goBack),
+                _TopBar(
+                  title: 'Detalle del pedido',
+                  onBack: _goBack,
+                  trailing: o.isMergedAway
+                      ? const SizedBox(width: 38, height: 38)
+                      : _RoundButton(
+                          icon: Symbols.merge_type,
+                          tooltip: 'Fusionar con otro pedido',
+                          onTap: _mergeInto,
+                        ),
+                ),
                 Expanded(
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
                     children: [
                       _DetailHead(order: o),
+                      if (o.isMergedAway)
+                        _MergedAwayBanner(
+                          order: o,
+                          onViewTarget: () => context.pushReplacement(
+                            '/orders/detail/${o.mergedIntoOrderId}',
+                          ),
+                        ),
                       _PipelineSection(order: o, onTap: _setStatus),
                       if (o.status == SellerOrderStatus.notDelivered)
                         _RetryBanner(
@@ -389,9 +465,10 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.title, required this.onBack});
+  const _TopBar({required this.title, required this.onBack, this.trailing});
   final String title;
   final VoidCallback onBack;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -411,7 +488,7 @@ class _TopBar extends StatelessWidget {
               style: AppTextStyles.h2.copyWith(fontSize: 15),
             ),
           ),
-          const SizedBox(width: 38, height: 38),
+          trailing ?? const SizedBox(width: 38, height: 38),
         ],
       ),
     );
@@ -715,6 +792,208 @@ class _DetailHead extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Aviso cuando este pedido ya no está vigente porque se fusionó dentro de
+/// otro (ver `MergeOrders`). Se muestra arriba del detalle para que la
+/// vendedora no siga editando algo que ya no importa.
+class _MergedAwayBanner extends StatelessWidget {
+  const _MergedAwayBanner({required this.order, required this.onViewTarget});
+
+  final SellerOrder order;
+  final VoidCallback onViewTarget;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3EEFF),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0x337C5AC9)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Symbols.merge_type, color: Color(0xFF7C5AC9), size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Este pedido se fusionó con el #${order.mergedIntoOrderId}. '
+              'Sus artículos y pagos ya están allá.',
+              style: AppTextStyles.body.copyWith(
+                fontSize: 12,
+                color: const Color(0xFF7C5AC9),
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: onViewTarget,
+            child: Text('Ver #${order.mergedIntoOrderId}'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Buscador dentro de un bottom sheet para elegir el pedido DESTINO al
+/// fusionar. Solo ofrece pedidos que todavía se pueden tocar (Pendiente,
+/// Confirmado o Pospuesto) y nunca el pedido que se está fusionando.
+class _MergeOrderPicker extends StatefulWidget {
+  const _MergeOrderPicker({required this.excludeOrderId, required this.repo});
+
+  final int excludeOrderId;
+  final SellerOrdersRepository repo;
+
+  @override
+  State<_MergeOrderPicker> createState() => _MergeOrderPickerState();
+}
+
+class _MergeOrderPickerState extends State<_MergeOrderPicker> {
+  static const _mergeableStatuses = {
+    SellerOrderStatus.pending,
+    SellerOrderStatus.confirmed,
+    SellerOrderStatus.postponed,
+  };
+
+  final _searchCtrl = TextEditingController();
+  List<SellerOrder> _results = const [];
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _search('');
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _search(String query) async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final page = await widget.repo.getPaged(search: query, pageSize: 30);
+      if (!mounted) return;
+      setState(() {
+        _results = page.items
+            .where(
+              (o) =>
+                  o.id != widget.excludeOrderId &&
+                  !o.isMergedAway &&
+                  _mergeableStatuses.contains(o.status),
+            )
+            .toList();
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _error = 'No pudimos buscar pedidos.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final viewInsets = MediaQuery.of(context).viewInsets;
+    return Padding(
+      padding: EdgeInsets.only(bottom: viewInsets.bottom),
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.75,
+        ),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.line,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 6),
+              child: Text(
+                'Fusionar con...',
+                style: AppTextStyles.h2.copyWith(fontSize: 16),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: TextField(
+                controller: _searchCtrl,
+                autofocus: true,
+                textInputAction: TextInputAction.search,
+                onSubmitted: _search,
+                decoration: InputDecoration(
+                  hintText: 'Busca por clienta o # de pedido',
+                  prefixIcon: const Icon(Symbols.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  isDense: true,
+                  suffixIcon: IconButton(
+                    icon: const Icon(Symbols.arrow_forward),
+                    onPressed: () => _search(_searchCtrl.text.trim()),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Flexible(
+              child: _loading
+                  ? const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  : _error != null
+                  ? Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(_error!, style: AppTextStyles.subtitle),
+                    )
+                  : _results.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        'No hay pedidos pendientes que coincidan.',
+                        style: AppTextStyles.subtitle,
+                      ),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.only(bottom: 18),
+                      itemCount: _results.length,
+                      itemBuilder: (ctx, i) {
+                        final o = _results[i];
+                        return ListTile(
+                          title: Text('${o.clientName} · #${o.id}'),
+                          subtitle: Text(
+                            '${o.status.label} · ${money(o.total)}',
+                          ),
+                          onTap: () => Navigator.of(context).pop(o),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1071,6 +1350,27 @@ class _ProductsSection extends StatelessWidget {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
+                        if (it.originalClientName != null) ...[
+                          const SizedBox(height: 2),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF3EEFF),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              'de ${it.originalClientName}',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF7C5AC9),
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 4),
                         _Stepper(
                           qty: it.quantity,
