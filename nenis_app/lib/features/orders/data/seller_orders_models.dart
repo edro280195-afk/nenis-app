@@ -84,6 +84,7 @@ class SellerOrderItem {
     required this.quantity,
     required this.unitPrice,
     required this.lineTotal,
+    this.originalClientName,
   });
 
   final int id;
@@ -92,12 +93,18 @@ class SellerOrderItem {
   final double unitPrice;
   final double lineTotal;
 
+  /// Si el artículo llegó de un pedido de OTRA clienta al fusionar pedidos
+  /// (ej. lo que pidió la hija se agregó a la bolsa de la mamá), aquí queda
+  /// el nombre de quién lo pidió originalmente. Null = siempre fue de esta clienta.
+  final String? originalClientName;
+
   factory SellerOrderItem.fromJson(Map<String, dynamic> j) => SellerOrderItem(
     id: _i(j['id']),
     productName: (j['productName'] ?? '') as String,
     quantity: _i(j['quantity']),
     unitPrice: _d(j['unitPrice']),
     lineTotal: _d(j['lineTotal']),
+    originalClientName: j['originalClientName'] as String?,
   );
 }
 
@@ -170,6 +177,8 @@ class SellerOrder {
     this.shareUrl,
     this.items = const [],
     this.payments = const [],
+    this.mergedIntoOrderId,
+    this.mergedAt,
   });
 
   final int id;
@@ -206,6 +215,12 @@ class SellerOrder {
   final String? shareUrl;
   final List<SellerOrderItem> items;
   final List<SellerPayment> payments;
+
+  /// Fusión de pedidos: si no-nulo, este pedido quedó fusionado dentro de otro
+  /// (ver `MergeOrders` en el backend) y ya no está vigente.
+  final int? mergedIntoOrderId;
+  final DateTime? mergedAt;
+  bool get isMergedAway => mergedIntoOrderId != null;
 
   bool get isFrequent => clientType.toLowerCase() == 'frecuente';
   bool get isPaid => total > 0 && balanceDue <= 0.01;
@@ -270,6 +285,10 @@ class SellerOrder {
     payments: ((j['payments'] as List?) ?? const [])
         .map((e) => SellerPayment.fromJson(e as Map<String, dynamic>))
         .toList(),
+    mergedIntoOrderId: (j['mergedIntoOrderId'] as num?)?.toInt(),
+    mergedAt: j['mergedAt'] == null
+        ? null
+        : DateTime.tryParse(j['mergedAt'] as String)?.toLocal(),
   );
 }
 

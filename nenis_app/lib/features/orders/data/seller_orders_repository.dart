@@ -295,6 +295,28 @@ class SellerOrdersRepository {
     }
   }
 
+  /// Fusiona `sourceOrderId` DENTRO de `targetOrderId`: mueve artículos y
+  /// pagos, recalcula el total del destino y deja el de origen como cascarón
+  /// Cancelado. Sirve tanto para dos pedidos de la misma clienta (duplicados)
+  /// como para juntar el pedido de una clienta dentro del de otra (ej.
+  /// "agrega lo de mi hija a mi bolsa"). Devuelve el pedido destino ya fusionado.
+  Future<SellerOrder> mergeOrders({
+    required int targetOrderId,
+    required int sourceOrderId,
+  }) async {
+    try {
+      final res = await _dio.post(
+        '/api/orders/$targetOrderId/merge',
+        data: {'sourceOrderId': sourceOrderId},
+      );
+      return SellerOrder.fromJson(res.data as Map<String, dynamic>);
+    } catch (e) {
+      throw SellerOrdersException(
+        _friendly(e, 'No pudimos fusionar los pedidos.'),
+      );
+    }
+  }
+
   Future<SellerOrder> setNotified(int orderId, bool notified) async {
     try {
       final res = await _dio.patch(
