@@ -218,6 +218,20 @@ class SellerOrdersRepository {
     }
   }
 
+  /// Libera un pedido "No entregado" de su ruta anterior y lo regresa a
+  /// Pendiente para poder armarle una ruta nueva, sin perder el motivo/fotos
+  /// del intento fallido (quedan ligados a la ruta original).
+  Future<SellerOrder> releaseForRoute(int id) async {
+    try {
+      final res = await _dio.post('/api/orders/$id/release-for-route');
+      return SellerOrder.fromJson(res.data as Map<String, dynamic>);
+    } catch (e) {
+      throw SellerOrdersException(
+        _friendly(e, 'No pudimos preparar el reintento.'),
+      );
+    }
+  }
+
   Future<SellerOrder> setOrderType(int id, SellerDeliveryType type) async {
     try {
       final res = await _dio.patch(

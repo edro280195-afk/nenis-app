@@ -153,7 +153,7 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
 
   Widget _buildContent(SellerRoutesWorkspace workspace) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(22, 4, 22, 24),
+      padding: const EdgeInsets.fromLTRB(22, 4, 22, 120),
       children: [
         _buildHeader(),
         const SizedBox(height: 14),
@@ -1095,7 +1095,10 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
     }
   }
 
-  Future<void> _createRoute(SellerRoutesWorkspace workspace) async {
+  Future<void> _createRoute(
+    SellerRoutesWorkspace workspace, {
+    bool force = false,
+  }) async {
     final preview = _preview;
     if (preview == null) return;
 
@@ -1106,7 +1109,11 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
     try {
       final result = await ref
           .read(sellerRoutesRepositoryProvider)
-          .createRoute(_selectedCandidates(workspace), preview.stops);
+          .createRoute(
+            _selectedCandidates(workspace),
+            preview.stops,
+            force: force,
+          );
       if (!mounted) return;
       _selectedCandidateKeys.clear();
       _preview = null;
@@ -1196,7 +1203,7 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
     );
 
     if (confirmed == true && mounted) {
-      await _createRoute(workspace);
+      await _createRoute(workspace, force: true);
     }
   }
 

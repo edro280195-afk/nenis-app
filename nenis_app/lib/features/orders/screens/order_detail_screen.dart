@@ -8,6 +8,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
+import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/slow_load_hint.dart';
 import '../../labels/screens/order_label_section.dart';
@@ -150,6 +151,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
   Future<void> _setDelivery(SellerDeliveryType t) =>
       _run(() => _repo.setOrderType(_id, t));
+
+  Future<void> _releaseForRoute() => _run(() => _repo.releaseForRoute(_id));
 
   Future<void> _changeQty(SellerOrderItem it, int qty) async {
     // D1: antes, bajar a 0 eliminaba el artículo sin confirmar. La vendedora
@@ -348,6 +351,11 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                     children: [
                       _DetailHead(order: o),
                       _PipelineSection(order: o, onTap: _setStatus),
+                      if (o.status == SellerOrderStatus.notDelivered)
+                        _RetryBanner(
+                          busy: _busy,
+                          onRetry: _releaseForRoute,
+                        ),
                       _DeliverySection(order: o, onChange: _setDelivery),
                       OrderLabelSection(orderId: _id),
                       _ProductsSection(
@@ -832,6 +840,59 @@ class _PipeStep extends StatelessWidget {
             color: active ? status.fg : AppColors.ink3,
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _RetryBanner extends StatelessWidget {
+  const _RetryBanner({required this.busy, required this.onRetry});
+
+  final bool busy;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = SellerOrderStatus.notDelivered.fg;
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: SellerOrderStatus.notDelivered.bg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: fg.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Symbols.error, size: 18, color: fg),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'El chofer no pudo entregar este pedido.',
+                  style: AppTextStyles.body.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: fg,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'El motivo y las fotos de ese intento se conservan. Prepáralo '
+            'para volver a mandarlo en otra ruta.',
+            style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+          ),
+          const SizedBox(height: 12),
+          PillButton(
+            label: busy ? 'Preparando...' : 'Preparar reintento',
+            icon: Symbols.replay,
+            onPressed: busy ? null : onRetry,
+          ),
+        ],
       ),
     );
   }
