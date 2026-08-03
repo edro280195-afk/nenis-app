@@ -107,7 +107,7 @@ class SellerHomeScreen extends ConsumerWidget {
               ),
               Positioned(
                 right: 20,
-                bottom: 16,
+                bottom: 96,
                 child: _Fab(onTap: () => context.push('/orders/new')),
               ),
             ],

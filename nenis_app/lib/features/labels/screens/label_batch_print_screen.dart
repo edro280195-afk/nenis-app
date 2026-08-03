@@ -173,26 +173,33 @@ class _LabelBatchPrintScreenState extends ConsumerState<LabelBatchPrintScreen> {
                     context.push('/seller/labels/editor?mediaSize=Shipping4x6'),
               ),
               Expanded(
-                child: !unlocked
-                    ? const _LockedLabelsBody()
-                    : packages.when(
-                        loading: () => const _BatchLoading(),
-                        error: (error, _) => _BatchError(
-                          onRetry: () =>
-                              ref.invalidate(availableLabelPackagesProvider),
-                        ),
-                        data: (items) => RefreshIndicator(
-                          onRefresh: () async =>
-                              ref.invalidate(availableLabelPackagesProvider),
-                          child: _BatchPackageList(
-                            packages: items,
-                            selectedIds: _selectedPackageIds,
-                            busy: _busy,
-                            onToggle: _toggle,
-                            onToggleAll: () => _toggleAll(items),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 680),
+                    child: !unlocked
+                        ? const _LockedLabelsBody()
+                        : packages.when(
+                            loading: () => const _BatchLoading(),
+                            error: (error, _) => _BatchError(
+                              onRetry: () => ref.invalidate(
+                                availableLabelPackagesProvider,
+                              ),
+                            ),
+                            data: (items) => RefreshIndicator(
+                              onRefresh: () async => ref.invalidate(
+                                availableLabelPackagesProvider,
+                              ),
+                              child: _BatchPackageList(
+                                packages: items,
+                                selectedIds: _selectedPackageIds,
+                                busy: _busy,
+                                onToggle: _toggle,
+                                onToggleAll: () => _toggleAll(items),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
+                  ),
+                ),
               ),
               if (unlocked)
                 packages.maybeWhen(
@@ -498,14 +505,19 @@ class _BatchFooter extends StatelessWidget {
           color: AppColors.surface.withValues(alpha: 0.96),
           border: const Border(top: BorderSide(color: AppColors.lineSoft)),
         ),
-        child: PillButton(
-          label: count == 0
-              ? 'Selecciona bolsas para imprimir'
-              : busy
-              ? 'Abriendo impresoras...'
-              : 'Imprimir $count ${count == 1 ? 'etiqueta' : 'etiquetas'}',
-          icon: Symbols.print,
-          onPressed: count == 0 || busy ? null : onPrint,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 680),
+            child: PillButton(
+              label: count == 0
+                  ? 'Selecciona bolsas para imprimir'
+                  : busy
+                  ? 'Abriendo impresoras...'
+                  : 'Imprimir $count ${count == 1 ? 'etiqueta' : 'etiquetas'}',
+              icon: Symbols.print,
+              onPressed: count == 0 || busy ? null : onPrint,
+            ),
+          ),
         ),
       ),
     );

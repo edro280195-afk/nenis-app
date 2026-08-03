@@ -50,7 +50,7 @@ class SellerAccountScreen extends ConsumerWidget {
           bottom: false,
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(22, 4, 22, 28),
+            padding: const EdgeInsets.fromLTRB(22, 4, 22, 120),
             children: [
               _SellerHeader(
                 title: 'Mi negocio',
@@ -127,6 +127,20 @@ class SellerAccountScreen extends ConsumerWidget {
                 onTap: canManageStoreEngagement
                     ? () => context.push('/seller/vip')
                     : null,
+              ),
+              const SizedBox(height: 10),
+              _SellerMenuTile(
+                icon: Symbols.sell,
+                title: 'Etiquetas e impresión',
+                subtitle: 'Diseña y reimprime etiquetas de bolsas e inventario.',
+                onTap: () => context.push('/seller/labels'),
+              ),
+              const SizedBox(height: 10),
+              _SellerMenuTile(
+                icon: Symbols.inventory_2,
+                title: 'Bodega',
+                subtitle: 'Cajas y artículos con etiquetas NFC.',
+                onTap: () => context.push('/seller/inventory'),
               ),
               const SizedBox(height: 10),
               _SellerMenuTile(

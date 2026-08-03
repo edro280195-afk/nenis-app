@@ -232,7 +232,7 @@ class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen> {
                                   22,
                                   0,
                                   22,
-                                  120,
+                                  160,
                                 ),
                                 itemCount: page.items.length + 1,
                                 itemBuilder: (context, i) {
@@ -259,7 +259,7 @@ class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen> {
               ),
               Positioned(
                 right: 22,
-                bottom: 16,
+                bottom: 96,
                 child: _NewOrderFab(onTap: () => context.push('/orders/new')),
               ),
             ],

@@ -48,7 +48,7 @@ class BuyerAccountScreen extends ConsumerWidget {
                 onRefresh: () async => ref.invalidate(myClaimedClientsProvider),
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(22, 4, 22, 24),
+                  padding: const EdgeInsets.fromLTRB(22, 4, 22, 120),
                   children: [
                     const _AccountHeader(),
                     const SizedBox(height: 22),
