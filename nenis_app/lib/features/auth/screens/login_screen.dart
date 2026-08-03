@@ -290,7 +290,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 _LoginIntro(compact: true, role: _role),
-                                const SizedBox(height: 24),
+                                const SizedBox(height: 12),
                                 ShakeWidget(
                                   key: _shakeKey,
                                   child: _AuthSurface(
@@ -332,6 +332,12 @@ class _LoginIntro extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isClient = role == LoginRole.client;
+    final heroHeight = compact ? 72.0 : 140.0;
+    final heroWidth = compact ? 120.0 : 200.0;
+    final ringSize = compact ? 58.0 : 110.0;
+    final iconBoxSize = compact ? 44.0 : 70.0;
+    final iconRadius = compact ? 16.0 : 22.0;
+    final iconSize = compact ? 24.0 : 32.0;
 
     return Column(
       crossAxisAlignment: compact
@@ -339,8 +345,8 @@ class _LoginIntro extends StatelessWidget {
           : CrossAxisAlignment.start,
       children: [
         if (compact) ...[
-          const NenisLogo(markSize: 46, wordmarkSize: 23),
-          const SizedBox(height: 18),
+          const NenisLogo(markSize: 38, wordmarkSize: 20),
+          const SizedBox(height: 8),
         ] else ...[
           const NenisLogo(markSize: 60, wordmarkSize: 28),
           const SizedBox(height: 24),
@@ -349,15 +355,15 @@ class _LoginIntro extends StatelessWidget {
         // Ilustración Héroe Dinámica
         Center(
           child: SizedBox(
-            height: 140,
-            width: 200,
+            height: heroHeight,
+            width: heroWidth,
             child: Stack(
               alignment: Alignment.center,
               children: [
                 // Anillo de fondo
                 Container(
-                  width: 110,
-                  height: 110,
+                  width: ringSize,
+                  height: ringSize,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
@@ -387,10 +393,10 @@ class _LoginIntro extends StatelessWidget {
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 350),
                   curve: Curves.easeOutBack,
-                  width: 70,
-                  height: 70,
+                  width: iconBoxSize,
+                  height: iconBoxSize,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(22),
+                    borderRadius: BorderRadius.circular(iconRadius),
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -421,38 +427,40 @@ class _LoginIntro extends StatelessWidget {
                       isClient ? Symbols.shopping_bag : Symbols.storefront,
                       key: ValueKey(role),
                       color: Colors.white,
-                      size: 32,
+                      size: iconSize,
                       fill: 1.0,
                     ),
                   ),
                 ),
 
                 // Elementos decorativos (sparks/hearts)
-                Positioned(
-                  top: 15,
-                  right: 35,
-                  child: Icon(
-                    Symbols.star,
-                    color: isClient
-                        ? const Color(0xFFF3B341)
-                        : const Color(0xFFFFB703),
-                    size: 20,
-                    fill: 1.0,
+                if (!compact) ...[
+                  Positioned(
+                    top: 15,
+                    right: 35,
+                    child: Icon(
+                      Symbols.star,
+                      color: isClient
+                          ? const Color(0xFFF3B341)
+                          : const Color(0xFFFFB703),
+                      size: 20,
+                      fill: 1.0,
+                    ),
                   ),
-                ),
-                Positioned(
-                  bottom: 15,
-                  left: 35,
-                  child: Icon(
-                    Symbols.star,
-                    color: isClient
-                        ? const Color(0xFF9B7BE0)
-                        : const Color(0xFFFF6F9C),
-                    size: 16,
-                    fill: 1.0,
+                  Positioned(
+                    bottom: 15,
+                    left: 35,
+                    child: Icon(
+                      Symbols.star,
+                      color: isClient
+                          ? const Color(0xFF9B7BE0)
+                          : const Color(0xFFFF6F9C),
+                      size: 16,
+                      fill: 1.0,
+                    ),
                   ),
-                ),
-                if (isClient)
+                ],
+                if (isClient && !compact)
                   const Positioned(
                     top: 35,
                     left: 40,
@@ -475,9 +483,9 @@ class _LoginIntro extends StatelessWidget {
             isClient ? 'Compra en tus Lives' : 'Gestiona tu Tienda',
             textAlign: TextAlign.center,
             style: AppTextStyles.display.copyWith(
-              fontSize: compact ? 26 : 32,
+              fontSize: compact ? 22 : 32,
               height: 1.12,
-              letterSpacing: -0.8,
+              letterSpacing: 0,
             ),
           ),
         ),
@@ -553,12 +561,12 @@ class _AuthSurface extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              '¿Cómo quieres entrar?',
+              'Elige tu cuenta',
               style: AppTextStyles.h2.copyWith(fontSize: 18),
             ),
             const SizedBox(height: 5),
             Text(
-              'Puedes volver y cambiar de opción en cualquier momento.',
+              'Clienta para comprar. Vendedora para administrar.',
               style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
             ),
             const SizedBox(height: 16),
@@ -820,30 +828,20 @@ class _ClientLoginForm extends StatelessWidget {
           onPressed: loading ? null : onContinue,
         ),
         const SizedBox(height: 13),
-        Center(
-          child: TextButton(
-            onPressed: loading
-                ? null
-                : () => context.go('/register?role=client'),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.neniDeep,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            ),
-            child: Text.rich(
-              TextSpan(
-                text: '¿Eres nueva? ',
-                style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
-                children: [
-                  TextSpan(
-                    text: 'Crea tu cuenta',
-                    style: AppTextStyles.subtitle.copyWith(
-                      color: AppColors.neniDeep,
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
+        OutlinedButton(
+          onPressed: loading ? null : () => context.go('/register?role=client'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.neniDeep,
+            minimumSize: const Size.fromHeight(48),
+            side: BorderSide(color: AppColors.neniDeep.withValues(alpha: 0.28)),
+            shape: const StadiumBorder(),
+          ),
+          child: Text(
+            'Crear cuenta de clienta',
+            style: AppTextStyles.subtitle.copyWith(
+              color: AppColors.neniDeep,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ),
@@ -965,32 +963,22 @@ class _SellerLoginForm extends StatelessWidget {
           onPressed: loading ? null : onContinue,
         ),
         const SizedBox(height: 12),
-        Center(
-          child: TextButton(
-            key: const Key('seller-register-link'),
-            onPressed: loading
-                ? null
-                : () => context.go('/register?role=seller'),
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF7450A8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            ),
-            child: Text.rich(
-              TextSpan(
-                text: 'Aun no tienes tienda? ',
-                style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
-                children: [
-                  TextSpan(
-                    text: 'Crea tu cuenta de vendedora',
-                    style: AppTextStyles.subtitle.copyWith(
-                      color: const Color(0xFF7450A8),
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-              textAlign: TextAlign.center,
+        OutlinedButton(
+          key: const Key('seller-register-link'),
+          onPressed: loading ? null : () => context.go('/register?role=seller'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFF7450A8),
+            minimumSize: const Size.fromHeight(48),
+            side: const BorderSide(color: Color(0x337450A8)),
+            shape: const StadiumBorder(),
+          ),
+          child: Text(
+            'Crear cuenta de vendedora',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.subtitle.copyWith(
+              color: const Color(0xFF7450A8),
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ),

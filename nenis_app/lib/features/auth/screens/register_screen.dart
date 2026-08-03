@@ -189,29 +189,24 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           },
                   ),
                   const SizedBox(height: 20),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: AppTextField(
-                          key: const Key('register-first-name-field'),
-                          controller: _firstName,
-                          label: 'Nombre',
-                          hint: 'Ana',
-                          keyboardType: TextInputType.name,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: AppTextField(
-                          key: const Key('register-last-name-field'),
-                          controller: _lastName,
-                          label: 'Apellido',
-                          hint: 'Lopez',
-                          keyboardType: TextInputType.name,
-                        ),
-                      ),
-                    ],
+                  AppTextField(
+                    key: const Key('register-first-name-field'),
+                    controller: _firstName,
+                    label: 'Nombre',
+                    hint: 'Ana',
+                    keyboardType: TextInputType.name,
+                    textInputAction: TextInputAction.next,
+                    autofillHints: const [AutofillHints.givenName],
+                  ),
+                  const SizedBox(height: 14),
+                  AppTextField(
+                    key: const Key('register-last-name-field'),
+                    controller: _lastName,
+                    label: 'Apellido',
+                    hint: 'Lopez',
+                    keyboardType: TextInputType.name,
+                    textInputAction: TextInputAction.next,
+                    autofillHints: const [AutofillHints.familyName],
                   ),
                   const SizedBox(height: 14),
                   AppTextField(

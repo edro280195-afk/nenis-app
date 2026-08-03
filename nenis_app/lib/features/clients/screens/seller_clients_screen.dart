@@ -10,7 +10,9 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/maps/google_address_repository.dart';
 import '../../../shared/widgets/background.dart';
+import '../../../shared/widgets/google_address_field.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/slow_load_hint.dart';
 import '../data/seller_clients_models.dart';
@@ -1704,8 +1706,9 @@ class _AliasesCard extends ConsumerWidget {
                                         backgroundColor: AppColors.liveRed,
                                         content: Text(
                                           error.toString(),
-                                          style: AppTextStyles.body
-                                              .copyWith(color: Colors.white),
+                                          style: AppTextStyles.body.copyWith(
+                                            color: Colors.white,
+                                          ),
                                         ),
                                       ),
                                     );
@@ -1815,8 +1818,13 @@ class _ClientEditSheetState extends State<_ClientEditSheet> {
   late final TextEditingController _addressCtrl;
   late final TextEditingController _instructionsCtrl;
   late final TextEditingController _facebookCtrl;
+  late final String _originalAddress;
+  late final double? _originalLatitude;
+  late final double? _originalLongitude;
   late SellerClientTag _tag;
   late String _type;
+  double? _selectedLatitude;
+  double? _selectedLongitude;
   bool _saving = false;
   bool _deleting = false;
 
@@ -1827,6 +1835,9 @@ class _ClientEditSheetState extends State<_ClientEditSheet> {
     _nameCtrl = TextEditingController(text: client.name);
     _phoneCtrl = TextEditingController(text: client.phone ?? '');
     _addressCtrl = TextEditingController(text: client.address ?? '');
+    _originalAddress = client.address?.trim() ?? '';
+    _originalLatitude = client.latitude;
+    _originalLongitude = client.longitude;
     _instructionsCtrl = TextEditingController(
       text: client.deliveryInstructions ?? '',
     );
@@ -1835,6 +1846,8 @@ class _ClientEditSheetState extends State<_ClientEditSheet> {
     );
     _tag = client.tag;
     _type = client.displayType;
+    _selectedLatitude = client.latitude;
+    _selectedLongitude = client.longitude;
   }
 
   @override
@@ -1862,6 +1875,12 @@ class _ClientEditSheetState extends State<_ClientEditSheet> {
           facebookProfileUrl: _facebookCtrl.text.trim().isEmpty
               ? null
               : _facebookCtrl.text.trim(),
+          latitude: _selectedLatitude,
+          longitude: _selectedLongitude,
+          clearCoordinates:
+              _addressCtrl.text.trim() != _originalAddress &&
+              (_selectedLatitude == null || _selectedLongitude == null) &&
+              (_originalLatitude != null || _originalLongitude != null),
         ),
       );
       if (mounted) Navigator.pop(context, false);
@@ -1988,6 +2007,20 @@ class _ClientEditSheetState extends State<_ClientEditSheet> {
                   controller: _addressCtrl,
                   icon: Symbols.location_on,
                   maxLines: 2,
+                  isGoogleAddress: true,
+                  onAddressChanged: (_) {
+                    if (_selectedLatitude != null ||
+                        _selectedLongitude != null) {
+                      setState(() {
+                        _selectedLatitude = null;
+                        _selectedLongitude = null;
+                      });
+                    }
+                  },
+                  onAddressSelected: (selection) => setState(() {
+                    _selectedLatitude = selection.latitude;
+                    _selectedLongitude = selection.longitude;
+                  }),
                   helperText: 'Dejarla vacía no borra el dato guardado.',
                 ),
                 const SizedBox(height: 12),
@@ -2622,6 +2655,9 @@ class _EditField extends StatelessWidget {
     this.validator,
     this.inputFormatters,
     this.helperText,
+    this.isGoogleAddress = false,
+    this.onAddressChanged,
+    this.onAddressSelected,
   });
 
   final String label;
@@ -2632,20 +2668,32 @@ class _EditField extends StatelessWidget {
   final String? Function(String value)? validator;
   final List<TextInputFormatter>? inputFormatters;
   final String? helperText;
+  final bool isGoogleAddress;
+  final ValueChanged<String>? onAddressChanged;
+  final ValueChanged<GoogleAddressSelection>? onAddressSelected;
 
   @override
   Widget build(BuildContext context) {
     return _PickerBox(
       label: label,
-      child: TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        maxLines: maxLines,
-        inputFormatters: inputFormatters,
-        style: AppTextStyles.body.copyWith(fontSize: 13),
-        decoration: _fieldDecoration(prefixIcon: icon, helperText: helperText),
-        validator: (value) => validator?.call(value ?? ''),
-      ),
+      child: isGoogleAddress
+          ? GoogleAddressField(
+              controller: controller,
+              onChanged: onAddressChanged,
+              onSelected: onAddressSelected,
+            )
+          : TextFormField(
+              controller: controller,
+              keyboardType: keyboardType,
+              maxLines: maxLines,
+              inputFormatters: inputFormatters,
+              style: AppTextStyles.body.copyWith(fontSize: 13),
+              decoration: _fieldDecoration(
+                prefixIcon: icon,
+                helperText: helperText,
+              ),
+              validator: (value) => validator?.call(value ?? ''),
+            ),
     );
   }
 }

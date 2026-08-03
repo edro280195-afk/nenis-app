@@ -81,6 +81,8 @@ class SellerOrdersRepository {
     String? clientAddress,
     String? alternativeAddress,
     String? deliveryInstructions,
+    double? clientLatitude,
+    double? clientLongitude,
     DateTime? scheduledDeliveryDate,
     int? clientId,
     int? targetOrderId,
@@ -104,6 +106,10 @@ class SellerOrdersRepository {
           if (deliveryInstructions != null &&
               deliveryInstructions.trim().isNotEmpty)
             'deliveryInstructions': deliveryInstructions.trim(),
+          if (clientLatitude != null && clientLongitude != null) ...{
+            'clientLatitude': clientLatitude,
+            'clientLongitude': clientLongitude,
+          },
           'scheduledDeliveryDate': ?scheduledDeliveryDate?.toIso8601String(),
           'clientId': ?clientId,
           'targetOrderId': ?targetOrderId,
@@ -124,10 +130,7 @@ class SellerOrdersRepository {
   /// `GET /api/orders/open?clientId=&name=`. El frontend lo usa para preguntarle
   /// a la dueña si crea un pedido nuevo o agrega a uno existente. Se resuelve por
   /// `clientId` si viene; si no, por `name` (match exact-lower-trim en backend).
-  Future<List<SellerOrder>> getOpenOrders({
-    int? clientId,
-    String? name,
-  }) async {
+  Future<List<SellerOrder>> getOpenOrders({int? clientId, String? name}) async {
     try {
       final res = await _dio.get(
         '/api/orders/open',
@@ -145,7 +148,6 @@ class SellerOrdersRepository {
       );
     }
   }
-
 
   Future<List<SellerClient>> getClients() async {
     try {

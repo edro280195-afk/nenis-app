@@ -9,11 +9,26 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/brand_theme.dart';
 
 class NavItem {
-  const NavItem({required this.icon, required this.label, required this.route});
+  const NavItem({
+    required this.icon,
+    required this.label,
+    required this.route,
+    this.alternativeRoutes = const [],
+  });
 
   final IconData icon;
   final String label;
   final String route;
+  final List<String> alternativeRoutes;
+}
+
+bool isMoreNavItem(NavItem item) => item.icon == Symbols.more_horiz;
+
+bool isNavItemActive(String currentRoute, NavItem item) {
+  bool matches(String route) =>
+      currentRoute == route || currentRoute.startsWith('$route/');
+
+  return matches(item.route) || item.alternativeRoutes.any(matches);
 }
 
 class GlassBottomNav extends StatelessWidget {
@@ -45,14 +60,13 @@ class GlassBottomNav extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: items.map((item) {
-            final isActive =
-                currentRoute == item.route ||
-                currentRoute.startsWith('${item.route}/');
+            final isActive = isNavItemActive(currentRoute, item);
             final fg = isActive ? brand.primaryDeep : AppColors.ink3;
             return Expanded(
               child: InkWell(
                 onTap: () {
                   onChanged?.call(item.route);
+                  if (isMoreNavItem(item)) return;
                   if (currentRoute != item.route) {
                     context.go(item.route);
                   }
@@ -79,9 +93,13 @@ class GlassBottomNav extends StatelessWidget {
                       child: Icon(item.icon, size: 25, color: fg),
                     ),
                     const SizedBox(height: 3),
-                    Text(
-                      item.label,
-                      style: AppTextStyles.nav.copyWith(color: fg),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        item.label,
+                        maxLines: 1,
+                        style: AppTextStyles.nav.copyWith(color: fg),
+                      ),
                     ),
                   ],
                 ),
@@ -98,9 +116,18 @@ List<NavItem> buildDefaultNavItems() => const [
   NavItem(icon: Symbols.home, label: 'Inicio', route: '/home'),
   NavItem(icon: Symbols.receipt_long, label: 'Pedidos', route: '/orders'),
   NavItem(icon: Symbols.stars, label: 'Puntos', route: '/points'),
+  NavItem(
+    icon: Symbols.more_horiz,
+    label: 'M\u00E1s',
+    route: '/tandas',
+    alternativeRoutes: ['/raffles'],
+  ),
+  NavItem(icon: Symbols.person, label: 'Cuenta', route: '/account'),
+];
+
+List<NavItem> buildDefaultOverflowItems() => const [
   NavItem(icon: Symbols.groups, label: 'Tandas', route: '/tandas'),
   NavItem(icon: Symbols.celebration, label: 'Sorteos', route: '/raffles'),
-  NavItem(icon: Symbols.person, label: 'Cuenta', route: '/account'),
 ];
 
 List<NavItem> buildSellerNavItems({bool includeRoutes = true}) => [
@@ -108,6 +135,22 @@ List<NavItem> buildSellerNavItems({bool includeRoutes = true}) => [
   const NavItem(icon: Symbols.receipt_long, label: 'Pedidos', route: '/orders'),
   const NavItem(icon: Symbols.group, label: 'Clientas', route: '/clients'),
   const NavItem(icon: Symbols.groups, label: 'Tandas', route: '/tandas'),
+  NavItem(
+    icon: Symbols.more_horiz,
+    label: 'M\u00E1s',
+    route: includeRoutes ? '/routes' : '/seller/inventory',
+    alternativeRoutes: const [
+      '/account',
+      '/seller/labels',
+      '/seller/inventory',
+      '/seller/updates',
+      '/seller/vip',
+      '/seller/live',
+    ],
+  ),
+];
+
+List<NavItem> buildSellerOverflowItems({bool includeRoutes = true}) => [
   if (includeRoutes)
     const NavItem(
       icon: Symbols.directions_car,
@@ -115,4 +158,14 @@ List<NavItem> buildSellerNavItems({bool includeRoutes = true}) => [
       route: '/routes',
     ),
   const NavItem(icon: Symbols.person, label: 'Cuenta', route: '/account'),
+  const NavItem(
+    icon: Symbols.print,
+    label: 'Etiquetas',
+    route: '/seller/labels',
+  ),
+  const NavItem(
+    icon: Symbols.inventory_2,
+    label: 'Bodega',
+    route: '/seller/inventory',
+  ),
 ];

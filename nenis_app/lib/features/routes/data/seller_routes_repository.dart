@@ -129,6 +129,17 @@ class SellerRoutesRepository {
     }
   }
 
+  Future<RouteGeometry> getRouteGeometry(int routeId) async {
+    try {
+      final response = await _dio.get('/api/routes/$routeId/geometry');
+      return RouteGeometry.fromJson(response.data as Map<String, dynamic>);
+    } catch (e) {
+      throw SellerRoutesException(
+        _friendly(e, 'No pudimos dibujar la ruta por calles.'),
+      );
+    }
+  }
+
   Future<void> reorderRoute(int routeId, List<int> deliveryIdsInOrder) async {
     try {
       await _dio.put('/api/routes/$routeId/reorder', data: deliveryIdsInOrder);

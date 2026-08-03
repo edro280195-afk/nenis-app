@@ -158,6 +158,9 @@ class UpdateSellerClientRequest {
     this.address,
     this.deliveryInstructions,
     this.facebookProfileUrl,
+    this.latitude,
+    this.longitude,
+    this.clearCoordinates = false,
   });
 
   final String name;
@@ -167,6 +170,9 @@ class UpdateSellerClientRequest {
   final String? address;
   final String? deliveryInstructions;
   final String? facebookProfileUrl;
+  final double? latitude;
+  final double? longitude;
+  final bool clearCoordinates;
 
   Map<String, dynamic> toJson() => {
     'name': name.trim(),
@@ -176,6 +182,11 @@ class UpdateSellerClientRequest {
     'type': type.trim().isEmpty ? 'Nueva' : type.trim(),
     'deliveryInstructions': deliveryInstructions?.trim(),
     if (facebookProfileUrl != null) 'facebookProfileUrl': facebookProfileUrl,
+    if (latitude != null && longitude != null) ...{
+      'latitude': latitude,
+      'longitude': longitude,
+    },
+    if (clearCoordinates) 'clearCoordinates': true,
   };
 }
 
