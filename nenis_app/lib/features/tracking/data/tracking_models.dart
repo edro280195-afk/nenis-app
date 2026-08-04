@@ -348,6 +348,9 @@ class OrderTracking {
     this.signedAt,
     this.mercadoPagoPublicKey,
     this.rating,
+    this.orderId,
+    this.orderType,
+    this.itemsQuantity,
   });
 
   final int clientId;
@@ -405,6 +408,19 @@ class OrderTracking {
 
   /// Evaluación previa (si la clienta ya calificó este pedido).
   final OrderRating? rating;
+
+  /// Id interno del pedido para mostrarlo de forma compacta.
+  final int? orderId;
+
+  /// Tipo de pedido: Delivery, PickUp o POS_Tienda.
+  final String? orderType;
+
+  /// Total de piezas del pedido. Si el API no lo manda, se calcula desde items.
+  final int? itemsQuantity;
+
+  int get totalPieces =>
+      itemsQuantity ??
+      items.fold<int>(0, (total, item) => total + item.quantity);
 
   String get driverHint {
     final ahead = deliveriesAhead ?? 0;
@@ -482,6 +498,9 @@ class OrderTracking {
     rating: j['rating'] != null
         ? OrderRating.fromJson(j['rating'] as Map<String, dynamic>)
         : null,
+    orderId: (j['orderId'] as num?)?.toInt(),
+    orderType: j['orderType'] as String?,
+    itemsQuantity: (j['itemsQuantity'] as num?)?.toInt(),
   );
 
   OrderTracking copyWith({
@@ -495,6 +514,9 @@ class OrderTracking {
     String? deliveryInstructions,
     List<OrderPayment>? payments,
     OrderRating? rating,
+    int? orderId,
+    String? orderType,
+    int? itemsQuantity,
   }) => OrderTracking(
     clientId: clientId,
     clientName: clientName,
@@ -528,6 +550,9 @@ class OrderTracking {
     signedAt: signedAt,
     mercadoPagoPublicKey: mercadoPagoPublicKey,
     rating: rating ?? this.rating,
+    orderId: orderId ?? this.orderId,
+    orderType: orderType ?? this.orderType,
+    itemsQuantity: itemsQuantity ?? this.itemsQuantity,
   );
 }
 

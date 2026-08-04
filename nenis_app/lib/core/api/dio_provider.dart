@@ -5,6 +5,7 @@ import '../../features/subscription/data/subscription_repository.dart';
 import '../auth/auth_controller.dart';
 import '../auth/session.dart';
 import '../config/app_config.dart';
+import '../device/device_identity_service.dart';
 
 /// Rutas públicas por token (no requieren `Authorization`).
 const _publicPrefixes = [
@@ -69,9 +70,12 @@ final dioProvider = Provider<Dio>((ref) {
 
   dio.interceptors.add(
     InterceptorsWrapper(
-      onRequest: (options, handler) {
-        final isPublic =
-            _publicPrefixes.any((p) => options.path.startsWith(p));
+      onRequest: (options, handler) async {
+        final deviceId = await ref
+            .read(deviceIdentityServiceProvider)
+            .getOrCreate();
+        options.headers['X-Device-Id'] = deviceId;
+        final isPublic = _publicPrefixes.any((p) => options.path.startsWith(p));
         if (!isPublic) {
           _applyAuthHeaders(
             options,
@@ -88,8 +92,7 @@ final dioProvider = Provider<Dio>((ref) {
         // Cold start del backend: hasta 2 reintentos con delays y timeouts
         // crecientes (ver `_coldStartRetry*`). Solo GET idempotente.
         if (_isColdStartRetryable(e)) {
-          final attempts =
-              (options.extra['__coldStartAttempts'] as int?) ?? 0;
+          final attempts = (options.extra['__coldStartAttempts'] as int?) ?? 0;
           if (attempts < _coldStartRetryDelays.length) {
             options.extra['__coldStartAttempts'] = attempts + 1;
             options.receiveTimeout = _coldStartRetryReceive[attempts];
@@ -109,8 +112,9 @@ final dioProvider = Provider<Dio>((ref) {
         if (e.response?.statusCode == 401 &&
             !isAuthEndpoint &&
             !alreadyRetried) {
-          final renewed =
-              await ref.read(authControllerProvider.notifier).tryRefresh();
+          final renewed = await ref
+              .read(authControllerProvider.notifier)
+              .tryRefresh();
           if (renewed) {
             final session = ref.read(authControllerProvider).asData?.value;
             _applyAuthHeaders(options, session);

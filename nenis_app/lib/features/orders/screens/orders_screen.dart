@@ -184,7 +184,7 @@ class _OrderRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Pedido #${order.orderId}',
+                    'Pedido #${order.displayNumber}',
                     style: AppTextStyles.body.copyWith(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w600,

@@ -25,6 +25,40 @@ class Membership {
   };
 }
 
+class AccountOnboarding {
+  const AccountOnboarding({
+    required this.buyerCompleted,
+    required this.sellerCompleted,
+    required this.hasVerifiedPhone,
+  });
+
+  /// Compatibilidad durante despliegues escalonados: la API anterior no
+  /// enviaba este objeto ni tenia el endpoint para completarlo.
+  const AccountOnboarding.legacyCompleted()
+    : buyerCompleted = true,
+      sellerCompleted = true,
+      hasVerifiedPhone = false;
+
+  final bool buyerCompleted;
+  final bool sellerCompleted;
+  final bool hasVerifiedPhone;
+
+  factory AccountOnboarding.fromJson(Map<String, dynamic>? json) {
+    if (json == null) return const AccountOnboarding.legacyCompleted();
+    return AccountOnboarding(
+      buyerCompleted: json['buyerCompleted'] as bool? ?? false,
+      sellerCompleted: json['sellerCompleted'] as bool? ?? false,
+      hasVerifiedPhone: json['hasVerifiedPhone'] as bool? ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'buyerCompleted': buyerCompleted,
+    'sellerCompleted': sellerCompleted,
+    'hasVerifiedPhone': hasVerifiedPhone,
+  };
+}
+
 /// Sesión autenticada de la compradora. El JWT trae `sub = AccountId`.
 class Session {
   const Session({
@@ -34,6 +68,7 @@ class Session {
     required this.role,
     required this.expiresAt,
     required this.memberships,
+    this.onboarding = const AccountOnboarding.legacyCompleted(),
     this.activeBusinessId,
     this.refreshToken,
   });
@@ -44,6 +79,7 @@ class Session {
   final String role;
   final DateTime expiresAt;
   final List<Membership> memberships;
+  final AccountOnboarding onboarding;
 
   /// Negocio activo (para el header `X-Business-Id`). Una compradora sin
   /// memberships lo deja en null; con una sola, se autoselecciona.
@@ -103,6 +139,9 @@ class Session {
           DateTime.tryParse((j['expiresAt'] ?? '') as String)?.toLocal() ??
           DateTime.now().add(const Duration(days: 7)),
       memberships: memberships,
+      onboarding: AccountOnboarding.fromJson(
+        (j['onboarding'] as Map?)?.cast<String, dynamic>(),
+      ),
       activeBusinessId: memberships.length == 1
           ? memberships.first.businessId
           : null,
@@ -122,6 +161,9 @@ class Session {
       expiresAt:
           DateTime.tryParse((j['expiresAt'] ?? '') as String) ?? DateTime.now(),
       memberships: memberships,
+      onboarding: AccountOnboarding.fromJson(
+        (j['onboarding'] as Map?)?.cast<String, dynamic>(),
+      ),
       activeBusinessId: (j['activeBusinessId'] as num?)?.toInt(),
       refreshToken: j['refreshToken'] as String?,
     );
@@ -134,17 +176,23 @@ class Session {
     'role': role,
     'expiresAt': expiresAt.toIso8601String(),
     'memberships': memberships.map((m) => m.toJson()).toList(),
+    'onboarding': onboarding.toJson(),
     'activeBusinessId': activeBusinessId,
     'refreshToken': refreshToken,
   };
 
-  Session copyWith({int? activeBusinessId, String? refreshToken}) => Session(
+  Session copyWith({
+    int? activeBusinessId,
+    String? refreshToken,
+    AccountOnboarding? onboarding,
+  }) => Session(
     token: token,
     accountId: accountId,
     displayName: displayName,
     role: role,
     expiresAt: expiresAt,
     memberships: memberships,
+    onboarding: onboarding ?? this.onboarding,
     activeBusinessId: activeBusinessId ?? this.activeBusinessId,
     refreshToken: refreshToken ?? this.refreshToken,
   );

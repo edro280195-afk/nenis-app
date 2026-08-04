@@ -588,7 +588,7 @@ class _SuccessDialog extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Pedido #${order.orderId}',
+              'Pedido #${order.displayNumber}',
               style: AppTextStyles.subtitle.copyWith(
                 fontSize: 12,
                 color: AppColors.ink3,

@@ -132,7 +132,8 @@ class SellerAccountScreen extends ConsumerWidget {
               _SellerMenuTile(
                 icon: Symbols.sell,
                 title: 'Etiquetas e impresión',
-                subtitle: 'Diseña y reimprime etiquetas de bolsas e inventario.',
+                subtitle:
+                    'Diseña y reimprime etiquetas de bolsas e inventario.',
                 onTap: () => context.push('/seller/labels'),
               ),
               const SizedBox(height: 10),
@@ -155,6 +156,13 @@ class SellerAccountScreen extends ConsumerWidget {
                 title: 'Preferencias',
                 subtitle: 'Alertas, mensajes y operación diaria.',
                 onTap: () => context.push('/seller/settings/preferences'),
+              ),
+              const SizedBox(height: 10),
+              _SellerMenuTile(
+                icon: Symbols.school,
+                title: 'Ver tutorial de la app',
+                subtitle: 'Repasa pedidos, clientas, rutas y tu plan.',
+                onTap: () => context.push('/onboarding/seller?replay=true'),
               ),
               const SizedBox(height: 22),
               PillButton(

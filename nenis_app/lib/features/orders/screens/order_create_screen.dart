@@ -575,8 +575,8 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
       _afterOrderCreated(order);
       _resetManual();
       final msg = choice.targetOrderId != null
-          ? 'Articulos agregados al pedido #${order.id}'
-          : 'Pedido #${order.id} creado';
+          ? 'Articulos agregados al pedido #${order.displayNumber}'
+          : 'Pedido #${order.displayNumber} creado';
       _snack(msg, color: const Color(0xFF12A150));
     } catch (e) {
       _snack(e.toString(), color: const Color(0xFFE11D5B));
@@ -2724,7 +2724,7 @@ class _CreatedOrdersPanel extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      '#${order.id} · ${order.clientName}',
+                      '#${order.displayNumber} · ${order.clientName}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.body.copyWith(
@@ -3011,7 +3011,7 @@ class _OpenOrderTile extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  '#${order.id}',
+                  '#${order.displayNumber}',
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(width: 8),

@@ -147,6 +147,7 @@ class OrderCaptureSettings {
 class SellerOrder {
   const SellerOrder({
     required this.id,
+    required this.orderNumber,
     required this.clientName,
     required this.clientType,
     required this.status,
@@ -178,10 +179,12 @@ class SellerOrder {
     this.items = const [],
     this.payments = const [],
     this.mergedIntoOrderId,
+    this.mergedIntoOrderNumber,
     this.mergedAt,
   });
 
   final int id;
+  final int orderNumber;
   final String clientName;
   final String clientType; // "Nueva" | "Frecuente"
   final SellerOrderStatus status;
@@ -219,8 +222,14 @@ class SellerOrder {
   /// Fusión de pedidos: si no-nulo, este pedido quedó fusionado dentro de otro
   /// (ver `MergeOrders` en el backend) y ya no está vigente.
   final int? mergedIntoOrderId;
+  final int? mergedIntoOrderNumber;
   final DateTime? mergedAt;
   bool get isMergedAway => mergedIntoOrderId != null;
+  int get displayNumber => orderNumber > 0 ? orderNumber : id;
+  int? get displayMergedIntoNumber =>
+      (mergedIntoOrderNumber != null && mergedIntoOrderNumber! > 0)
+      ? mergedIntoOrderNumber
+      : mergedIntoOrderId;
 
   bool get isFrequent => clientType.toLowerCase() == 'frecuente';
   bool get isPaid => total > 0 && balanceDue <= 0.01;
@@ -241,6 +250,7 @@ class SellerOrder {
 
   factory SellerOrder.fromJson(Map<String, dynamic> j) => SellerOrder(
     id: _i(j['id']),
+    orderNumber: _i(j['orderNumber']),
     clientName: (j['clientName'] ?? '') as String,
     clientType: (j['type'] ?? 'Nueva') as String,
     status: SellerOrderStatus.fromApi(j['status'] as String?),
@@ -286,6 +296,7 @@ class SellerOrder {
         .map((e) => SellerPayment.fromJson(e as Map<String, dynamic>))
         .toList(),
     mergedIntoOrderId: (j['mergedIntoOrderId'] as num?)?.toInt(),
+    mergedIntoOrderNumber: (j['mergedIntoOrderNumber'] as num?)?.toInt(),
     mergedAt: j['mergedAt'] == null
         ? null
         : DateTime.tryParse(j['mergedAt'] as String)?.toLocal(),

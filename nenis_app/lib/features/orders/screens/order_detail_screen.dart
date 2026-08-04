@@ -315,6 +315,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       builder: (ctx) => _MergeOrderPicker(excludeOrderId: _id, repo: _repo),
     );
     if (target == null || !mounted) return;
+    final sourceNumber = current.displayNumber;
+    final targetNumber = target.displayNumber;
 
     final ok = await showDialog<bool>(
       context: context,
@@ -323,9 +325,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         title: const Text('Â¿Fusionar pedidos?'),
         content: Text(
           'Los ${current.items.length} artÃ­culo${current.items.length == 1 ? '' : 's'} '
-          'del pedido #$_id (${current.clientName}) se moverÃ¡n al pedido '
-          '#${target.id} (${target.clientName}). El pedido #$_id quedarÃ¡ '
-          'cancelado â€” solo #${target.id} seguirÃ¡ vigente para entregar y cobrar.',
+          'del pedido #$sourceNumber (${current.clientName}) se moverÃ¡n al pedido '
+          '#$targetNumber (${target.clientName}). El pedido #$sourceNumber quedarÃ¡ '
+          'cancelado â€” solo #$targetNumber seguirÃ¡ vigente para entregar y cobrar.',
         ),
         actions: [
           TextButton(
@@ -348,7 +350,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       ref.invalidate(sellerOrderDetailProvider(target.id));
       if (!mounted) return;
       _snack(
-        'Pedido #$_id fusionado con #${target.id} ðŸ’•',
+        'Pedido #$sourceNumber fusionado con #$targetNumber ðŸ’•',
         color: const Color(0xFF12A150),
       );
       context.pushReplacement('/orders/detail/${target.id}');
@@ -708,7 +710,7 @@ class _DetailHead extends StatelessWidget {
                   const Text('ðŸ“¦', style: TextStyle(fontSize: 19)),
                   const SizedBox(width: 8),
                   Text(
-                    'Pedido #${o.id}',
+                    'Pedido #${o.displayNumber}',
                     style: AppTextStyles.h2.copyWith(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
@@ -824,7 +826,7 @@ class _MergedAwayBanner extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Este pedido se fusionÃ³ con el #${order.mergedIntoOrderId}. '
+              'Este pedido se fusionÃ³ con el #${order.displayMergedIntoNumber}. '
               'Sus artÃ­culos y pagos ya estÃ¡n allÃ¡.',
               style: AppTextStyles.body.copyWith(
                 fontSize: 12,
@@ -834,7 +836,7 @@ class _MergedAwayBanner extends StatelessWidget {
           ),
           TextButton(
             onPressed: onViewTarget,
-            child: Text('Ver #${order.mergedIntoOrderId}'),
+            child: Text('Ver #${order.displayMergedIntoNumber}'),
           ),
         ],
       ),
@@ -985,7 +987,7 @@ class _MergeOrderPickerState extends State<_MergeOrderPicker> {
                       itemBuilder: (ctx, i) {
                         final o = _results[i];
                         return ListTile(
-                          title: Text('${o.clientName} Â· #${o.id}'),
+                          title: Text('${o.clientName} Â· #${o.displayNumber}'),
                           subtitle: Text(
                             '${o.status.label} Â· ${money(o.total)}',
                           ),

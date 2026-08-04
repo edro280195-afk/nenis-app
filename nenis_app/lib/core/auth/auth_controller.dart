@@ -376,6 +376,23 @@ class AuthController extends AsyncNotifier<Session?> {
     unawaited(_cleanupAfterLogout(repo: repo, push: push, refreshToken: rt));
   }
 
+  Future<void> completeOnboarding(String role) async {
+    final current = state.asData?.value;
+    if (current == null) {
+      throw AuthException('Tu sesion ya no esta disponible.');
+    }
+
+    final onboarding = await ref
+        .read(authRepositoryProvider)
+        .completeOnboarding(role);
+    final updated = current.copyWith(onboarding: onboarding);
+    state = AsyncData<Session?>(updated);
+    await ref
+        .read(sessionStorageProvider)
+        .write(updated)
+        .timeout(const Duration(seconds: 5), onTimeout: () {});
+  }
+
   Future<void> _cleanupAfterLogout({
     required AuthRepository repo,
     required PushService push,

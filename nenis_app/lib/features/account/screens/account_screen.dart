@@ -84,6 +84,13 @@ class BuyerAccountScreen extends ConsumerWidget {
                       subtitle: 'Avisos de pedidos, entregas y mensajes',
                       onTap: () => context.push('/notifications'),
                     ),
+                    _AccountMenuCard(
+                      icon: Symbols.school,
+                      title: 'Ver tutorial de la app',
+                      subtitle: 'Repasa pedidos, tiendas, puntos y avisos',
+                      onTap: () =>
+                          context.push('/onboarding/client?replay=true'),
+                    ),
                     const SizedBox(height: 18),
                     _LogoutButton(
                       onConfirm: () async {

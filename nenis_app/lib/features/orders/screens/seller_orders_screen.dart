@@ -473,7 +473,7 @@ class _OrderCard extends ConsumerWidget {
                             ),
                             const SizedBox(height: 1),
                             Text(
-                              'Pedido #${o.id}',
+                              'Pedido #${o.displayNumber}',
                               style: AppTextStyles.subtitle.copyWith(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -566,7 +566,7 @@ Future<void> _confirmDelete(
                 children: [
                   const TextSpan(text: 'Se quitará el pedido '),
                   TextSpan(
-                    text: '#${o.id}',
+                    text: '#${o.displayNumber}',
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,
                       color: AppColors.ink,
@@ -612,7 +612,9 @@ Future<void> _confirmDelete(
                         ref.invalidate(sellerDashboardProvider);
                         messenger
                           ..hideCurrentSnackBar()
-                          ..showSnackBar(_snack('Pedido #${o.id} eliminado'));
+                          ..showSnackBar(
+                            _snack('Pedido #${o.displayNumber} eliminado'),
+                          );
                       } catch (e) {
                         messenger
                           ..hideCurrentSnackBar()
