@@ -24,6 +24,8 @@ import '../../features/labels/screens/label_batch_print_screen.dart';
 import '../../features/labels/screens/label_template_editor_screen.dart';
 import '../../features/labels/data/label_print_models.dart';
 import '../../features/labels/data/label_template_models.dart';
+import '../../features/inventory/screens/inventory_box_screen.dart';
+import '../../features/inventory/screens/inventory_log_screen.dart';
 import '../../features/inventory/screens/inventory_screen.dart';
 import '../../features/tracking/screens/tracking_screen.dart';
 import '../../features/tracking/screens/order_link_screen.dart';
@@ -424,6 +426,25 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => _pageTransition(
           key: state.pageKey,
           child: InventoryScreen(tagToken: state.uri.queryParameters['tag']),
+        ),
+      ),
+      GoRoute(
+        path: '/seller/inventory/box/:id',
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: InventoryBoxScreen(
+            boxId: state.pathParameters['id']!,
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/seller/inventory/log',
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: InventoryLogScreen(
+            boxId: state.uri.queryParameters['box'],
+            boxCode: state.uri.queryParameters['code'],
+          ),
         ),
       ),
       GoRoute(

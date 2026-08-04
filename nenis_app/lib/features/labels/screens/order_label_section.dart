@@ -8,11 +8,13 @@ import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../features/subscription/data/subscription_repository.dart';
+import '../../../shared/widgets/interactive_bounce.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../data/label_print_models.dart';
 import '../data/label_print_repository.dart';
 import '../services/label_pdf_renderer.dart';
 import '../services/label_print_service.dart';
+import '../widgets/label_widgets.dart';
 import 'label_print_options_sheet.dart';
 
 class OrderLabelSection extends ConsumerStatefulWidget {
@@ -69,11 +71,21 @@ class _OrderLabelSectionState extends ConsumerState<OrderLabelSection> {
     }
   }
 
+  LabelMediaSize? _sharedMediaSize(List<OrderPackageLabel> packages) {
+    if (packages.isEmpty) return null;
+    final first = packages.first.mediaSize;
+    for (final package in packages.skip(1)) {
+      if (package.mediaSize != first) return null;
+    }
+    return first;
+  }
+
   Future<void> _printPackages(List<OrderPackageLabel> packages) async {
     if (packages.isEmpty || _busy) return;
     final options = await showLabelPrintOptionsSheet(
       context,
       packageCount: packages.length,
+      initialMediaSize: _sharedMediaSize(packages),
     );
     if (options == null || !mounted) return;
 
@@ -165,10 +177,25 @@ class _OrderLabelSectionState extends ConsumerState<OrderLabelSection> {
             children: [
               const Icon(Symbols.print, size: 19, color: AppColors.neniDeep),
               const SizedBox(width: 8),
-              Text(
-                'Bolsas y etiquetas',
-                style: AppTextStyles.h2.copyWith(fontSize: 17),
+              Expanded(
+                child: Text(
+                  'Bolsas y etiquetas',
+                  style: AppTextStyles.h2.copyWith(fontSize: 17),
+                ),
               ),
+              if (unlocked)
+                TextButton(
+                  onPressed: () => context.push('/seller/labels'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.neniDeep,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    textStyle: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  child: const Text('Centro de impresión'),
+                ),
             ],
           ),
           const SizedBox(height: 10),
@@ -182,13 +209,30 @@ class _OrderLabelSectionState extends ConsumerState<OrderLabelSection> {
                 onRetry: () =>
                     ref.invalidate(orderLabelPackagesProvider(widget.orderId)),
               ),
-              data: (items) => _PackagesContent(
-                packages: items,
-                busy: _busy,
-                onGenerate: _generatePackages,
-                onPrint: () => _printPackages(items),
-                onPrintOne: (item) => _printPackages([item]),
-                onOpenBatch: () => context.push('/seller/labels'),
+              data: (items) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _PackagesContent(
+                    packages: items,
+                    busy: _busy,
+                    onGenerate: _generatePackages,
+                    onPrint: () => _printPackages(items),
+                    onPrintOne: (item) => _printPackages([item]),
+                    onOpenBatch: () => context.push('/seller/labels'),
+                  ),
+                  if (items.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      'Las reimpresiones en ruta se habilitan solas desde el centro de etiquetas.',
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.subtitle.copyWith(
+                        fontSize: 9.5,
+                        color: AppColors.ink3,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
         ],
@@ -343,52 +387,137 @@ class _PackagesContent extends StatelessWidget {
       ),
       child: Column(
         children: [
+          for (var index = 0; index < packages.length; index++) ...[
+            _PackageRow(
+              item: packages[index],
+              busy: busy,
+              onPrint: () => onPrintOne(packages[index]),
+            ),
+            if (index < packages.length - 1)
+              Container(
+                height: 1,
+                margin: const EdgeInsets.symmetric(horizontal: 14),
+                color: AppColors.lineSoft,
+              ),
+          ],
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 16, 14, 12),
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
             child: Row(
               children: [
                 Expanded(
-                  child: Text(
-                    '${packages.length} ${packages.length == 1 ? 'bolsa lista' : 'bolsas listas'}',
-                    style: AppTextStyles.body.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                  child: _MiniActionButton(
+                    icon: Symbols.print,
+                    label: 'Imprimir ${packages.length} ${packages.length == 1 ? 'etiqueta' : 'etiquetas'}',
+                    gradient: true,
+                    busy: busy,
+                    onTap: onPrint,
                   ),
                 ),
-                TextButton.icon(
-                  onPressed: busy ? null : onGenerate,
-                  icon: const Icon(Symbols.add, size: 17),
-                  label: const Text('Agregar'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.neniDeep,
+                const SizedBox(width: 9),
+                Expanded(
+                  child: _MiniActionButton(
+                    icon: Symbols.add,
+                    label: 'Generar bolsa',
+                    gradient: false,
+                    busy: busy,
+                    onTap: onGenerate,
                   ),
                 ),
               ],
             ),
           ),
-          const Divider(height: 1, color: AppColors.lineSoft),
-          for (final item in packages)
-            _PackageRow(
-              item: item,
-              busy: busy,
-              onPrint: () => onPrintOne(item),
-            ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-            child: PillButton(
-              label: busy
-                  ? 'Abriendo impresoras...'
-                  : 'Imprimir ${packages.length} etiquetas',
-              icon: Symbols.print,
-              onPressed: busy ? null : onPrint,
-            ),
-          ),
           TextButton(
             onPressed: busy ? null : onOpenBatch,
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.ink2,
+              textStyle: const TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                decoration: TextDecoration.underline,
+                decorationStyle: TextDecorationStyle.dashed,
+              ),
+            ),
             child: const Text('Abrir centro de impresión masiva'),
           ),
           const SizedBox(height: 4),
         ],
+      ),
+    );
+  }
+}
+
+class _MiniActionButton extends StatelessWidget {
+  const _MiniActionButton({
+    required this.icon,
+    required this.label,
+    required this.gradient,
+    required this.busy,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool gradient;
+  final bool busy;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = !busy;
+    return InteractiveBounce(
+      onPressed: enabled ? onTap : null,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: enabled ? onTap : null,
+          borderRadius: BorderRadius.circular(14),
+          child: Ink(
+            height: 46,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              gradient: gradient
+                  ? const LinearGradient(
+                      colors: [AppColors.neni, AppColors.neniDeep],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+              color: gradient ? null : AppColors.ink,
+              boxShadow: gradient
+                  ? [
+                      BoxShadow(
+                        color: AppColors.neniDeep.withValues(alpha: 0.6),
+                        offset: const Offset(0, 12),
+                        blurRadius: 22,
+                        spreadRadius: -10,
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Opacity(
+              opacity: enabled ? 1 : 0.5,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 18, color: Colors.white),
+                  const SizedBox(width: 7),
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -407,26 +536,20 @@ class _PackageRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final status = item.status == 'Loaded' ? 'En ruta' : 'Empacada';
+    final loaded = item.status == 'Loaded';
+    final ship = item.mediaSize == LabelMediaSize.shipping4x6;
+    final statusSub = loaded
+        ? 'En ruta · se permite reimpresión'
+        : 'Empacada · QR listo';
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
       child: Row(
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.neni.withValues(alpha: 0.10),
-              shape: BoxShape.circle,
-            ),
-            child: Text(
-              '${item.packageNumber}',
-              style: AppTextStyles.h2.copyWith(
-                fontSize: 14,
-                color: AppColors.neniDeep,
-              ),
-            ),
+          MiniLabelPreview(
+            code: 'B-${item.packageNumber}',
+            format: ship
+                ? MiniLabelFormat.shipping4x6
+                : MiniLabelFormat.square50,
           ),
           const SizedBox(width: 11),
           Expanded(
@@ -436,21 +559,48 @@ class _PackageRow extends StatelessWidget {
                 Text(
                   'Bolsa ${item.packageNumber}',
                   style: AppTextStyles.body.copyWith(
+                    fontSize: 12.5,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                const SizedBox(height: 1),
                 Text(
-                  status,
-                  style: AppTextStyles.subtitle.copyWith(fontSize: 11.5),
+                  statusSub,
+                  style: AppTextStyles.subtitle.copyWith(fontSize: 10),
                 ),
               ],
             ),
           ),
-          IconButton(
+          const SizedBox(width: 6),
+          LabelStatusPill(
+            label: loaded ? 'En ruta' : 'Lista',
+            variant: loaded
+                ? LabelStatusPillVariant.route
+                : LabelStatusPillVariant.ready,
+          ),
+          const SizedBox(width: 8),
+          InteractiveBounce(
             onPressed: busy ? null : onPrint,
-            tooltip: 'Imprimir esta etiqueta',
-            color: AppColors.neniDeep,
-            icon: const Icon(Symbols.print, size: 21),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: busy ? null : onPrint,
+                borderRadius: BorderRadius.circular(12),
+                child: Ink(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AppColors.neni.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Symbols.print,
+                    size: 19,
+                    color: AppColors.neniDeep,
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),

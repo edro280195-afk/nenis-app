@@ -172,6 +172,9 @@ class _SellerTrialPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasActivePlan = status.value != null &&
+        !status.value!.isLocked &&
+        !status.value!.isTrialing;
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -180,9 +183,14 @@ class _SellerTrialPage extends StatelessWidget {
           const SizedBox(height: 20),
           Text(
             status.maybeWhen(
-              data: (value) => value.isTrialing
-                  ? 'Tu prueba Pro ya comenzó'
-                  : 'Tu tienda ya está creada',
+              data: (value) {
+                final active = !value.isLocked && !value.isTrialing;
+                return value.isTrialing
+                    ? 'Tu prueba Pro ya comenzó'
+                    : (active
+                          ? 'Tu plan ${value.effectivePlan} está activo'
+                          : 'Tu tienda ya está creada');
+              },
               orElse: () => 'Tu tienda ya está creada',
             ),
             textAlign: TextAlign.center,
@@ -190,24 +198,29 @@ class _SellerTrialPage extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           _SellerTrialStatus(status: status),
-          const SizedBox(height: 20),
-          Text(
-            'Planes disponibles',
-            style: AppTextStyles.h2.copyWith(fontSize: 16),
-          ),
-          const SizedBox(height: 10),
-          pricing.when(
-            loading: () => const LinearProgressIndicator(minHeight: 3),
-            error: (_, _) => Text(
-              'No pudimos cargar los precios. Podrás revisarlos en Mi plan.',
-              style: AppTextStyles.subtitle,
+          // Solo mostramos el catálogo de planes a quien aún no tiene un plan
+          // activo: a una vendedora con plan pagado, la lista de precios le
+          // sugiere que falta elegir, cuando ya eligió.
+          if (!hasActivePlan) ...[
+            const SizedBox(height: 20),
+            Text(
+              'Planes disponibles',
+              style: AppTextStyles.h2.copyWith(fontSize: 16),
             ),
-            data: (catalog) => Column(
-              children: [
-                for (final plan in catalog.plans) _CompactPlanRow(plan: plan),
-              ],
+            const SizedBox(height: 10),
+            pricing.when(
+              loading: () => const LinearProgressIndicator(minHeight: 3),
+              error: (_, _) => Text(
+                'No pudimos cargar los precios. Podrás revisarlos en Mi plan.',
+                style: AppTextStyles.subtitle,
+              ),
+              data: (catalog) => Column(
+                children: [
+                  for (final plan in catalog.plans) _CompactPlanRow(plan: plan),
+                ],
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -233,12 +246,20 @@ class _SellerTrialStatus extends StatelessWidget {
         style: AppTextStyles.subtitle,
       ),
       data: (value) {
-        if (!value.isTrialing) {
+        if (value.isLocked) {
           return const _InfoBox(
             icon: Symbols.shield_lock,
             text:
                 'Esta cuenta necesita contratar un plan antes de operar. Esto puede ocurrir cuando la prueba ya se usó o la identidad requiere revisión.',
             color: AppColors.statusPendingFg,
+          );
+        }
+        if (!value.isTrialing) {
+          return _InfoBox(
+            icon: Symbols.verified,
+            text:
+                'Tu plan ${value.effectivePlan} está activo. Revisa cobros, periodicidad y opciones para cambiar desde Mi plan.',
+            color: AppColors.statusDeliveredFg,
           );
         }
         final end = value.trialEndsAt == null

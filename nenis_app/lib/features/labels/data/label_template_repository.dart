@@ -130,7 +130,14 @@ class LabelTemplateRepository {
     if (data is String && data.trim().isNotEmpty) {
       return LabelTemplateException(data.trim(), errors: errors);
     }
-    return LabelTemplateException(fallback, errors: errors);
+    final suffix = [
+      if (error.response?.statusCode case final status?) 'HTTP $status',
+      if (error.type != DioExceptionType.unknown) '${error.type}',
+    ].join(' · ');
+    return LabelTemplateException(
+      suffix.isEmpty ? fallback : '$fallback ($suffix)',
+      errors: errors,
+    );
   }
 }
 

@@ -96,4 +96,53 @@ void main() {
     expect(find.textContaining('confirmamos por WhatsApp'), findsOneWidget);
     expect(find.textContaining('sólo tú reclames'), findsOneWidget);
   });
+
+  testWidgets('con plan ya activo no pide elegir plan ni muestra precios', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          subscriptionStatusProvider.overrideWith(
+            (ref) async => SubscriptionAccountState(
+              effectivePlan: 'Pro',
+              planTier: 'Pro',
+              subscriptionStatus: 'Active',
+              isLocked: false,
+              daysLeft: 0,
+              pastDueGraceDays: 3,
+              currentPeriodEndsAt: DateTime(2026, 9, 1),
+            ),
+          ),
+          subscriptionPricingProvider.overrideWith(
+            (ref) async => const SubscriptionPricing(
+              currency: 'MXN',
+              plans: [
+                PlanPrice(
+                  planTier: 'Entrada',
+                  monthly: 129,
+                  quarterly: 348,
+                  annual: 1238,
+                  quarterlyDiscountPct: 10,
+                  annualDiscountPct: 20,
+                  currency: 'MXN',
+                ),
+              ],
+            ),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const AppTourScreen(role: AppTourRole.seller, replay: true),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Tu plan Pro está activo'), findsOneWidget);
+    expect(find.textContaining('Revisa cobros, periodicidad'), findsOneWidget);
+    expect(find.text('Planes disponibles'), findsNothing);
+    expect(find.textContaining('necesita contratar un plan'), findsNothing);
+    expect(find.textContaining('\$129 MXN/mes'), findsNothing);
+  });
 }

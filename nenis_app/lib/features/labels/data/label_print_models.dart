@@ -233,6 +233,7 @@ class AvailableLabelPackage {
     required this.packageNumber,
     required this.totalPackages,
     required this.status,
+    this.mediaSize = LabelMediaSize.shipping4x6,
   });
 
   final String id;
@@ -241,6 +242,7 @@ class AvailableLabelPackage {
   final int packageNumber;
   final int totalPackages;
   final String status;
+  final LabelMediaSize mediaSize;
 
   factory AvailableLabelPackage.fromJson(Map<String, dynamic> json) {
     return AvailableLabelPackage(
@@ -250,6 +252,7 @@ class AvailableLabelPackage {
       packageNumber: (json['packageNumber'] as num?)?.toInt() ?? 0,
       totalPackages: (json['totalPackages'] as num?)?.toInt() ?? 0,
       status: (json['status'] ?? '') as String,
+      mediaSize: LabelMediaSize.fromApi((json['mediaSize'] ?? '') as String),
     );
   }
 }
@@ -260,12 +263,14 @@ class OrderPackageLabel {
     required this.packageNumber,
     required this.qrCodeValue,
     required this.status,
+    this.mediaSize = LabelMediaSize.shipping4x6,
   });
 
   final String id;
   final int packageNumber;
   final String qrCodeValue;
   final String status;
+  final LabelMediaSize mediaSize;
 
   factory OrderPackageLabel.fromJson(Map<String, dynamic> json) {
     return OrderPackageLabel(
@@ -273,6 +278,7 @@ class OrderPackageLabel {
       packageNumber: (json['packageNumber'] as num?)?.toInt() ?? 0,
       qrCodeValue: (json['qrCodeValue'] ?? '') as String,
       status: (json['status'] ?? '') as String,
+      mediaSize: LabelMediaSize.fromApi((json['mediaSize'] ?? '') as String),
     );
   }
 }

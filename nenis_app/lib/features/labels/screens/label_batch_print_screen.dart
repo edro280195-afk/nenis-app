@@ -9,11 +9,13 @@ import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../features/subscription/data/subscription_repository.dart';
 import '../../../shared/widgets/background.dart';
+import '../../../shared/widgets/interactive_bounce.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../data/label_print_models.dart';
 import '../data/label_print_repository.dart';
 import '../services/label_pdf_renderer.dart';
 import '../services/label_print_service.dart';
+import '../widgets/label_widgets.dart';
 import 'label_print_options_sheet.dart';
 
 class LabelBatchPrintScreen extends ConsumerStatefulWidget {
@@ -75,6 +77,15 @@ class _LabelBatchPrintScreenState extends ConsumerState<LabelBatchPrintScreen> {
     });
   }
 
+  LabelMediaSize? _sharedMediaSize(List<AvailableLabelPackage> packages) {
+    if (packages.isEmpty) return null;
+    final first = packages.first.mediaSize;
+    for (final package in packages.skip(1)) {
+      if (package.mediaSize != first) return null;
+    }
+    return first;
+  }
+
   Future<void> _printSelected(List<AvailableLabelPackage> available) async {
     if (_selectedPackageIds.isEmpty || _busy) return;
     final selected = available
@@ -84,6 +95,7 @@ class _LabelBatchPrintScreenState extends ConsumerState<LabelBatchPrintScreen> {
     final options = await showLabelPrintOptionsSheet(
       context,
       packageCount: selected.length,
+      initialMediaSize: _sharedMediaSize(selected),
     );
     if (options == null || !mounted) return;
 
@@ -195,6 +207,9 @@ class _LabelBatchPrintScreenState extends ConsumerState<LabelBatchPrintScreen> {
                                 busy: _busy,
                                 onToggle: _toggle,
                                 onToggleAll: () => _toggleAll(items),
+                                onEditTemplate: () => context.push(
+                                  '/seller/labels/editor?mediaSize=Shipping4x6',
+                                ),
                               ),
                             ),
                           ),
@@ -234,37 +249,38 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 8, 18, 10),
+      padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
       child: Row(
         children: [
           BackIconButton(onPressed: onBack),
-          const SizedBox(width: 13),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Imprimir etiquetas',
-                  style: AppTextStyles.h1.copyWith(fontSize: 22),
-                ),
+                Text('Etiquetas', style: AppTextStyles.h1.copyWith(fontSize: 22)),
                 const SizedBox(height: 1),
                 Text(
-                  'Selecciona bolsas y elige tu impresora al final.',
-                  style: AppTextStyles.subtitle.copyWith(fontSize: 11.5),
+                  'Bolsa por bolsa, lista para imprimir.',
+                  style: AppTextStyles.subtitle.copyWith(fontSize: 11),
                 ),
               ],
             ),
           ),
-          if (showInventory)
-            IconButton(
+          if (showInventory) ...[
+            PillIconButton(
               onPressed: onInventory,
-              tooltip: 'Abrir mi bodega',
-              icon: const Icon(Symbols.inventory_2, color: AppColors.neniDeep),
+              icon: Symbols.inventory_2,
+              iconColor: AppColors.neniDeep,
+              size: 44,
             ),
-          IconButton(
+            const SizedBox(width: 7),
+          ],
+          PillIconButton(
             onPressed: onEditTemplate,
-            tooltip: 'Diseñar etiqueta',
-            icon: const Icon(Symbols.edit_square, color: AppColors.neniDeep),
+            icon: Symbols.edit_square,
+            iconColor: AppColors.neniDeep,
+            size: 44,
           ),
         ],
       ),
@@ -279,6 +295,7 @@ class _BatchPackageList extends StatelessWidget {
     required this.busy,
     required this.onToggle,
     required this.onToggleAll,
+    required this.onEditTemplate,
   });
 
   final List<AvailableLabelPackage> packages;
@@ -286,6 +303,7 @@ class _BatchPackageList extends StatelessWidget {
   final bool busy;
   final ValueChanged<String> onToggle;
   final VoidCallback onToggleAll;
+  final VoidCallback onEditTemplate;
 
   @override
   Widget build(BuildContext context) {
@@ -294,52 +312,27 @@ class _BatchPackageList extends StatelessWidget {
     final allSelected = selectedIds.containsAll(
       packages.map((package) => package.id),
     );
+    final entries = groups.entries.toList();
     return ListView(
-      padding: const EdgeInsets.fromLTRB(18, 4, 18, 148),
+      padding: const EdgeInsets.fromLTRB(18, 0, 18, 148),
       children: [
-        Container(
-          padding: const EdgeInsets.fromLTRB(16, 13, 10, 13),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            border: Border.all(color: AppColors.lineSoft),
-            borderRadius: AppRadii.softRadius,
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.lavender.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Symbols.qr_code_2,
-                  color: AppColors.lavender,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  '${packages.length} bolsas listas para identificar',
-                  style: AppTextStyles.body.copyWith(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12.5,
-                  ),
-                ),
-              ),
-              TextButton(
-                onPressed: busy ? null : onToggleAll,
-                child: Text(allSelected ? 'Limpiar' : 'Todas'),
-              ),
-            ],
-          ),
+        _Hero(
+          bagCount: packages.length,
+          orderCount: entries.length,
+          onEditTemplate: onEditTemplate,
         ),
-        const SizedBox(height: 18),
-        for (final entry in groups.entries) ...[
+        const SizedBox(height: 14),
+        _SelectAllRow(
+          allSelected: allSelected,
+          count: selectedIds.length,
+          onTap: busy ? null : onToggleAll,
+        ),
+        const SizedBox(height: 12),
+        for (var index = 0; index < entries.length; index++) ...[
           _OrderPackageGroup(
-            orderId: entry.key,
-            packages: entry.value,
+            orderId: entries[index].key,
+            packages: entries[index].value,
+            lavender: index.isOdd,
             selectedIds: selectedIds,
             busy: busy,
             onToggle: onToggle,
@@ -361,10 +354,220 @@ class _BatchPackageList extends StatelessWidget {
   }
 }
 
+class _Hero extends StatelessWidget {
+  const _Hero({
+    required this.bagCount,
+    required this.orderCount,
+    required this.onEditTemplate,
+  });
+
+  final int bagCount;
+  final int orderCount;
+  final VoidCallback onEditTemplate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppColors.neni, AppColors.neniDeep],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x8CE84E83),
+            offset: Offset(0, 18),
+            blurRadius: 34,
+            spreadRadius: -16,
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -30,
+            top: -30,
+            child: _DecorativeCircle(size: 150, opacity: 0.14),
+          ),
+          Positioned(
+            right: 34,
+            bottom: -44,
+            child: _DecorativeCircle(size: 120, opacity: 0.10),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Para empacar hoy',
+                          style: AppTextStyles.eyebrow(
+                            Colors.white.withValues(alpha: 0.75),
+                          ).copyWith(fontSize: 10),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '$bagCount bolsas',
+                          style: AppTextStyles.display.copyWith(
+                            color: Colors.white,
+                            fontSize: 30,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '$orderCount ${orderCount == 1 ? 'pedido esperando' : 'pedidos esperando'} su etiqueta',
+                          style: AppTextStyles.subtitle.copyWith(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Center(
+                      child: LabelQrPlaceholder(size: 40),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 7,
+                runSpacing: 7,
+                children: [
+                  const _GhostChip(icon: Symbols.schedule, label: 'Listas hoy'),
+                  _GhostChip(
+                    icon: Symbols.design_services,
+                    label: 'Diseñar etiqueta',
+                    onTap: onEditTemplate,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DecorativeCircle extends StatelessWidget {
+  const _DecorativeCircle({required this.size, required this.opacity});
+
+  final double size;
+  final double opacity;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: Colors.white.withValues(alpha: opacity),
+    ),
+  );
+}
+
+class _GhostChip extends StatelessWidget {
+  const _GhostChip({required this.icon, required this.label, this.onTap});
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final chip = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.20),
+        borderRadius: AppRadii.pillRadius,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: Colors.white),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: AppTextStyles.chip.copyWith(
+              fontSize: 10.5,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+    if (onTap == null) return chip;
+    return InteractiveBounce(
+      onPressed: onTap,
+      scaleFactor: 0.95,
+      child: chip,
+    );
+  }
+}
+
+class _SelectAllRow extends StatelessWidget {
+  const _SelectAllRow({
+    required this.allSelected,
+    required this.count,
+    required this.onTap,
+  });
+
+  final bool allSelected;
+  final int count;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      LabelCheck(selected: allSelected, onTap: onTap),
+      const SizedBox(width: 10),
+      Expanded(
+        child: Text(
+          'Seleccionar todas',
+          style: AppTextStyles.body.copyWith(fontSize: 13, fontWeight: FontWeight.w600),
+        ),
+      ),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+        decoration: BoxDecoration(
+          color: AppColors.neni.withValues(alpha: 0.12),
+          borderRadius: AppRadii.pillRadius,
+        ),
+        child: Text(
+          '$count ${count == 1 ? 'seleccionada' : 'seleccionadas'}',
+          style: AppTextStyles.chip.copyWith(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: AppColors.neniDeep,
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
 class _OrderPackageGroup extends StatelessWidget {
   const _OrderPackageGroup({
     required this.orderId,
     required this.packages,
+    required this.lavender,
     required this.selectedIds,
     required this.busy,
     required this.onToggle,
@@ -372,6 +575,7 @@ class _OrderPackageGroup extends StatelessWidget {
 
   final int orderId;
   final List<AvailableLabelPackage> packages;
+  final bool lavender;
   final Set<String> selectedIds;
   final bool busy;
   final ValueChanged<String> onToggle;
@@ -379,6 +583,7 @@ class _OrderPackageGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final client = packages.first.clientName;
+    final count = packages.length;
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -388,9 +593,11 @@ class _OrderPackageGroup extends StatelessWidget {
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(17, 15, 17, 11),
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
             child: Row(
               children: [
+                InitialAvatar(name: client, lavender: lavender),
+                const SizedBox(width: 11),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -399,25 +606,28 @@ class _OrderPackageGroup extends StatelessWidget {
                         client,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.h2.copyWith(fontSize: 16),
+                        style: AppTextStyles.body.copyWith(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 1),
                       Text(
-                        'Pedido #$orderId · ${packages.length} ${packages.length == 1 ? 'bolsa' : 'bolsas'}',
-                        style: AppTextStyles.subtitle.copyWith(fontSize: 11.5),
+                        'Pedido #$orderId · $count ${count == 1 ? 'bolsa' : 'bolsas'}',
+                        style: AppTextStyles.subtitle.copyWith(fontSize: 10.5),
                       ),
                     ],
                   ),
                 ),
-                const Icon(
-                  Symbols.shopping_bag,
-                  color: AppColors.neniDeep,
-                  size: 21,
-                ),
+                const Icon(Symbols.expand_more, color: AppColors.ink3, size: 20),
               ],
             ),
           ),
-          const Divider(height: 1, color: AppColors.lineSoft),
+          Container(
+            height: 1,
+            margin: const EdgeInsets.symmetric(horizontal: 14),
+            color: AppColors.lineSoft,
+          ),
           for (final package in packages)
             _SelectPackageRow(
               item: package,
@@ -446,36 +656,51 @@ class _SelectPackageRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final subtitle = item.status == 'Loaded'
-        ? 'En ruta · se permite reimpresión'
-        : 'Lista para empacar';
+    final loaded = item.status == 'Loaded';
+    final (String pillLabel, LabelStatusPillVariant pillVariant) = selected
+        ? ('Seleccionada', LabelStatusPillVariant.selected)
+        : loaded
+        ? ('En ruta', LabelStatusPillVariant.route)
+        : ('Lista', LabelStatusPillVariant.ready);
+    final ship = item.mediaSize == LabelMediaSize.shipping4x6;
+    final subtitle = ship
+        ? 'Envío 4 × 6" · dirección y contenido'
+        : '50 × 50 mm · QR propio';
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: busy ? null : onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
           child: Row(
             children: [
-              Checkbox(
-                value: selected,
-                onChanged: busy ? null : (_) => onTap(),
-                activeColor: AppColors.neniDeep,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(5),
-                ),
+              MiniLabelPreview(
+                code: 'B-${item.packageNumber}',
+                format: ship
+                    ? MiniLabelFormat.shipping4x6
+                    : MiniLabelFormat.square50,
               ),
-              const SizedBox(width: 3),
+              const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  'Bolsa ${item.packageNumber} de ${item.totalPackages}',
-                  style: AppTextStyles.body.copyWith(fontSize: 13.5),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Bolsa ${item.packageNumber} de ${item.totalPackages}',
+                      style: AppTextStyles.body.copyWith(fontSize: 13),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      subtitle,
+                      style: AppTextStyles.subtitle.copyWith(fontSize: 10.5),
+                    ),
+                  ],
                 ),
               ),
-              Text(
-                subtitle,
-                style: AppTextStyles.subtitle.copyWith(fontSize: 10.5),
-              ),
+              const SizedBox(width: 8),
+              LabelStatusPill(label: pillLabel, variant: pillVariant),
+              const SizedBox(width: 6),
+              LabelCheck(selected: selected, onTap: busy ? null : onTap),
             ],
           ),
         ),
@@ -508,14 +733,38 @@ class _BatchFooter extends StatelessWidget {
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 680),
-            child: PillButton(
-              label: count == 0
-                  ? 'Selecciona bolsas para imprimir'
-                  : busy
-                  ? 'Abriendo impresoras...'
-                  : 'Imprimir $count ${count == 1 ? 'etiqueta' : 'etiquetas'}',
-              icon: Symbols.print,
-              onPressed: count == 0 || busy ? null : onPrint,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '$count ${count == 1 ? 'bolsa seleccionada' : 'bolsas seleccionadas'}',
+                        style: AppTextStyles.body.copyWith(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      'Puedes mezclar formatos al elegir tu impresora',
+                      style: AppTextStyles.subtitle.copyWith(fontSize: 11),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                PillButton(
+                  label: count == 0
+                      ? 'Selecciona bolsas para imprimir'
+                      : busy
+                      ? 'Abriendo impresoras...'
+                      : 'Imprimir $count ${count == 1 ? 'etiqueta' : 'etiquetas'}',
+                  icon: Symbols.print,
+                  onPressed: count == 0 || busy ? null : onPrint,
+                ),
+              ],
             ),
           ),
         ),
@@ -539,14 +788,27 @@ class _BatchLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.all(18),
+    padding: const EdgeInsets.fromLTRB(18, 0, 18, 148),
     children: [
-      for (var index = 0; index < 3; index++) ...[
+      Container(
+        height: 148,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFBD3E0), Color(0xFFF7B7CB)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(22),
+        ),
+      ),
+      const SizedBox(height: 14),
+      for (var index = 0; index < 2; index++) ...[
         Container(
-          height: 132,
+          height: 148,
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: AppRadii.cardRadius,
+            boxShadow: AppShadows.small,
           ),
         ),
         const SizedBox(height: 12),
@@ -619,6 +881,13 @@ class _EmptyBatch extends StatelessWidget {
             'Crea las bolsas desde el detalle de un pedido cuando empieces a empacar.',
             textAlign: TextAlign.center,
             style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+          ),
+          const SizedBox(height: 16),
+          PillButton(
+            label: 'Ver mis pedidos',
+            expand: false,
+            icon: Symbols.shopping_bag,
+            onPressed: () => context.go('/orders'),
           ),
         ],
       ),
