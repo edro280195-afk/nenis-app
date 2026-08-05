@@ -72,7 +72,12 @@ class AppShell extends ConsumerWidget {
                       (item) => item.route == route,
                     );
                     if (isMoreNavItem(item)) {
-                      _showMoreSheet(context, overflowItems, currentRoute);
+                      _showMoreSheet(
+                        context,
+                        overflowItems,
+                        currentRoute,
+                        isSeller: isSeller,
+                      );
                     }
                   },
                 ),
@@ -85,64 +90,194 @@ class AppShell extends ConsumerWidget {
 void _showMoreSheet(
   BuildContext context,
   List<NavItem> items,
-  String currentRoute,
-) {
+  String currentRoute, {
+  bool isSeller = true,
+}) {
   if (items.isEmpty) return;
   showModalBottomSheet<void>(
     context: context,
     useSafeArea: true,
+    isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (context) =>
-        _MoreNavSheet(items: items, currentRoute: currentRoute),
+    builder: (context) => _MoreNavSheet(
+      items: items,
+      currentRoute: currentRoute,
+      isSeller: isSeller,
+    ),
   );
 }
 
 class _MoreNavSheet extends StatelessWidget {
-  const _MoreNavSheet({required this.items, required this.currentRoute});
+  const _MoreNavSheet({
+    required this.items,
+    required this.currentRoute,
+    required this.isSeller,
+  });
 
   final List<NavItem> items;
   final String currentRoute;
+  final bool isSeller;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.all(12),
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadii.cardRadius,
-        border: Border.all(color: AppColors.line),
+        color: AppColors.surfaceCream,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         boxShadow: AppShadows.card,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 42,
-            height: 4,
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: AppColors.line,
-              borderRadius: AppRadii.pillRadius,
+          Center(
+            child: Container(
+              width: 42,
+              height: 5,
+              margin: const EdgeInsets.only(bottom: 14),
+              decoration: BoxDecoration(
+                color: AppColors.lineSoft.withValues(alpha: 0.8),
+                borderRadius: AppRadii.pillRadius,
+              ),
             ),
           ),
-          for (final item in items)
-            _MoreNavTile(
-              item: item,
-              active: isNavItemActive(currentRoute, item),
-              onTap: () {
-                Navigator.of(context).pop();
-                context.go(item.route);
-              },
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          isSeller ? 'Más Espacios' : 'Más Experiencias',
+                          style: AppTextStyles.h1.copyWith(
+                            fontSize: 20,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSeller
+                                ? const Color(0xFFFFE1EC)
+                                : const Color(0xFFEFE8FC),
+                            borderRadius: AppRadii.pillRadius,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isSeller
+                                    ? Symbols.verified
+                                    : Symbols.shopping_bag,
+                                size: 13,
+                                color: isSeller
+                                    ? AppColors.neniDeep
+                                    : AppColors.lavender,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                isSeller ? 'Vendedora' : 'Clienta',
+                                style: AppTextStyles.chip.copyWith(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: isSeller
+                                      ? AppColors.neniDeep
+                                      : AppColors.lavender,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isSeller
+                          ? 'Accesos directos a tus módulos principales'
+                          : 'Participa en tandas y gana premios en sorteos',
+                      style: AppTextStyles.subtitle.copyWith(fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              InkWell(
+                onTap: () => Navigator.of(context).pop(),
+                borderRadius: BorderRadius.circular(999),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.line),
+                  ),
+                  child: const Icon(
+                    Symbols.close,
+                    size: 20,
+                    color: AppColors.ink2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Flexible(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final item in items) ...[
+                    _MoreNavModuleCard(
+                      item: item,
+                      active: isNavItemActive(currentRoute, item),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        context.go(item.route);
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                ],
+              ),
             ),
+          ),
+          const SizedBox(height: 8),
+          Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Symbols.touch_app,
+                  size: 15,
+                  color: AppColors.neni,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Toca cualquier módulo para navegar al área de trabajo',
+                  style: AppTextStyles.subtitle.copyWith(
+                    fontSize: 11,
+                    color: AppColors.ink2,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _MoreNavTile extends StatelessWidget {
-  const _MoreNavTile({
+class _MoreNavModuleCard extends StatelessWidget {
+  const _MoreNavModuleCard({
     required this.item,
     required this.active,
     required this.onTap,
@@ -154,33 +289,105 @@ class _MoreNavTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = active ? context.brand.primaryDeep : AppColors.ink;
+    final colors = item.gradientColors ??
+        const [Color(0xFF9B7BE0), Color(0xFF7C3AED)];
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: AppRadii.softRadius,
-        child: Ink(
-          height: 56,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+        borderRadius: AppRadii.cardRadius,
+        child: Container(
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: active ? const Color(0xFFFFEAF2) : Colors.transparent,
-            borderRadius: AppRadii.softRadius,
+            color: AppColors.surface,
+            borderRadius: AppRadii.cardRadius,
+            border: Border.all(
+              color: active ? AppColors.neni : AppColors.line,
+              width: active ? 1.5 : 1,
+            ),
+            boxShadow: AppShadows.card,
           ),
           child: Row(
             children: [
-              Icon(item.icon, color: fg, size: 22),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  item.label,
-                  style: AppTextStyles.body.copyWith(
-                    color: fg,
-                    fontWeight: FontWeight.w800,
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: LinearGradient(
+                    colors: colors,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colors.first.withValues(alpha: 0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Icon(item.icon, color: Colors.white, size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          item.label,
+                          style: AppTextStyles.body.copyWith(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        if (item.badge != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colors.first.withValues(alpha: 0.12),
+                              borderRadius: AppRadii.pillRadius,
+                            ),
+                            child: Text(
+                              item.badge!,
+                              style: AppTextStyles.chip.copyWith(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                                color: colors.last,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    if (item.subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        item.subtitle!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.subtitle.copyWith(
+                          fontSize: 11.5,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-              const Icon(Symbols.chevron_right, color: AppColors.ink3),
+              const SizedBox(width: 8),
+              const Icon(
+                Symbols.chevron_right,
+                size: 20,
+                color: AppColors.ink3,
+              ),
             ],
           ),
         ),

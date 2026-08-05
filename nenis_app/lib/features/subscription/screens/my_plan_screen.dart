@@ -361,7 +361,7 @@ class _PlanCard extends StatelessWidget {
 
   List<String> _featuresFor(String tier) => switch (tier) {
         'Pro' => const [
-            'Todo lo de Entrada',
+            'Todo lo de Básico',
             'Avisos de en vivo y GPS en tiempo real',
             'Finanzas, tandas y sorteos',
             'Punto de venta (POS)',

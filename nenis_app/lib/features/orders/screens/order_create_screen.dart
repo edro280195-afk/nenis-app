@@ -228,7 +228,16 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
           pinnedProduct: _pinnedProduct,
           submitting: _submittingQuick,
           progress: _quickProgress,
-          onPinProduct: () => _showPinProductSheet(workspace.products),
+          products: workspace.products,
+          pinNameCtrl: _pinNameCtrl,
+          pinPriceCtrl: _pinPriceCtrl,
+          onPinProduct: _pinProduct,
+          onPickProduct: (product) {
+            setState(() {
+              _pinnedProduct = product;
+            });
+            _quickFocus.requestFocus();
+          },
           onDeliveryChanged: (delivery) =>
               setState(() => _quickDelivery = delivery),
           onSubmitted: (_) {
@@ -688,43 +697,6 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
     _quickFocus.requestFocus();
   }
 
-  Future<void> _showPinProductSheet(List<CommonProduct> products) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      backgroundColor: AppColors.surface,
-      builder: (sheetContext) => Padding(
-        padding: EdgeInsets.fromLTRB(
-          18,
-          4,
-          18,
-          MediaQuery.viewInsetsOf(sheetContext).bottom + 18,
-        ),
-        child: _PinProductCard(
-          name: _pinNameCtrl,
-          price: _pinPriceCtrl,
-          pinned: _pinnedProduct,
-          products: products,
-          onPin: () {
-            _pinProduct();
-            Navigator.pop(sheetContext);
-          },
-          onPickProduct: (product) {
-            _pinNameCtrl.text = product.name;
-            _pinPriceCtrl.text = _cleanMoney(product.typicalPrice);
-            _pinProduct();
-            Navigator.pop(sheetContext);
-          },
-          onClear: () {
-            setState(() => _pinnedProduct = null);
-            Navigator.pop(sheetContext);
-          },
-        ),
-      ),
-    );
-  }
-
   Future<void> _addQuickEntry(List<SellerClient> clients) async {
     final input = _quickInputCtrl.text.trim();
     if (input.isEmpty) return;
@@ -1156,7 +1128,11 @@ class _QuickHero extends StatelessWidget {
     required this.pinnedProduct,
     required this.submitting,
     required this.progress,
+    required this.products,
+    required this.pinNameCtrl,
+    required this.pinPriceCtrl,
     required this.onPinProduct,
+    required this.onPickProduct,
     required this.onDeliveryChanged,
     required this.onSubmitted,
     required this.onChanged,
@@ -1169,7 +1145,11 @@ class _QuickHero extends StatelessWidget {
   final CommonProduct? pinnedProduct;
   final bool submitting;
   final String? progress;
+  final List<CommonProduct> products;
+  final TextEditingController pinNameCtrl;
+  final TextEditingController pinPriceCtrl;
   final VoidCallback onPinProduct;
+  final ValueChanged<CommonProduct> onPickProduct;
   final ValueChanged<SellerDeliveryType> onDeliveryChanged;
   final ValueChanged<String> onSubmitted;
   final ValueChanged<String> onChanged;
@@ -1229,7 +1209,11 @@ class _QuickHero extends StatelessWidget {
           const SizedBox(height: 8),
           _QuickProductControl(
             product: pinnedProduct,
-            onOpen: onPinProduct,
+            products: products,
+            pinNameCtrl: pinNameCtrl,
+            pinPriceCtrl: pinPriceCtrl,
+            onPin: onPinProduct,
+            onPickProduct: onPickProduct,
             onClear: onClearPin,
           ),
           if (submitting && progress != null) ...[
@@ -1249,51 +1233,199 @@ class _QuickHero extends StatelessWidget {
   }
 }
 
-class _QuickProductControl extends StatelessWidget {
+class _QuickProductControl extends StatefulWidget {
   const _QuickProductControl({
     required this.product,
-    required this.onOpen,
+    required this.products,
+    required this.pinNameCtrl,
+    required this.pinPriceCtrl,
+    required this.onPin,
+    required this.onPickProduct,
     required this.onClear,
   });
 
   final CommonProduct? product;
-  final VoidCallback onOpen;
+  final List<CommonProduct> products;
+  final TextEditingController pinNameCtrl;
+  final TextEditingController pinPriceCtrl;
+  final VoidCallback onPin;
+  final ValueChanged<CommonProduct> onPickProduct;
   final VoidCallback onClear;
 
   @override
+  State<_QuickProductControl> createState() => _QuickProductControlState();
+}
+
+class _QuickProductControlState extends State<_QuickProductControl> {
+  bool _showInlineForm = false;
+
+  @override
   Widget build(BuildContext context) {
-    if (product == null) {
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: TextButton.icon(
-          onPressed: onOpen,
-          icon: const Icon(Symbols.keep, size: 17),
-          label: const Text('Fijar producto para capturar variantes'),
-          style: TextButton.styleFrom(
-            foregroundColor: AppColors.neniDeep,
-            padding: EdgeInsets.zero,
-            visualDensity: VisualDensity.compact,
-          ),
+    if (widget.product != null) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF3F8),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0x66F472B6)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Symbols.keep, size: 16, color: AppColors.neniDeep),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                'Fijo: ${widget.product!.name} · ${money(widget.product!.typicalPrice)}',
+                style: AppTextStyles.subtitle.copyWith(
+                  color: AppColors.neniDeep,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12.5,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 6),
+            InkWell(
+              onTap: widget.onClear,
+              borderRadius: BorderRadius.circular(12),
+              child: const Padding(
+                padding: EdgeInsets.all(2.0),
+                child: Icon(
+                  Symbols.close,
+                  size: 16,
+                  color: AppColors.neniDeep,
+                ),
+              ),
+            ),
+          ],
         ),
       );
     }
 
-    return InputChip(
-      avatar: const Icon(Symbols.keep, size: 17, color: AppColors.neniDeep),
-      label: Text(
-        'Producto fijo: ${product!.name} · ${money(product!.typicalPrice)}',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      onPressed: onOpen,
-      onDeleted: onClear,
-      deleteIcon: const Icon(Symbols.close, size: 16),
-      backgroundColor: const Color(0xFFFFF3F8),
-      side: const BorderSide(color: AppColors.line),
-      labelStyle: AppTextStyles.subtitle.copyWith(
-        color: AppColors.neniDeep,
-        fontWeight: FontWeight.w700,
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                const Icon(Symbols.keep, size: 15, color: AppColors.neniDeep),
+                const SizedBox(width: 4),
+                Text(
+                  'Fijar artículo base',
+                  style: AppTextStyles.subtitle.copyWith(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.neniDeep,
+                  ),
+                ),
+              ],
+            ),
+            TextButton.icon(
+              onPressed: () => setState(() => _showInlineForm = !_showInlineForm),
+              icon: Icon(
+                _showInlineForm ? Symbols.close : Symbols.edit,
+                size: 15,
+                color: AppColors.neniDeep,
+              ),
+              label: Text(
+                _showInlineForm ? 'Cancelar' : 'Fijar manual',
+                style: AppTextStyles.subtitle.copyWith(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.neniDeep,
+                ),
+              ),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                visualDensity: VisualDensity.compact,
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          ],
+        ),
+        if (_showInlineForm) ...[
+          const SizedBox(height: 6),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF5FA),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0x33E84E83)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _MiniField(
+                    controller: widget.pinNameCtrl,
+                    hint: 'Producto (ej. Toalla)',
+                    onSubmitted: (_) {
+                      widget.onPin();
+                      setState(() => _showInlineForm = false);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 85,
+                  child: _MiniField(
+                    controller: widget.pinPriceCtrl,
+                    hint: 'Precio',
+                    keyboard: const TextInputType.numberWithOptions(decimal: true),
+                    onSubmitted: (_) {
+                      widget.onPin();
+                      setState(() => _showInlineForm = false);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 6),
+                ElevatedButton(
+                  onPressed: () {
+                    widget.onPin();
+                    setState(() => _showInlineForm = false);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.neniDeep,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Icon(Symbols.check, size: 16),
+                ),
+              ],
+            ),
+          ),
+        ],
+        if (widget.products.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            '1-Tap para fijar:',
+            style: AppTextStyles.subtitle.copyWith(
+              fontSize: 10.5,
+              color: AppColors.ink3,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          _ProductChips(
+            products: widget.products.take(6).toList(),
+            onPick: (product) {
+              widget.onPickProduct(product);
+              setState(() => _showInlineForm = false);
+            },
+          ),
+        ],
+      ],
     );
   }
 }
@@ -1528,78 +1660,7 @@ class _PinnedBanner extends StatelessWidget {
   }
 }
 
-class _PinProductCard extends StatelessWidget {
-  const _PinProductCard({
-    required this.name,
-    required this.price,
-    required this.pinned,
-    required this.products,
-    required this.onPin,
-    required this.onPickProduct,
-    required this.onClear,
-  });
 
-  final TextEditingController name;
-  final TextEditingController price;
-  final CommonProduct? pinned;
-  final List<CommonProduct> products;
-  final VoidCallback onPin;
-  final ValueChanged<CommonProduct> onPickProduct;
-  final VoidCallback onClear;
-
-  @override
-  Widget build(BuildContext context) {
-    return _SectionCard(
-      icon: Symbols.keep,
-      title: 'Producto fijo',
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _MiniField(controller: name, hint: 'Producto'),
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 92,
-                child: _MiniField(
-                  controller: price,
-                  hint: 'Precio',
-                  keyboard: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              _IconAction(icon: Symbols.keep, onTap: onPin),
-            ],
-          ),
-          if (products.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            // U14: los chips ahora filtran por lo que la vendedora escribe en
-            // el campo "Producto". Antes mostraban `products.take(6)` fijos.
-            ValueListenableBuilder<TextEditingValue>(
-              valueListenable: name,
-              builder: (context, value, _) {
-                final query = normalizeCaptureText(value.text);
-                final filtered = query.isEmpty
-                    ? products.take(6).toList()
-                    : products
-                          .where(
-                            (p) => normalizeCaptureText(p.name).contains(query),
-                          )
-                          .take(6)
-                          .toList();
-                if (filtered.isEmpty) return const SizedBox.shrink();
-                return _ProductChips(products: filtered, onPick: onPickProduct);
-              },
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
 
 class _QuickQueuePanel extends StatelessWidget {
   const _QuickQueuePanel({

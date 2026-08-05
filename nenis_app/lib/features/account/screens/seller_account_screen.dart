@@ -273,20 +273,30 @@ class _SellerHeader extends StatelessWidget {
             ],
           ),
         ),
-        Container(
-          width: 44,
-          height: 44,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.line),
-            boxShadow: AppShadows.small,
-          ),
-          child: const Icon(
-            Symbols.notifications,
-            size: 22,
-            color: AppColors.ink,
+        Material(
+          color: Colors.transparent,
+          shape: const CircleBorder(),
+          clipBehavior: Clip.antiAlias,
+          // Hallazgo QA 2026-08-05: esta campanita no tenía onTap — se veía
+          // igual a la de Inicio (círculo, sombra, ícono) pero no hacía nada
+          // al tocarla. Mismo destino que la de SellerHomeScreen.
+          child: InkWell(
+            onTap: () => context.push('/notifications'),
+            child: Ink(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.line),
+                boxShadow: AppShadows.small,
+              ),
+              child: const Icon(
+                Symbols.notifications,
+                size: 22,
+                color: AppColors.ink,
+              ),
+            ),
           ),
         ),
       ],

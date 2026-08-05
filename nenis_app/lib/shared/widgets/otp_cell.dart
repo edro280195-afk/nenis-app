@@ -11,6 +11,7 @@ class OtpCell extends StatelessWidget {
     required this.controller,
     required this.focusNode,
     required this.autoSubmit,
+    this.nextFocusNode,
     this.width = 56,
     this.height = 64,
   });
@@ -18,6 +19,12 @@ class OtpCell extends StatelessWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
   final bool autoSubmit;
+  // Nodo de la celda siguiente. Se pide el foco de forma explícita en vez de
+  // usar FocusScope.of(context).nextFocus(): con el Row de celdas generado
+  // por LayoutBuilder, nextFocus() no encontraba el nodo siguiente y el
+  // avance automático al escribir un dígito se quedaba sin efecto (bug
+  // encontrado en QA 2026-08-05, afectaba las 5 pantallas que usan OtpInput).
+  final FocusNode? nextFocusNode;
   final double width;
   final double height;
 
@@ -68,7 +75,7 @@ class OtpCell extends StatelessWidget {
         ),
         onChanged: (value) {
           if (autoSubmit && value.isNotEmpty) {
-            FocusScope.of(context).nextFocus();
+            nextFocusNode?.requestFocus();
           }
         },
       ),
@@ -164,6 +171,7 @@ class _OtpInputState extends State<OtpInput> {
               controller: _controllers[i],
               focusNode: _focusNodes[i],
               autoSubmit: !isLast,
+              nextFocusNode: isLast ? null : _focusNodes[i + 1],
               width: cellWidth,
               height: cellHeight,
             );

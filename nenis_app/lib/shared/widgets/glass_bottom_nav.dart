@@ -13,12 +13,18 @@ class NavItem {
     required this.icon,
     required this.label,
     required this.route,
+    this.subtitle,
+    this.badge,
+    this.gradientColors,
     this.alternativeRoutes = const [],
   });
 
   final IconData icon;
   final String label;
   final String route;
+  final String? subtitle;
+  final String? badge;
+  final List<Color>? gradientColors;
   final List<String> alternativeRoutes;
 }
 
@@ -126,8 +132,22 @@ List<NavItem> buildDefaultNavItems() => const [
 ];
 
 List<NavItem> buildDefaultOverflowItems() => const [
-  NavItem(icon: Symbols.groups, label: 'Tandas', route: '/tandas'),
-  NavItem(icon: Symbols.celebration, label: 'Sorteos', route: '/raffles'),
+  NavItem(
+    icon: Symbols.groups,
+    label: 'Tandas de Ahorro',
+    route: '/tandas',
+    subtitle: 'Organiza o únete a tandas de ahorro con tus amigas.',
+    badge: 'AHORRO',
+    gradientColors: [Color(0xFF6366F1), Color(0xFF4338CA)],
+  ),
+  NavItem(
+    icon: Symbols.celebration,
+    label: 'Sorteos & Premios',
+    route: '/raffles',
+    subtitle: 'Participa con tus boletos acumulados y gana productos.',
+    badge: 'BOLETOS',
+    gradientColors: [Color(0xFFF3B341), Color(0xFFB45309)],
+  ),
 ];
 
 List<NavItem> buildSellerNavItems({bool includeRoutes = true}) => [
@@ -154,18 +174,34 @@ List<NavItem> buildSellerOverflowItems({bool includeRoutes = true}) => [
   if (includeRoutes)
     const NavItem(
       icon: Symbols.directions_car,
-      label: 'Reparto',
+      label: 'Reparto y Rutas',
       route: '/routes',
+      subtitle: 'Organiza entregas, chóferes, mapa GPS y confirmación de paradas.',
+      badge: 'RUTAS HOY',
+      gradientColors: [Color(0xFF3B82F6), Color(0xFF2E6BD6)],
     ),
-  const NavItem(icon: Symbols.person, label: 'Cuenta', route: '/account'),
-  const NavItem(
-    icon: Symbols.print,
-    label: 'Etiquetas',
-    route: '/seller/labels',
-  ),
   const NavItem(
     icon: Symbols.inventory_2,
-    label: 'Bodega',
+    label: 'Bodega y Stock',
     route: '/seller/inventory',
+    subtitle: 'Control de cajas, escaneo de barras, bitácora y auditoría NFC.',
+    badge: 'NFC & CAJAS',
+    gradientColors: [Color(0xFFF3B341), Color(0xFFD97706)],
+  ),
+  const NavItem(
+    icon: Symbols.print,
+    label: 'Estudio de Etiquetas',
+    route: '/seller/labels',
+    subtitle: 'Diseña e imprime plantillas térmicas para paquetes y cajas.',
+    badge: 'STICKERS',
+    gradientColors: [Color(0xFFFB6F9C), Color(0xFFE84E83)],
+  ),
+  const NavItem(
+    icon: Symbols.person,
+    label: 'Mi Cuenta y Negocio',
+    route: '/account',
+    subtitle: 'Configura tu tienda, equipo de trabajo, cobros, plan y preferencias.',
+    badge: 'AJUSTES',
+    gradientColors: [Color(0xFF9B7BE0), Color(0xFF7C3AED)],
   ),
 ];
