@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../data/tracking_models.dart';
@@ -214,7 +215,11 @@ class _TopBrandingHeader extends StatelessWidget {
                 color: const Color(0xFF3A2233),
               ),
               onPressed: () {
-                Navigator.of(context).maybePop();
+                if (context.canPop()) {
+                  context.pop();
+                } else {
+                  context.go('/home');
+                }
               },
             ),
             const SizedBox(width: 8),

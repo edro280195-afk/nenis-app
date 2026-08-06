@@ -63,23 +63,23 @@ extension TrackingStatusDisplay on TrackingStatus {
   String get title {
     switch (this) {
       case TrackingStatus.pending:
-        return 'Pedido confirmado';
+        return 'Tu pedido fue registrado con éxito 🌸';
       case TrackingStatus.confirmed:
-        return 'Preparando tu pedido';
+        return 'Tu pedido se está empacando 📦';
       case TrackingStatus.shipped:
-        return 'Tu pedido salió';
+        return 'Empacado y listo 🏬';
       case TrackingStatus.inRoute:
-        return 'Va en camino contigo';
+        return '¡Tu repartidor va en camino! 🚚';
       case TrackingStatus.inTransit:
-        return 'Tu repartidor está cerca';
+        return 'Tu repartidor está cerca 📍';
       case TrackingStatus.delivered:
-        return '¡Entregado!';
+        return '¡Pedido entregado con éxito! 🎉';
       case TrackingStatus.notDelivered:
-        return 'No se pudo entregar';
+        return 'No se pudo entregar 💔';
       case TrackingStatus.canceled:
-        return 'Pedido cancelado';
+        return 'Pedido cancelado ❌';
       case TrackingStatus.postponed:
-        return 'Entrega pospuesta';
+        return 'Entrega pospuesta 📅';
       case TrackingStatus.unknown:
         return 'Tu pedido';
     }
@@ -88,22 +88,22 @@ extension TrackingStatusDisplay on TrackingStatus {
   String get subtitle {
     switch (this) {
       case TrackingStatus.pending:
-        return 'Lo estamos preparando con tu tienda';
+        return 'Tu vendedora procesará tus productos muy pronto.';
       case TrackingStatus.confirmed:
-        return 'Tu tienda está empacando con cariño';
+        return 'La tienda está empaquetando tu mercancía con cuidado.';
       case TrackingStatus.shipped:
-        return 'El chofer ya pasó por la tienda';
+        return 'Tu paquete está listo en tienda esperando salir a ruta.';
       case TrackingStatus.inRoute:
       case TrackingStatus.inTransit:
-        return 'Tu pedido va en camino';
+        return 'Tu pedido va en camino hacia tu domicilio.';
       case TrackingStatus.delivered:
-        return 'Gracias por tu compra 💖';
+        return 'Muchas gracias por tu compra 💖';
       case TrackingStatus.notDelivered:
-        return 'El chofer no pudo completar la entrega';
+        return 'El repartidor no pudo completar la entrega';
       case TrackingStatus.canceled:
         return 'Tu tienda canceló este pedido';
       case TrackingStatus.postponed:
-        return 'Te avisaremos cuando se reprograme';
+        return 'Te avisaremos cuando se reprograme la entrega';
       case TrackingStatus.unknown:
         return 'Buscando tu pedido…';
     }
@@ -431,18 +431,33 @@ class OrderTracking {
 
   String get etaLabel {
     if (status == TrackingStatus.delivered) {
-      return '¡Listo!';
+      return '¡Entregado!';
     }
     if (status == TrackingStatus.notDelivered) {
       return 'No se pudo entregar';
     }
+    if (status == TrackingStatus.canceled) {
+      return 'Cancelado';
+    }
+    if (status == TrackingStatus.pending) {
+      return 'Por confirmar por la tienda';
+    }
+    if (status == TrackingStatus.confirmed) {
+      return 'En preparación en tienda';
+    }
+    if (status == TrackingStatus.shipped && deliveriesAhead == null) {
+      return 'En espera de repartidor';
+    }
     if (deliveriesAhead == null) {
-      return 'Asignando repartidor…';
+      return 'En proceso por la tienda';
     }
     if (isCurrentDelivery) {
       return 'Llegando ahora';
     }
-    return 'Llega pronto';
+    final ahead = deliveriesAhead!;
+    if (ahead == 0) return 'Tu repartidor va hacia ti';
+    if (ahead == 1) return 'Llega pronto (A 1 parada)';
+    return 'Llega pronto (A $ahead paradas)';
   }
 
   factory OrderTracking.fromJson(Map<String, dynamic> j) => OrderTracking(
