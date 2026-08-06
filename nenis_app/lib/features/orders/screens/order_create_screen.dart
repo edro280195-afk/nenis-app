@@ -8,6 +8,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
+import '../../../shared/widgets/google_address_field.dart';
 import '../../../shared/widgets/slow_load_hint.dart';
 import '../data/seller_order_capture_parser.dart';
 import '../data/seller_order_message.dart';
@@ -108,6 +109,8 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
   SellerDeliveryType _manualDelivery = SellerDeliveryType.delivery;
   SellerDeliveryType _quickDelivery = SellerDeliveryType.delivery;
   SellerClient? _manualClient;
+  double? _manualAddressLatitude;
+  double? _manualAddressLongitude;
   bool _manualFrequent = false;
   bool _manualAddressOnlyForOrder = false;
   DateTime? _manualScheduledDate;
@@ -225,6 +228,16 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
           pinnedProduct: _pinnedProduct,
           submitting: _submittingQuick,
           progress: _quickProgress,
+          products: workspace.products,
+          pinNameCtrl: _pinNameCtrl,
+          pinPriceCtrl: _pinPriceCtrl,
+          onPinProduct: _pinProduct,
+          onPickProduct: (product) {
+            setState(() {
+              _pinnedProduct = product;
+            });
+            _quickFocus.requestFocus();
+          },
           onDeliveryChanged: (delivery) =>
               setState(() => _quickDelivery = delivery),
           onSubmitted: (_) {
@@ -238,20 +251,6 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
             clients: suggestions,
             onPick: (client) => _pickQuickClient(client),
           ),
-        const SizedBox(height: 12),
-        _PinProductCard(
-          name: _pinNameCtrl,
-          price: _pinPriceCtrl,
-          pinned: _pinnedProduct,
-          products: workspace.products,
-          onPin: _pinProduct,
-          onPickProduct: (product) {
-            _pinNameCtrl.text = product.name;
-            _pinPriceCtrl.text = _cleanMoney(product.typicalPrice);
-            _pinProduct();
-          },
-          onClear: () => setState(() => _pinnedProduct = null),
-        ),
         const SizedBox(height: 12),
         _QuickQueuePanel(
           groups: groups,
@@ -333,13 +332,25 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
                 onChanged: (value) => setState(() => _manualDelivery = value),
               ),
               const SizedBox(height: 10),
-              _Field(
+              GoogleAddressField(
                 controller: _manualAddressCtrl,
-                hint: _manualDelivery == SellerDeliveryType.pickup
+                labelText: _manualDelivery == SellerDeliveryType.pickup
                     ? 'Direccion opcional'
                     : 'Direccion de entrega',
-                icon: Symbols.location_on,
-                maxLines: 2,
+                hintText: 'Busca calle, colonia o lugar',
+                onChanged: (_) {
+                  if (_manualAddressLatitude != null ||
+                      _manualAddressLongitude != null) {
+                    setState(() {
+                      _manualAddressLatitude = null;
+                      _manualAddressLongitude = null;
+                    });
+                  }
+                },
+                onSelected: (selection) => setState(() {
+                  _manualAddressLatitude = selection.latitude;
+                  _manualAddressLongitude = selection.longitude;
+                }),
               ),
               const SizedBox(height: 8),
               _InlineToggle(
@@ -462,6 +473,8 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
       _manualClientCtrl.text = client.name;
       _manualPhoneCtrl.text = client.phone ?? '';
       _manualAddressCtrl.text = client.address ?? '';
+      _manualAddressLatitude = client.latitude;
+      _manualAddressLongitude = client.longitude;
       _manualInstructionsCtrl.text = client.deliveryInstructions ?? '';
       _manualFrequent = client.isFrequent;
       _manualAddressOnlyForOrder = false;
@@ -556,6 +569,12 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
             deliveryInstructions: _manualInstructionsCtrl.text.trim(),
             scheduledDeliveryDate: _manualScheduledDate,
             clientId: _manualClient?.id,
+            clientLatitude: _manualAddressOnlyForOrder
+                ? null
+                : _manualAddressLatitude,
+            clientLongitude: _manualAddressOnlyForOrder
+                ? null
+                : _manualAddressLongitude,
             targetOrderId: choice.targetOrderId,
             forceNew: choice.forceNew,
             type: _manualFrequent ? 'Frecuente' : 'Nueva',
@@ -565,8 +584,8 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
       _afterOrderCreated(order);
       _resetManual();
       final msg = choice.targetOrderId != null
-          ? 'Articulos agregados al pedido #${order.id}'
-          : 'Pedido #${order.id} creado';
+          ? 'Articulos agregados al pedido #${order.displayNumber}'
+          : 'Pedido #${order.displayNumber} creado';
       _snack(msg, color: const Color(0xFF12A150));
     } catch (e) {
       _snack(e.toString(), color: const Color(0xFFE11D5B));
@@ -600,8 +619,7 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
     if (open.isEmpty) return (forceNew: false, targetOrderId: null);
     if (!mounted) return null;
     final newItemsCount = _manualItems.length;
-    final newItemsTotal =
-        _manualItems.fold(0.0, (s, i) => s + i.lineTotal);
+    final newItemsTotal = _manualItems.fold(0.0, (s, i) => s + i.lineTotal);
     return showModalBottomSheet<({bool forceNew, int? targetOrderId})>(
       context: context,
       isScrollControlled: true,
@@ -616,10 +634,11 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
     );
   }
 
-
   void _resetManual() {
     setState(() {
       _manualClient = null;
+      _manualAddressLatitude = null;
+      _manualAddressLongitude = null;
       _manualClientCtrl.clear();
       _manualPhoneCtrl.clear();
       _manualAddressCtrl.clear();
@@ -1109,6 +1128,11 @@ class _QuickHero extends StatelessWidget {
     required this.pinnedProduct,
     required this.submitting,
     required this.progress,
+    required this.products,
+    required this.pinNameCtrl,
+    required this.pinPriceCtrl,
+    required this.onPinProduct,
+    required this.onPickProduct,
     required this.onDeliveryChanged,
     required this.onSubmitted,
     required this.onChanged,
@@ -1121,6 +1145,11 @@ class _QuickHero extends StatelessWidget {
   final CommonProduct? pinnedProduct;
   final bool submitting;
   final String? progress;
+  final List<CommonProduct> products;
+  final TextEditingController pinNameCtrl;
+  final TextEditingController pinPriceCtrl;
+  final VoidCallback onPinProduct;
+  final ValueChanged<CommonProduct> onPickProduct;
   final ValueChanged<SellerDeliveryType> onDeliveryChanged;
   final ValueChanged<String> onSubmitted;
   final ValueChanged<String> onChanged;
@@ -1134,10 +1163,6 @@ class _QuickHero extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (pinnedProduct != null) ...[
-            _PinnedBanner(product: pinnedProduct!, onClear: onClearPin),
-            const SizedBox(height: 10),
-          ],
           TextField(
             controller: input,
             focusNode: focusNode,
@@ -1181,6 +1206,16 @@ class _QuickHero extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           _DeliveryToggle(value: delivery, onChanged: onDeliveryChanged),
+          const SizedBox(height: 8),
+          _QuickProductControl(
+            product: pinnedProduct,
+            products: products,
+            pinNameCtrl: pinNameCtrl,
+            pinPriceCtrl: pinPriceCtrl,
+            onPin: onPinProduct,
+            onPickProduct: onPickProduct,
+            onClear: onClearPin,
+          ),
           if (submitting && progress != null) ...[
             const SizedBox(height: 10),
             Text(
@@ -1194,6 +1229,203 @@ class _QuickHero extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _QuickProductControl extends StatefulWidget {
+  const _QuickProductControl({
+    required this.product,
+    required this.products,
+    required this.pinNameCtrl,
+    required this.pinPriceCtrl,
+    required this.onPin,
+    required this.onPickProduct,
+    required this.onClear,
+  });
+
+  final CommonProduct? product;
+  final List<CommonProduct> products;
+  final TextEditingController pinNameCtrl;
+  final TextEditingController pinPriceCtrl;
+  final VoidCallback onPin;
+  final ValueChanged<CommonProduct> onPickProduct;
+  final VoidCallback onClear;
+
+  @override
+  State<_QuickProductControl> createState() => _QuickProductControlState();
+}
+
+class _QuickProductControlState extends State<_QuickProductControl> {
+  bool _showInlineForm = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.product != null) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF3F8),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0x66F472B6)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Symbols.keep, size: 16, color: AppColors.neniDeep),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                'Fijo: ${widget.product!.name} · ${money(widget.product!.typicalPrice)}',
+                style: AppTextStyles.subtitle.copyWith(
+                  color: AppColors.neniDeep,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12.5,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 6),
+            InkWell(
+              onTap: widget.onClear,
+              borderRadius: BorderRadius.circular(12),
+              child: const Padding(
+                padding: EdgeInsets.all(2.0),
+                child: Icon(
+                  Symbols.close,
+                  size: 16,
+                  color: AppColors.neniDeep,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                const Icon(Symbols.keep, size: 15, color: AppColors.neniDeep),
+                const SizedBox(width: 4),
+                Text(
+                  'Fijar artículo base',
+                  style: AppTextStyles.subtitle.copyWith(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.neniDeep,
+                  ),
+                ),
+              ],
+            ),
+            TextButton.icon(
+              onPressed: () => setState(() => _showInlineForm = !_showInlineForm),
+              icon: Icon(
+                _showInlineForm ? Symbols.close : Symbols.edit,
+                size: 15,
+                color: AppColors.neniDeep,
+              ),
+              label: Text(
+                _showInlineForm ? 'Cancelar' : 'Fijar manual',
+                style: AppTextStyles.subtitle.copyWith(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.neniDeep,
+                ),
+              ),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                visualDensity: VisualDensity.compact,
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          ],
+        ),
+        if (_showInlineForm) ...[
+          const SizedBox(height: 6),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF5FA),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0x33E84E83)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _MiniField(
+                    controller: widget.pinNameCtrl,
+                    hint: 'Producto (ej. Toalla)',
+                    onSubmitted: (_) {
+                      widget.onPin();
+                      setState(() => _showInlineForm = false);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 85,
+                  child: _MiniField(
+                    controller: widget.pinPriceCtrl,
+                    hint: 'Precio',
+                    keyboard: const TextInputType.numberWithOptions(decimal: true),
+                    onSubmitted: (_) {
+                      widget.onPin();
+                      setState(() => _showInlineForm = false);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 6),
+                ElevatedButton(
+                  onPressed: () {
+                    widget.onPin();
+                    setState(() => _showInlineForm = false);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.neniDeep,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Icon(Symbols.check, size: 16),
+                ),
+              ],
+            ),
+          ),
+        ],
+        if (widget.products.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            '1-Tap para fijar:',
+            style: AppTextStyles.subtitle.copyWith(
+              fontSize: 10.5,
+              color: AppColors.ink3,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          _ProductChips(
+            products: widget.products.take(6).toList(),
+            onPick: (product) {
+              widget.onPickProduct(product);
+              setState(() => _showInlineForm = false);
+            },
+          ),
+        ],
+      ],
     );
   }
 }
@@ -1385,6 +1617,7 @@ class _DialogField extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _PinnedBanner extends StatelessWidget {
   const _PinnedBanner({required this.product, required this.onClear});
   final CommonProduct product;
@@ -1427,81 +1660,7 @@ class _PinnedBanner extends StatelessWidget {
   }
 }
 
-class _PinProductCard extends StatelessWidget {
-  const _PinProductCard({
-    required this.name,
-    required this.price,
-    required this.pinned,
-    required this.products,
-    required this.onPin,
-    required this.onPickProduct,
-    required this.onClear,
-  });
 
-  final TextEditingController name;
-  final TextEditingController price;
-  final CommonProduct? pinned;
-  final List<CommonProduct> products;
-  final VoidCallback onPin;
-  final ValueChanged<CommonProduct> onPickProduct;
-  final VoidCallback onClear;
-
-  @override
-  Widget build(BuildContext context) {
-    return _SectionCard(
-      icon: Symbols.keep,
-      title: 'Producto fijo',
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _MiniField(controller: name, hint: 'Producto'),
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 92,
-                child: _MiniField(
-                  controller: price,
-                  hint: 'Precio',
-                  keyboard: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              _IconAction(icon: Symbols.keep, onTap: onPin),
-            ],
-          ),
-          if (products.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            // U14: los chips ahora filtran por lo que la vendedora escribe en
-            // el campo "Producto". Antes mostraban `products.take(6)` fijos.
-            ValueListenableBuilder<TextEditingValue>(
-              valueListenable: name,
-              builder: (context, value, _) {
-                final query = normalizeCaptureText(value.text);
-                final filtered = query.isEmpty
-                    ? products.take(6).toList()
-                    : products
-                        .where(
-                          (p) => normalizeCaptureText(p.name).contains(query),
-                        )
-                        .take(6)
-                        .toList();
-                if (filtered.isEmpty) return const SizedBox.shrink();
-                return _ProductChips(
-                  products: filtered,
-                  onPick: onPickProduct,
-                );
-              },
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
 
 class _QuickQueuePanel extends StatelessWidget {
   const _QuickQueuePanel({
@@ -2626,7 +2785,7 @@ class _CreatedOrdersPanel extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      '#${order.id} · ${order.clientName}',
+                      '#${order.displayNumber} · ${order.clientName}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.body.copyWith(
@@ -2773,7 +2932,11 @@ String _cleanMoney(num value) {
 /// Hoja inferior que pregunta si se crea un pedido nuevo o se agregan los
 /// articulos a un pedido abierto existente.
 class _OpenOrderSheet extends StatelessWidget {
-  const _OpenOrderSheet({required this.openOrders, required this.newItemsCount, required this.newItemsTotal});
+  const _OpenOrderSheet({
+    required this.openOrders,
+    required this.newItemsCount,
+    required this.newItemsTotal,
+  });
   final List<SellerOrder> openOrders;
   final int newItemsCount;
   final double newItemsTotal;
@@ -2838,9 +3001,9 @@ class _OpenOrderSheet extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             FilledButton.icon(
-              onPressed: () => Navigator.of(context).pop(
-                (forceNew: true, targetOrderId: null),
-              ),
+              onPressed: () => Navigator.of(
+                context,
+              ).pop((forceNew: true, targetOrderId: null)),
               icon: const Icon(Symbols.add_circle),
               label: const Text('Crear pedido nuevo'),
             ),
@@ -2865,9 +3028,9 @@ class _OpenOrderSheet extends StatelessWidget {
                   final o = openOrders[i];
                   return _OpenOrderTile(
                     order: o,
-                    onTap: () => Navigator.of(context).pop(
-                      (forceNew: false, targetOrderId: o.id),
-                    ),
+                    onTap: () => Navigator.of(
+                      context,
+                    ).pop((forceNew: false, targetOrderId: o.id)),
                   );
                 },
               ),
@@ -2909,7 +3072,7 @@ class _OpenOrderTile extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  '#${order.id}',
+                  '#${order.displayNumber}',
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(width: 8),
@@ -2953,24 +3116,24 @@ class _OpenOrderTile extends StatelessWidget {
   }
 
   static String _statusLabel(SellerOrderStatus s) => switch (s) {
-        SellerOrderStatus.pending => 'Pendiente',
-        SellerOrderStatus.confirmed => 'Confirmado',
-        SellerOrderStatus.shipped => 'Enviado',
-        SellerOrderStatus.inRoute => 'En ruta',
-        SellerOrderStatus.delivered => 'Entregado',
-        SellerOrderStatus.notDelivered => 'No entregado',
-        SellerOrderStatus.postponed => 'Pospuesto',
-        SellerOrderStatus.canceled => 'Cancelado',
-      };
+    SellerOrderStatus.pending => 'Pendiente',
+    SellerOrderStatus.confirmed => 'Confirmado',
+    SellerOrderStatus.shipped => 'Enviado',
+    SellerOrderStatus.inRoute => 'En ruta',
+    SellerOrderStatus.delivered => 'Entregado',
+    SellerOrderStatus.notDelivered => 'No entregado',
+    SellerOrderStatus.postponed => 'Pospuesto',
+    SellerOrderStatus.canceled => 'Cancelado',
+  };
 
   static Color _statusColor(SellerOrderStatus s) => switch (s) {
-        SellerOrderStatus.pending => const Color(0xFFB7791F),
-        SellerOrderStatus.confirmed => const Color(0xFF2563EB),
-        SellerOrderStatus.shipped => const Color(0xFF2563EB),
-        SellerOrderStatus.inRoute => const Color(0xFF2563EB),
-        SellerOrderStatus.delivered => const Color(0xFF12A150),
-        SellerOrderStatus.notDelivered => const Color(0xFFE11D5B),
-        SellerOrderStatus.postponed => const Color(0xFFB7791F),
-        SellerOrderStatus.canceled => const Color(0xFFE11D5B),
-      };
+    SellerOrderStatus.pending => const Color(0xFFB7791F),
+    SellerOrderStatus.confirmed => const Color(0xFF2563EB),
+    SellerOrderStatus.shipped => const Color(0xFF2563EB),
+    SellerOrderStatus.inRoute => const Color(0xFF2563EB),
+    SellerOrderStatus.delivered => const Color(0xFF12A150),
+    SellerOrderStatus.notDelivered => const Color(0xFFE11D5B),
+    SellerOrderStatus.postponed => const Color(0xFFB7791F),
+    SellerOrderStatus.canceled => const Color(0xFFE11D5B),
+  };
 }

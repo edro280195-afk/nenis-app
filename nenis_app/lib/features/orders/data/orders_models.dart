@@ -63,6 +63,7 @@ OrderStatus orderChipFromBackend(String status) {
 class BuyerOrder {
   const BuyerOrder({
     required this.orderId,
+    required this.orderNumber,
     required this.businessId,
     required this.businessName,
     required this.brandPrimaryColor,
@@ -76,6 +77,7 @@ class BuyerOrder {
   });
 
   final int orderId;
+  final int orderNumber;
   final int businessId;
   final String businessName;
   final String brandPrimaryColor;
@@ -90,11 +92,13 @@ class BuyerOrder {
   String get initial => businessName.isNotEmpty
       ? businessName.characters.first.toUpperCase()
       : '?';
+  int get displayNumber => orderNumber > 0 ? orderNumber : orderId;
 
   OrderStatus get chipStatus => orderChipFromBackend(status);
 
   factory BuyerOrder.fromJson(Map<String, dynamic> j) => BuyerOrder(
         orderId: (j['orderId'] as num).toInt(),
+        orderNumber: (j['orderNumber'] as num?)?.toInt() ?? 0,
         businessId: (j['businessId'] as num).toInt(),
         businessName: (j['businessName'] ?? '') as String,
         brandPrimaryColor: (j['brandPrimaryColor'] ?? '#FB6F9C') as String,

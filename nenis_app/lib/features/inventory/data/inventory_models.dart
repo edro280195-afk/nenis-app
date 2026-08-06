@@ -9,6 +9,7 @@ class InventoryBoxSummary {
     required this.isNfcBound,
     required this.articleTypesCount,
     required this.totalUnits,
+    required this.updatedAt,
   });
   final String id;
   final String code;
@@ -17,6 +18,7 @@ class InventoryBoxSummary {
   final bool isNfcBound;
   final int articleTypesCount;
   final int totalUnits;
+  final DateTime updatedAt;
   factory InventoryBoxSummary.fromJson(Map<String, dynamic> json) =>
       InventoryBoxSummary(
         id: json['id'] as String,
@@ -26,6 +28,9 @@ class InventoryBoxSummary {
         isNfcBound: json['isNfcBound'] as bool? ?? false,
         articleTypesCount: (json['articleTypesCount'] as num?)?.toInt() ?? 0,
         totalUnits: (json['totalUnits'] as num?)?.toInt() ?? 0,
+        updatedAt:
+            DateTime.tryParse(json['updatedAt'] as String? ?? '')?.toLocal() ??
+            DateTime.now(),
       );
 }
 
@@ -88,6 +93,36 @@ class InventoryMovement {
       );
 }
 
+class InventoryMovementPage {
+  const InventoryMovementPage({
+    required this.page,
+    required this.pageSize,
+    required this.total,
+    required this.hasMore,
+    required this.items,
+  });
+  final int page;
+  final int pageSize;
+  final int total;
+  final bool hasMore;
+  final List<InventoryMovement> items;
+
+  factory InventoryMovementPage.fromJson(Map<String, dynamic> json) =>
+      InventoryMovementPage(
+        page: (json['page'] as num?)?.toInt() ?? 1,
+        pageSize: (json['pageSize'] as num?)?.toInt() ?? 30,
+        total: (json['total'] as num?)?.toInt() ?? 0,
+        hasMore: json['hasMore'] as bool? ?? false,
+        items: ((json['items'] as List?) ?? const [])
+            .map(
+              (item) => InventoryMovement.fromJson(
+                (item as Map).cast<String, dynamic>(),
+              ),
+            )
+            .toList(),
+      );
+}
+
 class InventoryBox extends InventoryBoxSummary {
   const InventoryBox({
     required super.id,
@@ -97,13 +132,20 @@ class InventoryBox extends InventoryBoxSummary {
     required super.isNfcBound,
     required super.articleTypesCount,
     required super.totalUnits,
+    required super.updatedAt,
+    this.nfcTagUid,
     required this.nfcUrl,
+    required this.movementCount,
     required this.items,
     required this.movements,
+    required this.createdAt,
   });
+  final String? nfcTagUid;
   final String nfcUrl;
+  final int movementCount;
   final List<InventoryItem> items;
   final List<InventoryMovement> movements;
+  final DateTime createdAt;
   factory InventoryBox.fromJson(Map<String, dynamic> json) => InventoryBox(
     id: json['id'] as String,
     code: json['code'] as String,
@@ -112,7 +154,12 @@ class InventoryBox extends InventoryBoxSummary {
     isNfcBound: json['isNfcBound'] as bool? ?? false,
     articleTypesCount: (json['articleTypesCount'] as num?)?.toInt() ?? 0,
     totalUnits: (json['totalUnits'] as num?)?.toInt() ?? 0,
+    updatedAt:
+        DateTime.tryParse(json['updatedAt'] as String? ?? '')?.toLocal() ??
+        DateTime.now(),
+    nfcTagUid: json['nfcTagUid'] as String?,
     nfcUrl: json['nfcUrl'] as String,
+    movementCount: (json['movementCount'] as num?)?.toInt() ?? 0,
     items: ((json['items'] as List?) ?? const [])
         .map(
           (item) =>
@@ -125,6 +172,9 @@ class InventoryBox extends InventoryBoxSummary {
               InventoryMovement.fromJson((item as Map).cast<String, dynamic>()),
         )
         .toList(),
+    createdAt:
+        DateTime.tryParse(json['createdAt'] as String? ?? '')?.toLocal() ??
+        DateTime.now(),
   );
 }
 

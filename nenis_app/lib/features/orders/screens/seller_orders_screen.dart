@@ -166,6 +166,15 @@ class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen> {
                     ),
                   ),
                   Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 10, 22, 0),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: _NewOrderFab(
+                        onTap: () => context.push('/orders/new'),
+                      ),
+                    ),
+                  ),
+                  Padding(
                     padding: const EdgeInsets.fromLTRB(22, 12, 22, 0),
                     child: SizedBox(
                       height: 40,
@@ -232,7 +241,7 @@ class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen> {
                                   22,
                                   0,
                                   22,
-                                  120,
+                                  160,
                                 ),
                                 itemCount: page.items.length + 1,
                                 itemBuilder: (context, i) {
@@ -256,11 +265,6 @@ class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen> {
                     ),
                   ),
                 ],
-              ),
-              Positioned(
-                right: 22,
-                bottom: 16,
-                child: _NewOrderFab(onTap: () => context.push('/orders/new')),
               ),
             ],
           ),
@@ -361,8 +365,8 @@ class _NewOrderFab extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(999),
         child: Ink(
-          height: 52,
-          padding: const EdgeInsets.fromLTRB(16, 0, 20, 0),
+          height: 44,
+          padding: const EdgeInsets.fromLTRB(14, 0, 18, 0),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [AppColors.neni, AppColors.neniDeep],
@@ -375,9 +379,12 @@ class _NewOrderFab extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Symbols.add, size: 24, color: Colors.white),
-              const SizedBox(width: 8),
-              Text('Nuevo', style: AppTextStyles.button.copyWith(fontSize: 14)),
+              const Icon(Symbols.add, size: 20, color: Colors.white),
+              const SizedBox(width: 7),
+              Text(
+                'Nuevo pedido',
+                style: AppTextStyles.button.copyWith(fontSize: 13),
+              ),
             ],
           ),
         ),
@@ -466,7 +473,7 @@ class _OrderCard extends ConsumerWidget {
                             ),
                             const SizedBox(height: 1),
                             Text(
-                              'Pedido #${o.id}',
+                              'Pedido #${o.displayNumber}',
                               style: AppTextStyles.subtitle.copyWith(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -559,7 +566,7 @@ Future<void> _confirmDelete(
                 children: [
                   const TextSpan(text: 'Se quitará el pedido '),
                   TextSpan(
-                    text: '#${o.id}',
+                    text: '#${o.displayNumber}',
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,
                       color: AppColors.ink,
@@ -605,7 +612,9 @@ Future<void> _confirmDelete(
                         ref.invalidate(sellerDashboardProvider);
                         messenger
                           ..hideCurrentSnackBar()
-                          ..showSnackBar(_snack('Pedido #${o.id} eliminado'));
+                          ..showSnackBar(
+                            _snack('Pedido #${o.displayNumber} eliminado'),
+                          );
                       } catch (e) {
                         messenger
                           ..hideCurrentSnackBar()
@@ -1244,7 +1253,7 @@ class _EmptyOrders extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Ajusta los filtros o crea un pedido nuevo con el botón rosa.',
+              'Ajusta los filtros o crea un pedido nuevo desde el encabezado.',
               textAlign: TextAlign.center,
               style: AppTextStyles.subtitle.copyWith(fontSize: 13),
             ),

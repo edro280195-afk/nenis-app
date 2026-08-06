@@ -449,7 +449,7 @@ class _SellerTandasCommandScreenState
                   final visibleTandas = _visibleTandas(workspace);
                   return ListView(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 28),
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 120),
                     children: [
                       _CommandHero(
                         workspace: workspace,

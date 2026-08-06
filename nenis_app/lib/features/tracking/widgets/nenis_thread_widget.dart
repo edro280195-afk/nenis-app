@@ -88,39 +88,55 @@ class _NenisThreadWidgetState extends State<NenisThreadWidget>
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: widget.width,
-      height: widget.height,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // ── Hilo animado ──
-          AnimatedBuilder(
-            animation: Listenable.merge([_progressCtrl, _shimmerCtrl]),
-            builder: (_, _) => CustomPaint(
-              size: Size(widget.width, widget.height),
-              painter: NenisThreadPainter(
-                progress: _progressAnim.value,
-                shimmerPhase: _shimmerCtrl.value,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final rawW = widget.width.isFinite ? widget.width : constraints.maxWidth;
+        final rawH = widget.height.isFinite ? widget.height : constraints.maxHeight;
+
+        final safeW = (rawW.isNaN || !rawW.isFinite || rawW <= 0) ? 300.0 : rawW;
+        final safeH = (rawH.isNaN || !rawH.isFinite || rawH <= 0) ? 120.0 : rawH;
+
+        final startLeft = (NenisThreadPainter.startNorm.dx * safeW - 14).clamp(0.0, safeW - 28);
+        final startTop = (NenisThreadPainter.startNorm.dy * safeH - 14).clamp(0.0, safeH - 28);
+
+        final endLeft = (NenisThreadPainter.endNorm.dx * safeW - 14).clamp(0.0, safeW - 28);
+        final endTop = (NenisThreadPainter.endNorm.dy * safeH - 14).clamp(0.0, safeH - 28);
+
+        return SizedBox(
+          width: safeW,
+          height: safeH,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // ── Hilo animado ──
+              AnimatedBuilder(
+                animation: Listenable.merge([_progressCtrl, _shimmerCtrl]),
+                builder: (_, _) => CustomPaint(
+                  size: Size(safeW, safeH),
+                  painter: NenisThreadPainter(
+                    progress: _progressAnim.value.isNaN ? 0.0 : _progressAnim.value,
+                    shimmerPhase: _shimmerCtrl.value.isNaN ? 0.0 : _shimmerCtrl.value,
+                  ),
+                ),
               ),
-            ),
-          ),
 
-          // ── Pin tienda (inicio) ──
-          Positioned(
-            left: NenisThreadPainter.startNorm.dx * widget.width - 14,
-            top: NenisThreadPainter.startNorm.dy * widget.height - 14,
-            child: _StorePinDot(key: widget.startKey),
-          ),
+              // ── Pin tienda (inicio) ──
+              Positioned(
+                left: startLeft,
+                top: startTop,
+                child: _StorePinDot(key: widget.startKey),
+              ),
 
-          // ── Pin casa (destino) ──
-          Positioned(
-            left: NenisThreadPainter.endNorm.dx * widget.width - 14,
-            top: NenisThreadPainter.endNorm.dy * widget.height - 14,
-            child: _HomePinDot(key: widget.endKey, isActive: widget.progress >= 0.99),
+              // ── Pin casa (destino) ──
+              Positioned(
+                left: endLeft,
+                top: endTop,
+                child: _HomePinDot(key: widget.endKey, isActive: widget.progress >= 0.99),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

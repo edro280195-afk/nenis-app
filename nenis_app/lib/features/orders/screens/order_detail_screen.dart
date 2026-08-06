@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +8,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
+import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/slow_load_hint.dart';
 import '../../labels/screens/order_label_section.dart';
@@ -109,8 +110,11 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     }
 
     // Confirmar rebajas en el flujo de entrega (ej. Entregado → Pendiente).
-    final current =
-        ref.read(sellerOrderDetailProvider(_id)).asData?.value.status;
+    final current = ref
+        .read(sellerOrderDetailProvider(_id))
+        .asData
+        ?.value
+        .status;
     if (current != null && _isStatusDowngrade(current, s)) {
       final ok = await showDialog<bool>(
         context: context,
@@ -118,7 +122,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          title: const Text('¿Cambiar a un est anterior?'),
+          title: const Text('¿Cambiar a un estado anterior?'),
           content: Text(
             'El pedido está "${current.label}" y lo vas a pasar a '
             '"${s.label}". ¿Lo confirmas?',
@@ -151,6 +155,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   Future<void> _setDelivery(SellerDeliveryType t) =>
       _run(() => _repo.setOrderType(_id, t));
 
+  Future<void> _releaseForRoute() => _run(() => _repo.releaseForRoute(_id));
+
   Future<void> _changeQty(SellerOrderItem it, int qty) async {
     // D1: antes, bajar a 0 eliminaba el artículo sin confirmar. La vendedora
     // tocaba "-" esperando llegar a 0 y perdía el item sin aviso. Ahora se
@@ -163,9 +169,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             borderRadius: BorderRadius.circular(20),
           ),
           title: const Text('¿Quitar artículo?'),
-          content: Text(
-            'Se eliminará "${it.productName}" del pedido #$_id.',
-          ),
+          content: Text('Se eliminará "${it.productName}" del pedido #$_id.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
@@ -227,7 +231,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     // D3: advertir si el cobro excede el restante. Podría ser un abono a
     // cuenta (válido), pero conviene confirmar para evitar capturas
     // equivocadas que dejen saldo negativo.
-    final balance = ref.read(sellerOrderDetailProvider(_id)).asData?.value.balanceDue ?? 0;
+    final balance =
+        ref.read(sellerOrderDetailProvider(_id)).asData?.value.balanceDue ?? 0;
     if (amount > balance + 0.01) {
       final ok = await showDialog<bool>(
         context: context,
@@ -285,10 +290,74 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           color: const Color(0xFF7C5AC9),
         );
       } catch (_) {
-        _snack('Mensaje para la clienta copiado', color: const Color(0xFF7C5AC9));
+        _snack(
+          'Mensaje para la clienta copiado',
+          color: const Color(0xFF7C5AC9),
+        );
       }
     } else {
       _snack('Mensaje para la clienta copiado', color: const Color(0xFF7C5AC9));
+    }
+  }
+
+  /// Fusiona ESTE pedido (origen) dentro de otro que la vendedora elija
+  /// (destino). Sirve tanto para juntar dos pedidos duplicados de la misma
+  /// clienta como para el caso "agrega lo de mi hija a la bolsa de mi mamá":
+  /// se busca el pedido de la mamá y este (el de la hija) se fusiona ahí.
+  Future<void> _mergeInto() async {
+    final current = ref.read(sellerOrderDetailProvider(_id)).asData?.value;
+    if (current == null) return;
+
+    final target = await showModalBottomSheet<SellerOrder>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _MergeOrderPicker(excludeOrderId: _id, repo: _repo),
+    );
+    if (target == null || !mounted) return;
+    final sourceNumber = current.displayNumber;
+    final targetNumber = target.displayNumber;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('¿Fusionar pedidos?'),
+        content: Text(
+          'Los ${current.items.length} artículo${current.items.length == 1 ? '' : 's'} '
+          'del pedido #$sourceNumber (${current.clientName}) se moverán al pedido '
+          '#$targetNumber (${target.clientName}). El pedido #$sourceNumber quedará '
+          'cancelado — solo #$targetNumber seguirá vigente para entregar y cobrar.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Sí, fusionar'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    setState(() => _busy = true);
+    try {
+      await _repo.mergeOrders(targetOrderId: target.id, sourceOrderId: _id);
+      _invalidate();
+      ref.invalidate(sellerOrderDetailProvider(target.id));
+      if (!mounted) return;
+      _snack(
+        'Pedido #$sourceNumber fusionado con #$targetNumber 💕',
+        color: const Color(0xFF12A150),
+      );
+      context.pushReplacement('/orders/detail/${target.id}');
+    } catch (e) {
+      _snack(e.toString(), color: const Color(0xFFE11D5B));
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -341,14 +410,33 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             ),
             data: (o) => Column(
               children: [
-                _TopBar(title: 'Detalle del pedido', onBack: _goBack),
+                _TopBar(
+                  title: 'Detalle del pedido',
+                  onBack: _goBack,
+                  trailing: o.isMergedAway
+                      ? const SizedBox(width: 38, height: 38)
+                      : _RoundButton(
+                          icon: Symbols.merge_type,
+                          tooltip: 'Fusionar con otro pedido',
+                          onTap: _mergeInto,
+                        ),
+                ),
                 Expanded(
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
                     children: [
                       _DetailHead(order: o),
+                      if (o.isMergedAway)
+                        _MergedAwayBanner(
+                          order: o,
+                          onViewTarget: () => context.pushReplacement(
+                            '/orders/detail/${o.mergedIntoOrderId}',
+                          ),
+                        ),
                       _PipelineSection(order: o, onTap: _setStatus),
-                      _DeliverySection(order: o, onChange: _setDelivery),
+                      if (o.status == SellerOrderStatus.notDelivered)
+                        _RetryBanner(busy: _busy, onRetry: _releaseForRoute),
+                      _DeliverySectionSmart(order: o, onChange: _setDelivery),
                       OrderLabelSection(orderId: _id),
                       _ProductsSection(
                         order: o,
@@ -381,9 +469,10 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.title, required this.onBack});
+  const _TopBar({required this.title, required this.onBack, this.trailing});
   final String title;
   final VoidCallback onBack;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -403,7 +492,7 @@ class _TopBar extends StatelessWidget {
               style: AppTextStyles.h2.copyWith(fontSize: 15),
             ),
           ),
-          const SizedBox(width: 38, height: 38),
+          trailing ?? const SizedBox(width: 38, height: 38),
         ],
       ),
     );
@@ -621,7 +710,7 @@ class _DetailHead extends StatelessWidget {
                   const Text('📦', style: TextStyle(fontSize: 19)),
                   const SizedBox(width: 8),
                   Text(
-                    'Pedido #${o.id}',
+                    'Pedido #${o.displayNumber}',
                     style: AppTextStyles.h2.copyWith(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
@@ -712,6 +801,208 @@ class _DetailHead extends StatelessWidget {
   }
 }
 
+/// Aviso cuando este pedido ya no está vigente porque se fusionó dentro de
+/// otro (ver `MergeOrders`). Se muestra arriba del detalle para que la
+/// vendedora no siga editando algo que ya no importa.
+class _MergedAwayBanner extends StatelessWidget {
+  const _MergedAwayBanner({required this.order, required this.onViewTarget});
+
+  final SellerOrder order;
+  final VoidCallback onViewTarget;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3EEFF),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0x337C5AC9)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Symbols.merge_type, color: Color(0xFF7C5AC9), size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Este pedido se fusionó con el #${order.displayMergedIntoNumber}. '
+              'Sus artículos y pagos ya están allá.',
+              style: AppTextStyles.body.copyWith(
+                fontSize: 12,
+                color: const Color(0xFF7C5AC9),
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: onViewTarget,
+            child: Text('Ver #${order.displayMergedIntoNumber}'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Buscador dentro de un bottom sheet para elegir el pedido DESTINO al
+/// fusionar. Solo ofrece pedidos que todavía se pueden tocar (Pendiente,
+/// Confirmado o Pospuesto) y nunca el pedido que se está fusionando.
+class _MergeOrderPicker extends StatefulWidget {
+  const _MergeOrderPicker({required this.excludeOrderId, required this.repo});
+
+  final int excludeOrderId;
+  final SellerOrdersRepository repo;
+
+  @override
+  State<_MergeOrderPicker> createState() => _MergeOrderPickerState();
+}
+
+class _MergeOrderPickerState extends State<_MergeOrderPicker> {
+  static const _mergeableStatuses = {
+    SellerOrderStatus.pending,
+    SellerOrderStatus.confirmed,
+    SellerOrderStatus.postponed,
+  };
+
+  final _searchCtrl = TextEditingController();
+  List<SellerOrder> _results = const [];
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _search('');
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _search(String query) async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final page = await widget.repo.getPaged(search: query, pageSize: 30);
+      if (!mounted) return;
+      setState(() {
+        _results = page.items
+            .where(
+              (o) =>
+                  o.id != widget.excludeOrderId &&
+                  !o.isMergedAway &&
+                  _mergeableStatuses.contains(o.status),
+            )
+            .toList();
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _error = 'No pudimos buscar pedidos.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final viewInsets = MediaQuery.of(context).viewInsets;
+    return Padding(
+      padding: EdgeInsets.only(bottom: viewInsets.bottom),
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.75,
+        ),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.line,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 6),
+              child: Text(
+                'Fusionar con...',
+                style: AppTextStyles.h2.copyWith(fontSize: 16),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: TextField(
+                controller: _searchCtrl,
+                autofocus: true,
+                textInputAction: TextInputAction.search,
+                onSubmitted: _search,
+                decoration: InputDecoration(
+                  hintText: 'Busca por clienta o # de pedido',
+                  prefixIcon: const Icon(Symbols.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  isDense: true,
+                  suffixIcon: IconButton(
+                    icon: const Icon(Symbols.arrow_forward),
+                    onPressed: () => _search(_searchCtrl.text.trim()),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Flexible(
+              child: _loading
+                  ? const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  : _error != null
+                  ? Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(_error!, style: AppTextStyles.subtitle),
+                    )
+                  : _results.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        'No hay pedidos pendientes que coincidan.',
+                        style: AppTextStyles.subtitle,
+                      ),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.only(bottom: 18),
+                      itemCount: _results.length,
+                      itemBuilder: (ctx, i) {
+                        final o = _results[i];
+                        return ListTile(
+                          title: Text('${o.clientName} · #${o.displayNumber}'),
+                          subtitle: Text(
+                            '${o.status.label} · ${money(o.total)}',
+                          ),
+                          onTap: () => Navigator.of(context).pop(o),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _Section extends StatelessWidget {
   const _Section({
     required this.icon,
@@ -780,21 +1071,17 @@ class _PipelineSection extends StatelessWidget {
     return _Section(
       icon: Symbols.timeline,
       title: 'Estatus del pedido',
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            for (var i = 0; i < _flow.length; i++) ...[
-              _PipeStep(
-                status: _flow[i],
-                active: order.status == _flow[i],
-                onTap: () => onTap(_flow[i]),
-              ),
-              if (i < _flow.length - 1)
-                Container(width: 14, height: 2, color: const Color(0x33FB6F9C)),
-            ],
-          ],
-        ),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final status in _flow)
+            _PipeStep(
+              status: status,
+              active: order.status == status,
+              onTap: () => onTap(status),
+            ),
+        ],
       ),
     );
   }
@@ -812,24 +1099,29 @@ class _PipeStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: active ? status.bg : Colors.white,
-          borderRadius: BorderRadius.circular(13),
-          border: Border.all(
-            color: active ? Colors.transparent : AppColors.line,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(13),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          constraints: const BoxConstraints(minHeight: 42),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(
+            color: active ? status.bg : Colors.white,
+            borderRadius: BorderRadius.circular(13),
+            border: Border.all(
+              color: active ? Colors.transparent : AppColors.line,
+            ),
           ),
-        ),
-        child: Text(
-          status.label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: active ? status.fg : AppColors.ink3,
+          child: Text(
+            status.label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: active ? status.fg : AppColors.ink3,
+            ),
           ),
         ),
       ),
@@ -837,8 +1129,61 @@ class _PipeStep extends StatelessWidget {
   }
 }
 
-class _DeliverySection extends StatelessWidget {
-  const _DeliverySection({required this.order, required this.onChange});
+class _RetryBanner extends StatelessWidget {
+  const _RetryBanner({required this.busy, required this.onRetry});
+
+  final bool busy;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = SellerOrderStatus.notDelivered.fg;
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: SellerOrderStatus.notDelivered.bg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: fg.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Symbols.error, size: 18, color: fg),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'El chofer no pudo entregar este pedido.',
+                  style: AppTextStyles.body.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: fg,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'El motivo y las fotos de ese intento se conservan. Prepáralo '
+            'para volver a mandarlo en otra ruta.',
+            style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+          ),
+          const SizedBox(height: 12),
+          PillButton(
+            label: busy ? 'Preparando...' : 'Preparar reintento',
+            icon: Symbols.replay,
+            onPressed: busy ? null : onRetry,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DeliverySectionSmart extends StatelessWidget {
+  const _DeliverySectionSmart({required this.order, required this.onChange});
   final SellerOrder order;
   final ValueChanged<SellerDeliveryType> onChange;
 
@@ -848,33 +1193,33 @@ class _DeliverySection extends StatelessWidget {
     return _Section(
       icon: Symbols.local_shipping,
       title: 'Entrega',
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: const Color(0x0D3A2233),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
-                children: [
-                  _ToggleBtn(
-                    label: '🛵 Domicilio',
-                    active: o.orderType == SellerDeliveryType.delivery,
-                    onTap: () => onChange(SellerDeliveryType.delivery),
-                  ),
-                  _ToggleBtn(
-                    label: '🛍️ Recoger',
-                    active: o.orderType == SellerDeliveryType.pickup,
-                    onTap: () => onChange(SellerDeliveryType.pickup),
-                  ),
-                ],
-              ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 360;
+          final toggle = Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: const Color(0x0D3A2233),
+              borderRadius: BorderRadius.circular(14),
             ),
-          ),
-          const SizedBox(width: 11),
-          Container(
+            child: Row(
+              children: [
+                _DeliveryToggleButton(
+                  icon: Symbols.local_shipping,
+                  label: 'Domicilio',
+                  active: o.orderType == SellerDeliveryType.delivery,
+                  onTap: () => onChange(SellerDeliveryType.delivery),
+                ),
+                _DeliveryToggleButton(
+                  icon: Symbols.storefront,
+                  label: 'Recoger',
+                  active: o.orderType == SellerDeliveryType.pickup,
+                  onTap: () => onChange(SellerDeliveryType.pickup),
+                ),
+              ],
+            ),
+          );
+          final shipping = Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -882,6 +1227,7 @@ class _DeliverySection extends StatelessWidget {
               border: Border.all(color: AppColors.line),
             ),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(
                   Symbols.local_shipping,
@@ -898,44 +1244,77 @@ class _DeliverySection extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-        ],
+          );
+
+          if (compact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                toggle,
+                const SizedBox(height: 10),
+                Align(alignment: Alignment.centerLeft, child: shipping),
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              Expanded(child: toggle),
+              const SizedBox(width: 11),
+              shipping,
+            ],
+          );
+        },
       ),
     );
   }
 }
 
-class _ToggleBtn extends StatelessWidget {
-  const _ToggleBtn({
+class _DeliveryToggleButton extends StatelessWidget {
+  const _DeliveryToggleButton({
+    required this.icon,
     required this.label,
     required this.active,
     required this.onTap,
   });
+
+  final IconData icon;
   final String label;
   final bool active;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final fg = active ? AppColors.neniDeep : AppColors.ink2;
     return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          height: 36,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: active ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(11),
-            boxShadow: active ? AppShadows.small : null,
-          ),
-          child: Text(
-            label,
-            style: AppTextStyles.body.copyWith(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: active ? AppColors.neniDeep : AppColors.ink2,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(11),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            height: 42,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: active ? Colors.white : Colors.transparent,
+              borderRadius: BorderRadius.circular(11),
+              boxShadow: active ? AppShadows.small : null,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 17, color: fg),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: fg,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -1010,6 +1389,27 @@ class _ProductsSection extends StatelessWidget {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
+                        if (it.originalClientName != null) ...[
+                          const SizedBox(height: 2),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF3EEFF),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              'de ${it.originalClientName}',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF7C5AC9),
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 4),
                         _Stepper(
                           qty: it.quantity,
@@ -1510,6 +1910,12 @@ class _MethodButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final icon = switch (label) {
+      'Efectivo' => Symbols.payments,
+      'Transf.' => Symbols.account_balance,
+      'Tarjeta' => Symbols.credit_card,
+      _ => Symbols.payments,
+    };
     return Expanded(
       child: Material(
         color: Colors.transparent,
@@ -1525,7 +1931,7 @@ class _MethodButton extends StatelessWidget {
             ),
             child: Column(
               children: [
-                Text(emoji, style: const TextStyle(fontSize: 19)),
+                Icon(icon, size: 21, color: AppColors.neniDeep),
                 const SizedBox(height: 4),
                 Text(
                   label,

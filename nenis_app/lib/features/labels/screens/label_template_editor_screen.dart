@@ -12,11 +12,16 @@ import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
+import '../../../shared/widgets/interactive_bounce.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../data/label_print_models.dart';
 import '../data/label_template_models.dart';
 import '../data/label_template_repository.dart';
 import '../widgets/label_template_canvas.dart';
+
+/// A partir de este ancho (iPad en vertical y más grandes) el lienzo y el
+/// panel de propiedades se muestran lado a lado en vez de apilados.
+const double _widePaneBreakpoint = 760.0;
 
 class LabelTemplateEditorScreen extends ConsumerStatefulWidget {
   const LabelTemplateEditorScreen({
@@ -404,13 +409,84 @@ class _LabelTemplateEditorScreenState
             loading: () => const Center(
               child: CircularProgressIndicator(color: AppColors.neniDeep),
             ),
-            error: (error, _) =>
-                _EditorError(onBack: () => context.go('/seller/labels')),
+            error: (error, _) => _EditorError(
+              error: error.toString(),
+              onBack: () => context.go('/seller/labels'),
+            ),
             data: (template) {
               _adopt(template);
               final design = _design!;
               final assets = assetsAsync.asData?.value ?? const <LabelAsset>[];
               final selected = _selected;
+
+              final canvasChildren = <Widget>[
+                _FormatSegmented(current: widget.mediaSize, kind: widget.kind),
+                const SizedBox(height: 14),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 30,
+                    horizontal: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0E6EB),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: _DottedBackground(
+                    child: LabelTemplateCanvas(
+                      design: design,
+                      assets: assets,
+                      selectedId: _selectedId,
+                      onSelect: (id) => setState(() => _selectedId = id),
+                      onMove: _moveElement,
+                      onResize: _resizeElement,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Symbols.touch_app,
+                      size: 14,
+                      color: AppColors.neniDeep,
+                    ),
+                    const SizedBox(width: 7),
+                    Text(
+                      'Arrastra para mover · la esquina rosa cambia el tamaño',
+                      style: AppTextStyles.subtitle.copyWith(fontSize: 10),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                _ElementToolbar(
+                  onAdd: _showAddMenu,
+                  onImage: _showAssetLibrary,
+                ),
+              ];
+
+              final inspectorChildren = <Widget>[
+                _Inspector(
+                  element: selected,
+                  bindings: _bindingsFor(widget.kind),
+                  onUpdate: (updated) =>
+                      _updateElement(updated.id, (_) => updated),
+                  onDelete: () {
+                    final target = _selected;
+                    if (target == null || target.isRequired) return;
+                    setState(() {
+                      _design = design.copyWith(
+                        elements: design.elements
+                            .where((element) => element.id != target.id)
+                            .toList(),
+                      );
+                      _selectedId = null;
+                    });
+                  },
+                ),
+              ];
+
               return Column(
                 children: [
                   _EditorHeader(
@@ -423,54 +499,50 @@ class _LabelTemplateEditorScreenState
                     onReset: () => _reset(template),
                   ),
                   Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.fromLTRB(18, 4, 18, 28),
-                      children: [
-                        _FormatSwitch(
-                          current: widget.mediaSize,
-                          kind: widget.kind,
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          'Arrastra un elemento para moverlo. Usa la esquina rosa para cambiar su tamaño.',
-                          style: AppTextStyles.subtitle.copyWith(
-                            fontSize: 11.5,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        LabelTemplateCanvas(
-                          design: design,
-                          assets: assets,
-                          selectedId: _selectedId,
-                          onSelect: (id) => setState(() => _selectedId = id),
-                          onMove: _moveElement,
-                          onResize: _resizeElement,
-                        ),
-                        const SizedBox(height: 14),
-                        _ElementToolbar(
-                          onAdd: _showAddMenu,
-                          onImage: _showAssetLibrary,
-                        ),
-                        const SizedBox(height: 14),
-                        _Inspector(
-                          element: selected,
-                          bindings: _bindingsFor(widget.kind),
-                          onUpdate: (updated) =>
-                              _updateElement(updated.id, (_) => updated),
-                          onDelete: () {
-                            final target = _selected;
-                            if (target == null || target.isRequired) return;
-                            setState(() {
-                              _design = design.copyWith(
-                                elements: design.elements
-                                    .where((element) => element.id != target.id)
-                                    .toList(),
-                              );
-                              _selectedId = null;
-                            });
-                          },
-                        ),
-                      ],
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        // Tablet/desktop: canvas y propiedades lado a lado, como
+                        // un editor de verdad — en móvil no cabe sin apretujar.
+                        if (constraints.maxWidth >= _widePaneBreakpoint) {
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                flex: 3,
+                                child: ListView(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    18,
+                                    4,
+                                    18,
+                                    28,
+                                  ),
+                                  children: canvasChildren,
+                                ),
+                              ),
+                              const VerticalDivider(
+                                width: 1,
+                                color: AppColors.lineSoft,
+                              ),
+                              SizedBox(
+                                width: 400,
+                                child: ListView(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    18,
+                                    4,
+                                    18,
+                                    28,
+                                  ),
+                                  children: inspectorChildren,
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+                        return ListView(
+                          padding: const EdgeInsets.fromLTRB(18, 4, 18, 28),
+                          children: [...canvasChildren, ...inspectorChildren],
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -517,6 +589,8 @@ class _EditorHeader extends StatelessWidget {
             children: [
               Text(
                 'Diseñar etiqueta',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.h1.copyWith(fontSize: 21),
               ),
               Text(
@@ -540,75 +614,151 @@ class _EditorHeader extends StatelessWidget {
           icon: const Icon(Symbols.more_horiz, color: AppColors.ink),
         ),
         const SizedBox(width: 2),
-        TextButton(
+        IconButton(
           onPressed: busy || !dirty ? null : onSave,
-          child: const Text('Guardar'),
+          tooltip: 'Guardar',
+          icon: const Icon(Symbols.save),
         ),
         const SizedBox(width: 3),
-        FilledButton(
+        InteractiveBounce(
           onPressed: busy ? null : onPublish,
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.neniDeep,
-            foregroundColor: Colors.white,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: busy ? null : onPublish,
+              borderRadius: AppRadii.pillRadius,
+              child: Ink(
+                height: 40,
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.neni, AppColors.neniDeep],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: AppRadii.pillRadius,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.neniDeep.withValues(alpha: 0.6),
+                      offset: const Offset(0, 10),
+                      blurRadius: 18,
+                      spreadRadius: -8,
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    'Publicar',
+                    style: AppTextStyles.body.copyWith(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
-          child: const Text('Publicar'),
         ),
       ],
     ),
   );
 }
 
-class _FormatSwitch extends StatelessWidget {
-  const _FormatSwitch({required this.current, required this.kind});
+class _FormatSegmented extends StatelessWidget {
+  const _FormatSegmented({required this.current, required this.kind});
   final LabelMediaSize current;
   final LabelTemplateKind kind;
 
   @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      for (final size in LabelMediaSize.values) ...[
-        Expanded(
-          child: _FormatOption(
-            label: size == LabelMediaSize.shipping4x6 ? '4 × 6”' : '50 × 50 mm',
-            active: size == current,
-            onTap: size == current
-                ? null
-                : () => context.go(
-                    '/seller/labels/editor?kind=${kind.api}&mediaSize=${size.api}',
-                  ),
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(5),
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: AppRadii.pillRadius,
+      border: Border.all(color: AppColors.line),
+    ),
+    child: Row(
+      children: [
+        for (final size in LabelMediaSize.values) ...[
+          Expanded(
+            child: _SegOption(
+              label: size == LabelMediaSize.shipping4x6 ? '4 × 6”' : '50 × 50 mm',
+              active: size == current,
+              onTap: size == current
+                  ? null
+                  : () => context.go(
+                      '/seller/labels/editor?kind=${kind.api}&mediaSize=${size.api}',
+                    ),
+            ),
           ),
-        ),
-        if (size != LabelMediaSize.values.last) const SizedBox(width: 8),
+          if (size != LabelMediaSize.values.last) const SizedBox(width: 6),
+        ],
       ],
-    ],
+    ),
   );
 }
 
-class _FormatOption extends StatelessWidget {
-  const _FormatOption({required this.label, required this.active, this.onTap});
+class _SegOption extends StatelessWidget {
+  const _SegOption({required this.label, required this.active, this.onTap});
   final String label;
   final bool active;
   final VoidCallback? onTap;
   @override
   Widget build(BuildContext context) => Material(
-    color: active ? AppColors.neni.withValues(alpha: 0.12) : AppColors.surface,
-    borderRadius: AppRadii.pillRadius,
+    color: Colors.transparent,
     child: InkWell(
       onTap: onTap,
       borderRadius: AppRadii.pillRadius,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 9),
+        decoration: BoxDecoration(
+          color: active ? AppColors.ink : Colors.transparent,
+          borderRadius: AppRadii.pillRadius,
+        ),
         child: Text(
           label,
           textAlign: TextAlign.center,
           style: AppTextStyles.body.copyWith(
-            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-            color: active ? AppColors.neniDeep : AppColors.ink2,
+            fontSize: 12,
+            fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+            color: active ? Colors.white : AppColors.ink2,
           ),
         ),
       ),
     ),
   );
+}
+
+/// Fondo de "mesa de trabajo": puntos neutros sobre los que destaca el lienzo.
+class _DottedBackground extends StatelessWidget {
+  const _DottedBackground({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+    painter: const _DotsPainter(),
+    child: child,
+  );
+}
+
+class _DotsPainter extends CustomPainter {
+  const _DotsPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = AppColors.ink.withValues(alpha: 0.14);
+    const step = 14.0;
+    for (var x = 7.0; x < size.width; x += step) {
+      for (var y = 7.0; y < size.height; y += step) {
+        canvas.drawCircle(Offset(x, y), 1, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DotsPainter oldDelegate) => false;
 }
 
 class _ElementToolbar extends StatelessWidget {
@@ -1165,7 +1315,8 @@ class _AddOption extends StatelessWidget {
 }
 
 class _EditorError extends StatelessWidget {
-  const _EditorError({required this.onBack});
+  const _EditorError({required this.error, required this.onBack});
+  final String error;
   final VoidCallback onBack;
   @override
   Widget build(BuildContext context) => Center(
@@ -1179,7 +1330,16 @@ class _EditorError extends StatelessWidget {
           Text(
             'No pudimos abrir el editor de etiquetas.',
             style: AppTextStyles.subtitle,
+            textAlign: TextAlign.center,
           ),
+          if (error.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              error,
+              style: AppTextStyles.body.copyWith(color: AppColors.ink3),
+              textAlign: TextAlign.center,
+            ),
+          ],
           const SizedBox(height: 15),
           PillButton(
             label: 'Volver a etiquetas',

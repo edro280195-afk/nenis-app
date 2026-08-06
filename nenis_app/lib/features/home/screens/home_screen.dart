@@ -285,7 +285,7 @@ class _ActiveOrderHero extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        'Pedido #${order.orderId}',
+                        'Pedido #${order.displayNumber}',
                         style: AppTextStyles.subtitle.copyWith(
                           color: Colors.white.withValues(alpha: 0.85),
                           fontSize: 11.5,
@@ -514,7 +514,7 @@ class _RecentOrderRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Pedido #${order.orderId}',
+                    'Pedido #${order.displayNumber}',
                     style: AppTextStyles.body.copyWith(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w600,

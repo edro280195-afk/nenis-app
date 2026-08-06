@@ -48,7 +48,7 @@ class BuyerAccountScreen extends ConsumerWidget {
                 onRefresh: () async => ref.invalidate(myClaimedClientsProvider),
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(22, 4, 22, 24),
+                  padding: const EdgeInsets.fromLTRB(22, 4, 22, 120),
                   children: [
                     const _AccountHeader(),
                     const SizedBox(height: 22),
@@ -83,6 +83,13 @@ class BuyerAccountScreen extends ConsumerWidget {
                       title: 'Notificaciones',
                       subtitle: 'Avisos de pedidos, entregas y mensajes',
                       onTap: () => context.push('/notifications'),
+                    ),
+                    _AccountMenuCard(
+                      icon: Symbols.school,
+                      title: 'Ver tutorial de la app',
+                      subtitle: 'Repasa pedidos, tiendas, puntos y avisos',
+                      onTap: () =>
+                          context.push('/onboarding/client?replay=true'),
                     ),
                     const SizedBox(height: 18),
                     _LogoutButton(

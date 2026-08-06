@@ -53,6 +53,8 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
   int _selectedIndex = 0;
   final Set<String> _selectedCandidateKeys = {};
   final Map<int, List<SellerRouteDelivery>> _draftOrders = {};
+  final Map<int, RouteGeometry> _routeGeometries = {};
+  final Set<int> _loadingRouteGeometry = {};
   int? _expandedRouteId;
   RoutePreview? _preview;
   bool _previewing = false;
@@ -153,7 +155,7 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
 
   Widget _buildContent(SellerRoutesWorkspace workspace) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(22, 4, 22, 24),
+      padding: const EdgeInsets.fromLTRB(22, 4, 22, 120),
       children: [
         _buildHeader(),
         const SizedBox(height: 14),
@@ -845,7 +847,9 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
               const SizedBox(height: 13),
               _RouteMapCard(
                 route: route,
-                depot: _depot,
+                depot: _routeDepot(route),
+                geometry: _routeGeometries[route.id],
+                geometryLoading: _loadingRouteGeometry.contains(route.id),
                 showRouteLine: route.status != SellerRouteStatus.completed,
               ),
               const SizedBox(height: 13),
@@ -1095,7 +1099,10 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
     }
   }
 
-  Future<void> _createRoute(SellerRoutesWorkspace workspace) async {
+  Future<void> _createRoute(
+    SellerRoutesWorkspace workspace, {
+    bool force = false,
+  }) async {
     final preview = _preview;
     if (preview == null) return;
 
@@ -1106,7 +1113,11 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
     try {
       final result = await ref
           .read(sellerRoutesRepositoryProvider)
-          .createRoute(_selectedCandidates(workspace), preview.stops);
+          .createRoute(
+            _selectedCandidates(workspace),
+            preview.stops,
+            force: force,
+          );
       if (!mounted) return;
       _selectedCandidateKeys.clear();
       _preview = null;
@@ -1196,7 +1207,7 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
     );
 
     if (confirmed == true && mounted) {
-      await _createRoute(workspace);
+      await _createRoute(workspace, force: true);
     }
   }
 
@@ -1313,11 +1324,35 @@ class _SellerRoutesScreenState extends ConsumerState<SellerRoutesScreen> {
     setState(() => _draftOrders[route.id] = list);
   }
 
-  void _showRouteMap(SellerRoute route) {
+  Future<void> _showRouteMap(SellerRoute route) async {
     setState(() {
       _expandedRouteId = route.id;
       _draftOrders.putIfAbsent(route.id, () => [...route.deliveries]);
     });
+    if (_routeGeometries.containsKey(route.id) ||
+        _loadingRouteGeometry.contains(route.id)) {
+      return;
+    }
+
+    setState(() => _loadingRouteGeometry.add(route.id));
+    try {
+      final geometry = await ref
+          .read(sellerRoutesRepositoryProvider)
+          .getRouteGeometry(route.id);
+      if (!mounted) return;
+      setState(() => _routeGeometries[route.id] = geometry);
+    } catch (error) {
+      _setError(error, 'No pudimos dibujar la ruta por calles.');
+    } finally {
+      if (mounted) setState(() => _loadingRouteGeometry.remove(route.id));
+    }
+  }
+
+  LatLng _routeDepot(SellerRoute route) {
+    final geometry = _routeGeometries[route.id];
+    return geometry == null
+        ? _depot
+        : LatLng(geometry.depotLatitude, geometry.depotLongitude);
   }
 
   Future<void> _copyDriverLink(SellerRoute route) async {
@@ -1378,12 +1413,16 @@ class _RouteMapCard extends ConsumerWidget {
     required this.depot,
     this.preview,
     this.route,
+    this.geometry,
+    this.geometryLoading = false,
     this.showRouteLine = true,
   });
 
   final LatLng depot;
   final RoutePreview? preview;
   final SellerRoute? route;
+  final RouteGeometry? geometry;
+  final bool geometryLoading;
   final bool showRouteLine;
 
   @override
@@ -1414,8 +1453,10 @@ class _RouteMapCard extends ConsumerWidget {
       ),
     };
 
+    final effectivePolyline =
+        preview?.polylineEncoded ?? geometry?.polylineEncoded;
     final polylinePoints = showRouteLine
-        ? _polylinePoints(points)
+        ? _polylinePoints(effectivePolyline)
         : const <LatLng>[];
     final mapsConfigured = ref.watch(googleMapsConfiguredProvider);
     return mapsConfigured.when(
@@ -1443,6 +1484,7 @@ class _RouteMapCard extends ConsumerWidget {
           points: points,
           markers: markers,
           polylinePoints: polylinePoints,
+          geometryLoading: geometryLoading,
         );
       },
     );
@@ -1464,10 +1506,9 @@ class _RouteMapCard extends ConsumerWidget {
         const <LatLng>[];
   }
 
-  List<LatLng> _polylinePoints(List<LatLng> stops) {
-    final encoded = preview?.polylineEncoded;
+  List<LatLng> _polylinePoints(String? encoded) {
     if (encoded != null && encoded.isNotEmpty) return _decodePolyline(encoded);
-    return [depot, ...stops];
+    return const [];
   }
 
   List<LatLng> _decodePolyline(String encoded) {
@@ -1507,11 +1548,13 @@ class _GoogleRouteMap extends StatelessWidget {
     required this.points,
     required this.markers,
     required this.polylinePoints,
+    required this.geometryLoading,
   });
 
   final List<LatLng> points;
   final Set<Marker> markers;
   final List<LatLng> polylinePoints;
+  final bool geometryLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -1519,28 +1562,59 @@ class _GoogleRouteMap extends StatelessWidget {
       borderRadius: AppRadii.softRadius,
       child: SizedBox(
         height: 240,
-        child: GoogleMap(
-          initialCameraPosition: CameraPosition(
-            target: points.first,
-            zoom: 12.5,
-          ),
-          markers: markers,
-          polylines: {
-            if (polylinePoints.length > 1)
-              Polyline(
-                polylineId: const PolylineId('route'),
-                points: polylinePoints,
-                color: AppColors.neniDeep,
-                width: 5,
+        child: Stack(
+          children: [
+            GoogleMap(
+              initialCameraPosition: CameraPosition(
+                target: points.first,
+                zoom: 12.5,
               ),
-          },
-          myLocationButtonEnabled: false,
-          mapToolbarEnabled: false,
-          zoomControlsEnabled: true,
-          zoomGesturesEnabled: true,
-          scrollGesturesEnabled: true,
-          rotateGesturesEnabled: true,
-          liteModeEnabled: false,
+              markers: markers,
+              polylines: {
+                if (polylinePoints.length > 1)
+                  Polyline(
+                    polylineId: const PolylineId('route'),
+                    points: polylinePoints,
+                    color: AppColors.neniDeep,
+                    width: 5,
+                  ),
+              },
+              myLocationButtonEnabled: false,
+              mapToolbarEnabled: false,
+              zoomControlsEnabled: true,
+              zoomGesturesEnabled: true,
+              scrollGesturesEnabled: true,
+              rotateGesturesEnabled: true,
+              liteModeEnabled: false,
+            ),
+            if (geometryLoading)
+              const Positioned(
+                top: 12,
+                right: 12,
+                child: Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(8),
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                ),
+              ),
+            if (!geometryLoading && polylinePoints.length < 2)
+              const Positioned(
+                left: 12,
+                right: 12,
+                bottom: 12,
+                child: Card(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                    child: Text('Trazo vial no disponible para esta ruta.'),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

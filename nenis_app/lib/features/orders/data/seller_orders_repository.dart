@@ -81,6 +81,8 @@ class SellerOrdersRepository {
     String? clientAddress,
     String? alternativeAddress,
     String? deliveryInstructions,
+    double? clientLatitude,
+    double? clientLongitude,
     DateTime? scheduledDeliveryDate,
     int? clientId,
     int? targetOrderId,
@@ -104,6 +106,10 @@ class SellerOrdersRepository {
           if (deliveryInstructions != null &&
               deliveryInstructions.trim().isNotEmpty)
             'deliveryInstructions': deliveryInstructions.trim(),
+          if (clientLatitude != null && clientLongitude != null) ...{
+            'clientLatitude': clientLatitude,
+            'clientLongitude': clientLongitude,
+          },
           'scheduledDeliveryDate': ?scheduledDeliveryDate?.toIso8601String(),
           'clientId': ?clientId,
           'targetOrderId': ?targetOrderId,
@@ -124,10 +130,7 @@ class SellerOrdersRepository {
   /// `GET /api/orders/open?clientId=&name=`. El frontend lo usa para preguntarle
   /// a la dueña si crea un pedido nuevo o agrega a uno existente. Se resuelve por
   /// `clientId` si viene; si no, por `name` (match exact-lower-trim en backend).
-  Future<List<SellerOrder>> getOpenOrders({
-    int? clientId,
-    String? name,
-  }) async {
+  Future<List<SellerOrder>> getOpenOrders({int? clientId, String? name}) async {
     try {
       final res = await _dio.get(
         '/api/orders/open',
@@ -145,7 +148,6 @@ class SellerOrdersRepository {
       );
     }
   }
-
 
   Future<List<SellerClient>> getClients() async {
     try {
@@ -214,6 +216,20 @@ class SellerOrdersRepository {
     } catch (e) {
       throw SellerOrdersException(
         _friendly(e, 'No pudimos cambiar el estatus.'),
+      );
+    }
+  }
+
+  /// Libera un pedido "No entregado" de su ruta anterior y lo regresa a
+  /// Pendiente para poder armarle una ruta nueva, sin perder el motivo/fotos
+  /// del intento fallido (quedan ligados a la ruta original).
+  Future<SellerOrder> releaseForRoute(int id) async {
+    try {
+      final res = await _dio.post('/api/orders/$id/release-for-route');
+      return SellerOrder.fromJson(res.data as Map<String, dynamic>);
+    } catch (e) {
+      throw SellerOrdersException(
+        _friendly(e, 'No pudimos preparar el reintento.'),
       );
     }
   }
@@ -291,6 +307,28 @@ class SellerOrdersRepository {
     } catch (e) {
       throw SellerOrdersException(
         _friendly(e, 'No pudimos registrar el cobro.'),
+      );
+    }
+  }
+
+  /// Fusiona `sourceOrderId` DENTRO de `targetOrderId`: mueve artículos y
+  /// pagos, recalcula el total del destino y deja el de origen como cascarón
+  /// Cancelado. Sirve tanto para dos pedidos de la misma clienta (duplicados)
+  /// como para juntar el pedido de una clienta dentro del de otra (ej.
+  /// "agrega lo de mi hija a mi bolsa"). Devuelve el pedido destino ya fusionado.
+  Future<SellerOrder> mergeOrders({
+    required int targetOrderId,
+    required int sourceOrderId,
+  }) async {
+    try {
+      final res = await _dio.post(
+        '/api/orders/$targetOrderId/merge',
+        data: {'sourceOrderId': sourceOrderId},
+      );
+      return SellerOrder.fromJson(res.data as Map<String, dynamic>);
+    } catch (e) {
+      throw SellerOrdersException(
+        _friendly(e, 'No pudimos fusionar los pedidos.'),
       );
     }
   }

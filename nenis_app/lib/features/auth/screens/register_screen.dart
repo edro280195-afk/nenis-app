@@ -14,6 +14,8 @@ import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/nenis_logo.dart';
 import '../../../shared/widgets/password_field.dart';
 import '../../../shared/widgets/pill_button.dart';
+import '../../subscription/data/subscription_models.dart';
+import '../../subscription/data/subscription_repository.dart';
 import '../widgets/auth_feedback.dart';
 import '../widgets/auth_motion.dart';
 import '../widgets/legal_acceptance.dart';
@@ -141,6 +143,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final AsyncValue<SubscriptionPricing> sellerPricing = _isSeller
+        ? ref.watch(subscriptionPricingProvider)
+        : const AsyncLoading();
+    final sellerPricingReady = !_isSeller || sellerPricing.hasValue;
     return Scaffold(
       backgroundColor: AppColors.surfaceCream,
       body: NeniBackground(
@@ -188,30 +194,29 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             });
                           },
                   ),
+                  if (_isSeller) ...[
+                    const SizedBox(height: 16),
+                    const _SellerTrialNotice(),
+                  ],
                   const SizedBox(height: 20),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: AppTextField(
-                          key: const Key('register-first-name-field'),
-                          controller: _firstName,
-                          label: 'Nombre',
-                          hint: 'Ana',
-                          keyboardType: TextInputType.name,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: AppTextField(
-                          key: const Key('register-last-name-field'),
-                          controller: _lastName,
-                          label: 'Apellido',
-                          hint: 'Lopez',
-                          keyboardType: TextInputType.name,
-                        ),
-                      ),
-                    ],
+                  AppTextField(
+                    key: const Key('register-first-name-field'),
+                    controller: _firstName,
+                    label: 'Nombre',
+                    hint: 'Ana',
+                    keyboardType: TextInputType.name,
+                    textInputAction: TextInputAction.next,
+                    autofillHints: const [AutofillHints.givenName],
+                  ),
+                  const SizedBox(height: 14),
+                  AppTextField(
+                    key: const Key('register-last-name-field'),
+                    controller: _lastName,
+                    label: 'Apellido',
+                    hint: 'Lopez',
+                    keyboardType: TextInputType.name,
+                    textInputAction: TextInputAction.next,
+                    autofillHints: const [AutofillHints.familyName],
                   ),
                   const SizedBox(height: 14),
                   AppTextField(
@@ -237,6 +242,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     textInputAction: TextInputAction.next,
                     autofillHints: const [AutofillHints.telephoneNumber],
                   ),
+                  const SizedBox(height: 10),
+                  _PhoneProtectionNotice(isSeller: _isSeller),
                   const SizedBox(height: 14),
                   PasswordField(
                     key: const Key('register-password-field'),
@@ -288,6 +295,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           )
                         : const SizedBox.shrink(key: ValueKey('client-fields')),
                   ),
+                  if (_isSeller) ...[
+                    const SizedBox(height: 18),
+                    _RegistrationPlans(
+                      pricing: sellerPricing,
+                      onRetry: () =>
+                          ref.invalidate(subscriptionPricingProvider),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   LegalAcceptanceCheckbox(
                     key: const Key('register-legal-checkbox'),
@@ -310,10 +325,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ? const _LoadingButton()
                       : PillButton(
                           label: _isSeller
-                              ? 'Crear tienda y confirmar'
+                              ? 'Iniciar prueba Pro y confirmar'
                               : 'Crear cuenta',
                           icon: Symbols.arrow_forward,
-                          onPressed: _submit,
+                          onPressed: sellerPricingReady ? _submit : null,
                         ),
                   const SizedBox(height: 14),
                   Center(
@@ -342,6 +357,259 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ],
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SellerTrialNotice extends StatelessWidget {
+  const _SellerTrialNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: AppColors.statusDeliveredBg,
+        borderRadius: AppRadii.softRadius,
+        border: Border.all(
+          color: AppColors.statusDeliveredFg.withValues(alpha: 0.24),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Symbols.workspace_premium,
+            color: AppColors.statusDeliveredFg,
+            size: 23,
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '14 días gratis en Pro',
+                  style: AppTextStyles.body.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.statusDeliveredFg,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Por ser tu primera cuenta de vendedora, no pedimos tarjeta ni hacemos un cobro hoy. Al terminar la prueba, tu tienda se bloquea hasta que actives uno de los planes.',
+                  style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PhoneProtectionNotice extends StatelessWidget {
+  const _PhoneProtectionNotice({required this.isSeller});
+
+  final bool isSeller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Symbols.verified_user, size: 17, color: AppColors.ink2),
+        const SizedBox(width: 7),
+        Expanded(
+          child: Text(
+            isSeller
+                ? 'Lo confirmaremos por WhatsApp. La prueba es una sola por identidad y dispositivo.'
+                : 'Lo confirmaremos por WhatsApp para que sólo tú reclames pedidos, historial y puntos.',
+            style: AppTextStyles.subtitle.copyWith(fontSize: 11.5),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RegistrationPlans extends StatelessWidget {
+  const _RegistrationPlans({required this.pricing, required this.onRetry});
+
+  final AsyncValue<SubscriptionPricing> pricing;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Conoce los planes antes de empezar',
+          style: AppTextStyles.h2.copyWith(fontSize: 17),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Durante la prueba tendrás las funciones de Pro. Después eliges el plan que mejor te quede.',
+          style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+        ),
+        const SizedBox(height: 12),
+        pricing.when(
+          loading: () => const _PlansLoading(),
+          error: (_, _) => Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: AppRadii.softRadius,
+              border: Border.all(color: AppColors.line),
+            ),
+            child: Row(
+              children: [
+                const Icon(Symbols.cloud_off, color: AppColors.ink3),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Necesitamos cargar los precios antes de crear tu tienda.',
+                    style: AppTextStyles.body.copyWith(fontSize: 12.5),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Reintentar',
+                  onPressed: onRetry,
+                  icon: const Icon(Symbols.refresh),
+                ),
+              ],
+            ),
+          ),
+          data: (catalog) => Column(
+            children: [
+              for (final plan in catalog.plans)
+                _RegistrationPlanCard(plan: plan),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RegistrationPlanCard extends StatelessWidget {
+  const _RegistrationPlanCard({required this.plan});
+
+  final PlanPrice plan;
+
+  @override
+  Widget build(BuildContext context) {
+    final isPro = plan.planTier == 'Pro';
+    return Container(
+      margin: const EdgeInsets.only(bottom: 9),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isPro ? const Color(0xFFFFEAF2) : AppColors.surface,
+        borderRadius: AppRadii.softRadius,
+        border: Border.all(
+          color: isPro ? AppColors.neni : AppColors.line,
+          width: isPro ? 1.5 : 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: isPro
+                  ? AppColors.neni.withValues(alpha: 0.15)
+                  : AppColors.segTrack,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              isPro ? Symbols.workspace_premium : Symbols.storefront,
+              color: isPro ? AppColors.neniDeep : AppColors.ink2,
+              size: 21,
+            ),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        plan.planTier,
+                        style: AppTextStyles.body.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    if (isPro) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        'TU PRUEBA',
+                        style: AppTextStyles.chip.copyWith(
+                          color: AppColors.neniDeep,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _summary(plan.planTier),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.subtitle.copyWith(fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '\$${plan.monthly.toStringAsFixed(0)}\n${plan.currency}/mes',
+            textAlign: TextAlign.right,
+            style: AppTextStyles.body.copyWith(
+              color: isPro ? AppColors.neniDeep : AppColors.ink,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _summary(String tier) => switch (tier) {
+    'Pro' => 'En vivos, finanzas, tandas, sorteos y POS',
+    'Elite' => 'Todo Pro, C.A.M.I., rutas con tráfico y exportes',
+    _ => 'Pedidos, clientas, rastreo, puntos y 1 repartidor',
+  };
+}
+
+class _PlansLoading extends StatelessWidget {
+  const _PlansLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: List.generate(
+        3,
+        (index) => Container(
+          key: Key('register-plan-loading-$index'),
+          height: 68,
+          margin: const EdgeInsets.only(bottom: 9),
+          decoration: BoxDecoration(
+            color: AppColors.segTrack,
+            borderRadius: AppRadii.softRadius,
           ),
         ),
       ),

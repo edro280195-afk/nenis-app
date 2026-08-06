@@ -86,8 +86,9 @@ class SellerRoutesRepository {
 
   Future<CreateRouteResult> createRoute(
     Iterable<RouteCandidate> candidates,
-    Iterable<RoutePreviewStop> orderedStops,
-  ) async {
+    Iterable<RoutePreviewStop> orderedStops, {
+    bool force = false,
+  }) async {
     final orderIds = <int>[];
     final tandaIds = <String>[];
     for (final candidate in candidates) {
@@ -109,6 +110,7 @@ class SellerRoutesRepository {
           'orderedStopIds': orderedStopIds
               .map((stop) => stop.key)
               .toList(growable: false),
+          'force': force,
         },
       );
       return CreateRouteResult.fromJson(res.data as Map<String, dynamic>);
@@ -123,6 +125,17 @@ class SellerRoutesRepository {
     } catch (e) {
       throw SellerRoutesException(
         _friendly(e, 'No pudimos optimizar la ruta.'),
+      );
+    }
+  }
+
+  Future<RouteGeometry> getRouteGeometry(int routeId) async {
+    try {
+      final response = await _dio.get('/api/routes/$routeId/geometry');
+      return RouteGeometry.fromJson(response.data as Map<String, dynamic>);
+    } catch (e) {
+      throw SellerRoutesException(
+        _friendly(e, 'No pudimos dibujar la ruta por calles.'),
       );
     }
   }

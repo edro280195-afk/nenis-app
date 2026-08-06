@@ -4,12 +4,50 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nenis_app/core/auth/auth_repository.dart';
 import 'package:nenis_app/core/theme/app_theme.dart';
 import 'package:nenis_app/features/auth/screens/register_screen.dart';
+import 'package:nenis_app/features/subscription/data/subscription_models.dart';
+import 'package:nenis_app/features/subscription/data/subscription_repository.dart';
 
 void main() {
   Widget buildSubject({
     FacebookAccountType initialRole = FacebookAccountType.client,
   }) {
     return ProviderScope(
+      overrides: [
+        subscriptionPricingProvider.overrideWith(
+          (ref) async => const SubscriptionPricing(
+            currency: 'MXN',
+            plans: [
+              PlanPrice(
+                planTier: 'Entrada',
+                monthly: 129,
+                quarterly: 348,
+                annual: 1238,
+                quarterlyDiscountPct: 10,
+                annualDiscountPct: 20,
+                currency: 'MXN',
+              ),
+              PlanPrice(
+                planTier: 'Pro',
+                monthly: 250,
+                quarterly: 675,
+                annual: 2400,
+                quarterlyDiscountPct: 10,
+                annualDiscountPct: 20,
+                currency: 'MXN',
+              ),
+              PlanPrice(
+                planTier: 'Elite',
+                monthly: 460,
+                quarterly: 1242,
+                annual: 4416,
+                quarterlyDiscountPct: 10,
+                annualDiscountPct: 20,
+                currency: 'MXN',
+              ),
+            ],
+          ),
+        ),
+      ],
       child: MaterialApp(
         theme: AppTheme.light(),
         home: MediaQuery(
@@ -94,7 +132,12 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const Key('register-city-field')), findsOneWidget);
-    expect(find.text('Crear tienda y confirmar'), findsOneWidget);
+    await tester.pump();
+    expect(find.text('14 días gratis en Pro'), findsOneWidget);
+    expect(find.text('Iniciar prueba Pro y confirmar'), findsOneWidget);
+    expect(find.text('Entrada'), findsOneWidget);
+    expect(find.text('Pro'), findsOneWidget);
+    expect(find.text('Elite'), findsOneWidget);
   });
 
   testWidgets('bloquea el alta si no acepta términos y privacidad', (

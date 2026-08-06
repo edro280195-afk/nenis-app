@@ -28,6 +28,9 @@ class NenisThreadPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (!size.width.isFinite || !size.height.isFinite || size.width <= 0 || size.height <= 0) {
+      return;
+    }
     final path = _buildPath(size);
 
     // ─── Fondo (hilo gris punteado) ───

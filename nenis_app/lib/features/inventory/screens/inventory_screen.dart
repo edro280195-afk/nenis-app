@@ -4,25 +4,27 @@ import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/auth/auth_controller.dart';
+import '../../../core/deeplinks/deep_link_service.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../../core/deeplinks/deep_link_service.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/pill_button.dart';
+import '../../labels/screens/label_print_options_sheet.dart';
+import '../../subscription/data/subscription_repository.dart';
 import '../data/inventory_models.dart';
 import '../data/inventory_repository.dart';
-import '../services/inventory_nfc_service.dart';
-import '../../labels/data/label_print_models.dart';
-import '../../labels/data/label_template_models.dart';
-import '../../labels/screens/label_print_options_sheet.dart';
-import '../../labels/services/label_print_service.dart';
-import '../../subscription/data/subscription_repository.dart';
+import '../widgets/inventory_widgets.dart';
+import 'inventory_sheets.dart';
 
+enum _BoxFilter { all, nfc, noNfc }
+
+/// Resumen de "Mi Bodega": hero con totales, búsqueda, filtros por NFC y
+/// tarjetas de caja. Al tocar una caja abre [InventoryBoxScreen].
 class InventoryScreen extends ConsumerStatefulWidget {
   const InventoryScreen({super.key, this.tagToken});
 
+  /// Token de un deep link NFC (https://app.nenisapp.com/caja/…).
   final String? tagToken;
 
   @override
@@ -30,14 +32,21 @@ class InventoryScreen extends ConsumerStatefulWidget {
 }
 
 class _InventoryScreenState extends ConsumerState<InventoryScreen> {
-  InventoryBox? _box;
-  bool _busy = false;
+  late final TextEditingController _search = TextEditingController();
+  _BoxFilter _filter = _BoxFilter.all;
   String? _loadedToken;
+  bool _busy = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _openTag());
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
   }
 
   void _message(String text, {bool error = false}) {
@@ -52,22 +61,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       );
   }
 
-  Future<void> _openBox(String id) async {
-    setState(() => _busy = true);
-    try {
-      final box = await ref.read(inventoryRepositoryProvider).getBox(id);
-      if (mounted) setState(() => _box = box);
-    } catch (_) {
-      _message('No pudimos abrir esta caja.', error: true);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
   Future<void> _openTag() async {
     final token = widget.tagToken;
-    if (token == null || token == _loadedToken) return;
-
+    if (token == null || token == _loadedToken || !mounted) return;
     _loadedToken = token;
     setState(() => _busy = true);
     try {
@@ -75,28 +71,35 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           .read(inventoryRepositoryProvider)
           .getBoxByToken(token);
       ref.read(pendingInventoryDeepLinkProvider.notifier).clear();
-      if (mounted) setState(() => _box = box);
+      if (!mounted) return;
+      await context.push('/seller/inventory/box/${box.id}');
     } catch (_) {
-      _message(
-        'La tarjeta no pertenece a una caja activa de esta tienda.',
-        error: true,
-      );
+      if (mounted) {
+        _message(
+          'La tarjeta no pertenece a una caja activa de esta tienda.',
+          error: true,
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
   Future<void> _createBox() async {
-    final result = await _boxForm('Nueva caja');
-    if (result == null) return;
-
+    if (_busy) return;
+    final result = await showInventoryBoxFormSheet(
+      context,
+      title: 'Nueva caja',
+    );
+    if (result == null || !mounted) return;
     setState(() => _busy = true);
     try {
       final box = await ref
           .read(inventoryRepositoryProvider)
-          .createBox(code: result.$1, name: result.$2, location: result.$3);
+          .createBox(code: result.code, name: result.name, location: result.location);
       ref.invalidate(inventoryBoxesProvider);
-      if (mounted) setState(() => _box = box);
+      if (!mounted) return;
+      await context.push('/seller/inventory/box/${box.id}');
     } catch (_) {
       _message(
         'No pudimos crear la caja. Revisa que el código sea único.',
@@ -107,561 +110,26 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     }
   }
 
-  Future<void> _addItem() async {
-    final box = _box;
-    if (box == null) return;
-    final result = await _itemForm();
-    if (result == null) return;
-
-    setState(() => _busy = true);
-    try {
-      final updated = await ref
-          .read(inventoryRepositoryProvider)
-          .addItem(
-            box.id,
-            name: result.$1,
-            variant: result.$2,
-            barcode: result.$3,
-            quantity: result.$4,
-          );
-      ref.invalidate(inventoryBoxesProvider);
-      if (mounted) setState(() => _box = updated);
-    } catch (_) {
-      _message('No pudimos guardar este artículo.', error: true);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _adjust(InventoryItem item, int delta) async {
-    if (_busy || item.quantity + delta < 0) return;
-
-    setState(() => _busy = true);
-    try {
-      final updated = await ref
-          .read(inventoryRepositoryProvider)
-          .adjustItem(item.id, delta);
-      ref.invalidate(inventoryBoxesProvider);
-      if (mounted) setState(() => _box = updated);
-    } catch (_) {
-      _message('No pudimos actualizar la existencia.', error: true);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _completeCount() async {
-    final box = _box;
-    if (box == null || box.items.isEmpty || _busy) return;
-    final items = await _countForm(box);
-    if (items == null || !mounted) return;
-
-    setState(() => _busy = true);
-    try {
-      final updated = await ref
-          .read(inventoryRepositoryProvider)
-          .completeCount(box.id, items, note: 'Conteo físico desde Nenis');
-      ref.invalidate(inventoryBoxesProvider);
-      if (mounted) {
-        setState(() => _box = updated);
-        _message('Conteo físico guardado en la bitácora.');
-      }
-    } catch (_) {
-      _message('No pudimos guardar el conteo físico.', error: true);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _transferItem(InventoryItem item) async {
-    final sourceBox = _box;
-    if (sourceBox == null || _busy || item.quantity == 0) return;
-    final boxes = await ref.read(inventoryBoxesProvider.future);
-    final destinations = boxes.where((box) => box.id != sourceBox.id).toList();
-    if (destinations.isEmpty) {
-      _message('Crea otra caja antes de mover mercancía.', error: true);
-      return;
-    }
-    final transfer = await _transferForm(item, destinations);
-    if (transfer == null || !mounted) return;
-
-    setState(() => _busy = true);
-    try {
-      await ref
-          .read(inventoryRepositoryProvider)
-          .transfer(
-            sourceBoxId: sourceBox.id,
-            destinationBoxId: transfer.destinationId,
-            itemId: item.id,
-            quantity: transfer.quantity,
-            note: transfer.note,
-          );
-      final updatedSource = await ref
-          .read(inventoryRepositoryProvider)
-          .getBox(sourceBox.id);
-      ref.invalidate(inventoryBoxesProvider);
-      if (mounted) {
-        setState(() => _box = updatedSource);
-        _message('Mercancía movida y registrada en la bitácora.');
-      }
-    } catch (_) {
-      _message('No pudimos mover este artículo.', error: true);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _bindNfc() async {
-    final box = _box;
-    if (box == null || _busy) return;
-
-    setState(() => _busy = true);
-    try {
-      final tagUid = await InventoryNfcService().writeBoxLink(box.nfcUrl);
-      final updated = await ref
-          .read(inventoryRepositoryProvider)
-          .bindNfc(box.id, tagUid);
-      ref.invalidate(inventoryBoxesProvider);
-      if (mounted) {
-        setState(() => _box = updated);
-        _message('Tarjeta NFC vinculada. Acércala para abrir esta caja.');
-      }
-    } on InventoryNfcException catch (error) {
-      _message(error.message, error: true);
-    } catch (_) {
-      _message('No pudimos vincular la tarjeta NFC.', error: true);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _printLabel({
-    required LabelTemplateKind kind,
-    required String targetId,
-    required String name,
-  }) async {
-    if (_busy) return;
-    final options = await _printOptions();
-    if (options == null || !mounted) return;
-
-    setState(() => _busy = true);
-    InventoryLabelPrint? print;
-    try {
-      print = await ref
-          .read(inventoryRepositoryProvider)
-          .createLabelPrint(
-            kind: kind,
-            targetId: targetId,
-            mediaSize: options.mediaSize,
-            copies: options.copies,
-          );
-      final handedOff = await const LabelPrintService().handOffData(
-        designJson: print.templateVersion.designJson,
-        mediaSize: print.mediaSize,
-        assets: print.assets,
-        documents: [print.data],
-        copies: print.copies,
-        name: 'Etiqueta · $name',
-      );
-      await ref
-          .read(inventoryRepositoryProvider)
-          .updateLabelPrintStatus(
-            print.id,
-            handedOff ? 'SentToSystem' : 'Canceled',
-          );
-      if (mounted) {
-        _message(
-          handedOff
-              ? 'Etiqueta entregada al selector de impresión.'
-              : 'Cancelaste la impresión antes de enviarla.',
-        );
-      }
-    } catch (_) {
-      if (print != null) {
-        try {
-          await ref
-              .read(inventoryRepositoryProvider)
-              .updateLabelPrintStatus(
-                print.id,
-                'Failed',
-                failureReason: 'No se pudo preparar o entregar la etiqueta.',
-              );
-        } catch (_) {}
-      }
-      _message('No pudimos preparar esta etiqueta para imprimir.', error: true);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<({LabelMediaSize mediaSize, int copies})?> _printOptions() async {
-    var mediaSize = LabelMediaSize.square50x50;
-    var copies = 1;
-    return showModalBottomSheet<({LabelMediaSize mediaSize, int copies})>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) => _Sheet(
-          title: 'Imprimir etiqueta',
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Elige el tamaño que ya usas. Nenis no obliga una impresora.',
-                style: AppTextStyles.subtitle,
-              ),
-              const SizedBox(height: 12),
-              SegmentedButton<LabelMediaSize>(
-                segments: const [
-                  ButtonSegment(
-                    value: LabelMediaSize.square50x50,
-                    label: Text('50 × 50 mm'),
-                  ),
-                  ButtonSegment(
-                    value: LabelMediaSize.shipping4x6,
-                    label: Text('4 × 6”'),
-                  ),
-                ],
-                selected: {mediaSize},
-                onSelectionChanged: (value) =>
-                    setSheetState(() => mediaSize = value.first),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Text(
-                    'Copias',
-                    style: AppTextStyles.body.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: copies == 1
-                        ? null
-                        : () => setSheetState(() => copies--),
-                    icon: const Icon(Symbols.remove_circle_outline),
-                  ),
-                  Text('$copies', style: AppTextStyles.h2),
-                  IconButton(
-                    onPressed: copies == 100
-                        ? null
-                        : () => setSheetState(() => copies++),
-                    icon: const Icon(Symbols.add_circle),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              PillButton(
-                label: 'Abrir impresión',
-                icon: Symbols.print,
-                onPressed: () => Navigator.pop(context, (
-                  mediaSize: mediaSize,
-                  copies: copies,
-                )),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<(String, String, String?)?> _boxForm(String title) async {
-    final code = TextEditingController();
-    final name = TextEditingController();
-    final location = TextEditingController();
-
-    final result = await showModalBottomSheet<(String, String, String?)>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => _Sheet(
-        title: title,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: code,
-              decoration: const InputDecoration(
-                labelText: 'Código visible · Ej. B-01',
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: name,
-              decoration: const InputDecoration(labelText: '¿Qué guardarás?'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: location,
-              decoration: const InputDecoration(
-                labelText: 'Ubicación (opcional)',
-              ),
-            ),
-            const SizedBox(height: 20),
-            PillButton(
-              label: 'Crear caja',
-              onPressed: () {
-                if (code.text.trim().isEmpty || name.text.trim().isEmpty) {
-                  return;
-                }
-                Navigator.pop(context, (
-                  code.text.trim(),
-                  name.text.trim(),
-                  location.text.trim().isEmpty ? null : location.text.trim(),
-                ));
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-    code.dispose();
-    name.dispose();
-    location.dispose();
-    return result;
-  }
-
-  Future<(String, String?, String?, int)?> _itemForm() async {
-    final name = TextEditingController();
-    final variant = TextEditingController();
-    final barcode = TextEditingController();
-    final quantity = TextEditingController(text: '1');
-
-    final result = await showModalBottomSheet<(String, String?, String?, int)>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => _Sheet(
-        title: 'Agregar artículo',
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: name,
-              decoration: const InputDecoration(labelText: 'Artículo'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: variant,
-              decoration: const InputDecoration(
-                labelText: 'Talla, color o variante',
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: barcode,
-              decoration: const InputDecoration(
-                labelText: 'Código de barras (opcional)',
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: quantity,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Cantidad'),
-            ),
-            const SizedBox(height: 20),
-            PillButton(
-              label: 'Guardar artículo',
-              onPressed: () {
-                final amount = int.tryParse(quantity.text) ?? 0;
-                if (name.text.trim().isEmpty || amount <= 0) return;
-                Navigator.pop(context, (
-                  name.text.trim(),
-                  variant.text.trim().isEmpty ? null : variant.text.trim(),
-                  barcode.text.trim().isEmpty ? null : barcode.text.trim(),
-                  amount,
-                ));
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-    name.dispose();
-    variant.dispose();
-    barcode.dispose();
-    quantity.dispose();
-    return result;
-  }
-
-  Future<List<Map<String, Object>>?> _countForm(InventoryBox box) async {
-    final quantities = <String, int>{
-      for (final item in box.items) item.id: item.quantity,
-    };
-    return showModalBottomSheet<List<Map<String, Object>>>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) => _Sheet(
-          title: 'Conteo físico · ${box.code}',
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Confirma lo que realmente hay. Cada diferencia quedará registrada.',
-                style: AppTextStyles.subtitle,
-              ),
-              const SizedBox(height: 10),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 310),
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: box.items.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    final item = box.items[index];
-                    final quantity = quantities[item.id] ?? 0;
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(item.name),
-                      subtitle: Text('Sistema: ${item.quantity}'),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            onPressed: quantity == 0
-                                ? null
-                                : () => setSheetState(
-                                    () => quantities[item.id] = quantity - 1,
-                                  ),
-                            icon: const Icon(Symbols.remove_circle_outline),
-                          ),
-                          Text('$quantity', style: AppTextStyles.h2),
-                          IconButton(
-                            onPressed: () => setSheetState(
-                              () => quantities[item.id] = quantity + 1,
-                            ),
-                            icon: const Icon(Symbols.add_circle),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 14),
-              PillButton(
-                label: 'Guardar conteo',
-                icon: Symbols.fact_check,
-                onPressed: () => Navigator.pop(
-                  context,
-                  box.items
-                      .map(
-                        (item) => <String, Object>{
-                          'inventoryItemId': item.id,
-                          'actualQuantity': quantities[item.id] ?? 0,
-                        },
-                      )
-                      .toList(),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<({String destinationId, int quantity, String? note})?> _transferForm(
-    InventoryItem item,
-    List<InventoryBoxSummary> destinations,
-  ) async {
-    var destinationId = destinations.first.id;
-    var quantity = 1;
-    final note = TextEditingController();
-    final result =
-        await showModalBottomSheet<
-          ({String destinationId, int quantity, String? note})
-        >(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (context) => StatefulBuilder(
-            builder: (context, setSheetState) => _Sheet(
-              title: 'Mover ${item.name}',
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButtonFormField<String>(
-                    initialValue: destinationId,
-                    decoration: const InputDecoration(
-                      labelText: 'Caja destino',
-                    ),
-                    items: destinations
-                        .map(
-                          (box) => DropdownMenuItem(
-                            value: box.id,
-                            child: Text('${box.code} · ${box.name}'),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setSheetState(() => destinationId = value);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Text(
-                        'Cantidad',
-                        style: AppTextStyles.body.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        onPressed: quantity == 1
-                            ? null
-                            : () => setSheetState(() => quantity--),
-                        icon: const Icon(Symbols.remove_circle_outline),
-                      ),
-                      Text(
-                        '$quantity de ${item.quantity}',
-                        style: AppTextStyles.h2,
-                      ),
-                      IconButton(
-                        onPressed: quantity == item.quantity
-                            ? null
-                            : () => setSheetState(() => quantity++),
-                        icon: const Icon(Symbols.add_circle),
-                      ),
-                    ],
-                  ),
-                  TextField(
-                    controller: note,
-                    decoration: const InputDecoration(
-                      labelText: 'Motivo (opcional)',
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  PillButton(
-                    label: 'Mover artículos',
-                    icon: Symbols.swap_horiz,
-                    onPressed: () => Navigator.pop(context, (
-                      destinationId: destinationId,
-                      quantity: quantity,
-                      note: note.text.trim().isEmpty ? null : note.text.trim(),
-                    )),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-    note.dispose();
-    return result;
+  List<InventoryBoxSummary> _visible(List<InventoryBoxSummary> boxes) {
+    final query = _search.text.trim().toLowerCase();
+    return boxes.where((box) {
+      final matchesQuery = query.isEmpty ||
+          box.code.toLowerCase().contains(query) ||
+          box.name.toLowerCase().contains(query) ||
+          (box.location?.toLowerCase().contains(query) ?? false);
+      if (!matchesQuery) return false;
+      return switch (_filter) {
+        _BoxFilter.all => true,
+        _BoxFilter.nfc => box.isNfcBound,
+        _BoxFilter.noNfc => !box.isNfcBound,
+      };
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     final boxes = ref.watch(inventoryBoxesProvider);
     final session = ref.watch(authControllerProvider).asData?.value;
-    final canDesignLabels = session?.canManageLabels ?? false;
     final activePlan = ref
         .watch(subscriptionStatusProvider)
         .asData
@@ -669,6 +137,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
         .effectivePlan;
     final unlocked =
         activePlan == null || activePlan == 'Pro' || activePlan == 'Elite';
+    final canManageLabels = session?.canManageLabels ?? false;
+
     return Scaffold(
       backgroundColor: AppColors.surfaceCream,
       body: NeniBackground(
@@ -680,12 +150,14 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                 padding: const EdgeInsets.fromLTRB(18, 8, 18, 10),
                 child: Row(
                   children: [
-                    IconButton(
-                      onPressed: () => context.canPop()
-                          ? context.pop()
-                          : context.go('/seller/labels'),
-                      icon: const Icon(Symbols.arrow_back),
-                    ),
+                    if (context.canPop())
+                      PillIconButton(
+                        icon: Icons.adaptive.arrow_back,
+                        onPressed: () => context.pop(),
+                      )
+                    else
+                      const SizedBox.shrink(),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -701,22 +173,20 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                         ],
                       ),
                     ),
-                    IconButton(
+                    PillIconButton(
+                      icon: Symbols.add_box,
                       onPressed: _busy || !unlocked ? null : _createBox,
-                      icon: const Icon(Symbols.add_box),
                     ),
                   ],
                 ),
               ),
               Expanded(
                 child: !unlocked
-                    ? const Padding(
-                        padding: EdgeInsets.all(18),
-                        child: Center(child: LabelFeatureLockedView()),
-                      )
+                    ? const Center(child: LabelFeatureLockedView())
                     : boxes.when(
-                        loading: () =>
-                            const Center(child: CircularProgressIndicator()),
+                        loading: () => const Center(
+                          child: CircularProgressIndicator(),
+                        ),
                         error: (_, _) => Center(
                           child: PillButton(
                             label: 'Reintentar',
@@ -724,56 +194,22 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                                 ref.invalidate(inventoryBoxesProvider),
                           ),
                         ),
-                        data: (items) => Row(
-                          children: [
-                            SizedBox(
-                              width: 142,
-                              child: ListView(
-                                padding: const EdgeInsets.fromLTRB(
-                                  12,
-                                  4,
-                                  8,
-                                  100,
-                                ),
-                                children: items
-                                    .map(
-                                      (item) => _BoxTile(
-                                        item: item,
-                                        selected: item.id == _box?.id,
-                                        onTap: () => _openBox(item.id),
-                                      ),
-                                    )
-                                    .toList(),
-                              ),
-                            ),
-                            Expanded(
-                              child: _box == null
-                                  ? const _EmptyBox()
-                                  : _BoxDetail(
-                                      box: _box!,
-                                      busy: _busy,
-                                      onAdd: _addItem,
-                                      onBind: _bindNfc,
-                                      onAdjust: _adjust,
-                                      onCount: _completeCount,
-                                      onTransfer: _transferItem,
-                                      onPrintBox: () => _printLabel(
-                                        kind: LabelTemplateKind.inventoryBox,
-                                        targetId: _box!.id,
-                                        name: _box!.code,
-                                      ),
-                                      onPrintItem: (item) => _printLabel(
-                                        kind: LabelTemplateKind.inventoryItem,
-                                        targetId: item.id,
-                                        name: item.name,
-                                      ),
-                                      canDesignLabels: canDesignLabels,
-                                      onDesign: () => context.push(
-                                        '/seller/labels/editor?kind=InventoryBox&mediaSize=Square50x50',
-                                      ),
-                                    ),
-                            ),
-                          ],
+                        data: (items) => _ResumenBody(
+                          boxes: _visible(items),
+                          allCount: items.length,
+                          nfcCount: items.where((b) => b.isNfcBound).length,
+                          noNfcCount:
+                              items.where((b) => !b.isNfcBound).length,
+                          filter: _filter,
+                          query: _search.text,
+                          onSearchChanged: (value) => setState(() {}),
+                          onFilterChanged: (filter) =>
+                              setState(() => _filter = filter),
+                          onBoxTap: (box) => context
+                              .push('/seller/inventory/box/${box.id}'),
+                          onCreateBox: _createBox,
+                          busy: _busy,
+                          canDesignLabels: canManageLabels,
                         ),
                       ),
               ),
@@ -785,254 +221,291 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   }
 }
 
-class _BoxTile extends StatelessWidget {
-  const _BoxTile({
-    required this.item,
-    required this.selected,
-    required this.onTap,
+class _ResumenBody extends StatelessWidget {
+  const _ResumenBody({
+    required this.boxes,
+    required this.allCount,
+    required this.nfcCount,
+    required this.noNfcCount,
+    required this.filter,
+    required this.query,
+    required this.onSearchChanged,
+    required this.onFilterChanged,
+    required this.onBoxTap,
+    required this.onCreateBox,
+    required this.busy,
+    required this.canDesignLabels,
   });
 
-  final InventoryBoxSummary item;
-  final bool selected;
-  final VoidCallback onTap;
+  final List<InventoryBoxSummary> boxes;
+  final int allCount;
+  final int nfcCount;
+  final int noNfcCount;
+  final _BoxFilter filter;
+  final String query;
+  final ValueChanged<String> onSearchChanged;
+  final ValueChanged<_BoxFilter> onFilterChanged;
+  final ValueChanged<InventoryBoxSummary> onBoxTap;
+  final VoidCallback onCreateBox;
+  final bool busy;
+  final bool canDesignLabels;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Material(
-      color: selected
-          ? AppColors.neni.withValues(alpha: .14)
-          : AppColors.surface,
-      borderRadius: AppRadii.softRadius,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: AppRadii.softRadius,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context) {
+    final articleTypes = boxes.fold<int>(
+      0,
+      (sum, box) => sum + box.articleTypesCount,
+    );
+    final filteredByNfc =
+        filter == _BoxFilter.all
+        ? boxes
+        : boxes
+              .where((b) =>
+                  filter == _BoxFilter.nfc ? b.isNfcBound : !b.isNfcBound)
+              .toList();
+    final hasBoxes = filteredByNfc.isNotEmpty;
+    final onlyNfcLabel = filter == _BoxFilter.noNfc ? 'Vincular NFC' : 'NFC';
+
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(18, 6, 18, 120),
             children: [
-              const Icon(Symbols.inventory_2, color: AppColors.neniDeep),
-              const SizedBox(height: 7),
-              Text(
-                item.code,
-                style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w800),
+              InventoryHero(
+                eyebrow: 'En bodega ahora',
+                headline: _formatThousands(
+                  filteredByNfc.fold(0, (sum, b) => sum + b.totalUnits),
+                ),
+                headlineSuffix: 'piezas',
+                sub: '${_plural(articleTypes, 'artículo', 'artículos')} '
+                    'repartidos en ${_plural(filteredByNfc.length, 'caja', 'cajas')}',
+                chips: [
+                  InventoryGhostChip(
+                    icon: Symbols.schedule,
+                    label: boxes.isEmpty
+                        ? 'Aún sin cajas'
+                        : 'Actualizado ${timeAgo(_newestUpdate())}',
+                  ),
+                  InventoryGhostChip(
+                    icon: Symbols.nfc,
+                    label: onlyNfcLabel,
+                    onTap: () => onFilterChanged(
+                      filter == _BoxFilter.noNfc
+                          ? _BoxFilter.all
+                          : _BoxFilter.noNfc,
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                item.name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.subtitle.copyWith(fontSize: 11),
+              const SizedBox(height: 14),
+              _SearchField(
+                query: query,
+                onChanged: onSearchChanged,
               ),
-              const SizedBox(height: 5),
-              Text(
-                '${item.totalUnits} piezas${item.isNfcBound ? ' · NFC' : ''}',
-                style: AppTextStyles.subtitle.copyWith(fontSize: 10),
+              const SizedBox(height: 12),
+              InventoryStatRow(
+                stats: [
+                  (value: '$allCount', label: 'Cajas'),
+                  (value: _formatThousands(
+                    boxes.fold(0, (sum, b) => sum + b.articleTypesCount),
+                  ), label: 'Artículos'),
+                  (value: '$noNfcCount', label: 'Sin NFC'),
+                ],
               ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  InventoryFilterChip(
+                    label: 'Todas · $allCount',
+                    selected: filter == _BoxFilter.all,
+                    onTap: () => onFilterChanged(_BoxFilter.all),
+                  ),
+                  InventoryFilterChip(
+                    label: 'Con NFC · $nfcCount',
+                    selected: filter == _BoxFilter.nfc,
+                    onTap: () => onFilterChanged(_BoxFilter.nfc),
+                  ),
+                  InventoryFilterChip(
+                    label: 'Sin NFC · $noNfcCount',
+                    selected: filter == _BoxFilter.noNfc,
+                    onTap: () => onFilterChanged(_BoxFilter.noNfc),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              InventorySectionHeader(
+                icon: Symbols.inventory_2,
+                title: _plural(filteredByNfc.length, 'caja', 'cajas'),
+                actionLabel: canDesignLabels ? 'Diseñar' : null,
+                onAction: canDesignLabels
+                    ? () => context.push(
+                        '/seller/labels/editor?kind=InventoryBox&mediaSize=Square50x50',
+                      )
+                    : null,
+              ),
+              if (hasBoxes) ...[
+                const SizedBox(height: 9),
+                for (final box in filteredByNfc) ...[
+                  InventoryBoxCard(box: box, onTap: () => onBoxTap(box)),
+                  const SizedBox(height: 9),
+                ],
+              ] else ...[
+                const SizedBox(height: 20),
+                const _EmptyResumen(),
+              ],
             ],
           ),
         ),
-      ),
-    ),
-  );
+        _DockedResumen(
+          boxesCount: filteredByNfc.length,
+          nfcCount: filteredByNfc.where((b) => b.isNfcBound).length,
+          pendingNfc: noNfcCount,
+          onNewBox: onCreateBox,
+          busy: busy,
+        ),
+      ],
+    );
+  }
+
+  DateTime _newestUpdate() {
+    var newest = DateTime.fromMillisecondsSinceEpoch(0);
+    for (final box in boxes) {
+      if (box.updatedAt.isAfter(newest)) newest = box.updatedAt;
+    }
+    return newest;
+  }
 }
 
-class _EmptyBox extends StatelessWidget {
-  const _EmptyBox();
+class _SearchField extends StatelessWidget {
+  const _SearchField({required this.query, required this.onChanged});
+
+  final String query;
+  final ValueChanged<String> onChanged;
 
   @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(32),
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.line),
+        boxShadow: AppShadows.small,
+      ),
+      child: TextField(
+        onChanged: onChanged,
+        decoration: const InputDecoration(
+          hintText: 'Buscar caja, artículo o código…',
+          prefixIcon: Icon(Symbols.search, size: 20, color: AppColors.ink3),
+          border: InputBorder.none,
+          isDense: true,
+          contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyResumen extends StatelessWidget {
+  const _EmptyResumen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Symbols.inventory_2, size: 54, color: AppColors.lavender),
+          const Icon(
+            Symbols.inventory_2,
+            size: 54,
+            color: AppColors.lavender,
+          ),
           const SizedBox(height: 13),
           Text('Todo tiene su cajita', style: AppTextStyles.h2),
           const SizedBox(height: 6),
           Text(
-            'Crea o abre una caja para organizar tu mercancía.',
+            'Crea una caja para organizar tu mercancía y vincular sus tarjetas NFC.',
             textAlign: TextAlign.center,
             style: AppTextStyles.subtitle,
           ),
         ],
       ),
-    ),
-  );
+    );
+  }
 }
 
-class _BoxDetail extends StatelessWidget {
-  const _BoxDetail({
-    required this.box,
+class _DockedResumen extends StatelessWidget {
+  const _DockedResumen({
+    required this.boxesCount,
+    required this.nfcCount,
+    required this.pendingNfc,
+    required this.onNewBox,
     required this.busy,
-    required this.onAdd,
-    required this.onBind,
-    required this.onAdjust,
-    required this.onCount,
-    required this.onTransfer,
-    required this.onPrintBox,
-    required this.onPrintItem,
-    required this.canDesignLabels,
-    required this.onDesign,
   });
 
-  final InventoryBox box;
+  final int boxesCount;
+  final int nfcCount;
+  final int pendingNfc;
+  final VoidCallback onNewBox;
   final bool busy;
-  final VoidCallback onAdd;
-  final VoidCallback onBind;
-  final void Function(InventoryItem, int) onAdjust;
-  final VoidCallback onCount;
-  final ValueChanged<InventoryItem> onTransfer;
-  final VoidCallback onPrintBox;
-  final ValueChanged<InventoryItem> onPrintItem;
-  final bool canDesignLabels;
-  final VoidCallback onDesign;
 
   @override
-  Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.fromLTRB(12, 4, 18, 110),
-    children: [
-      Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: AppRadii.cardRadius,
-          boxShadow: AppShadows.small,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              box.code.toUpperCase(),
-              style: AppTextStyles.eyebrow(AppColors.neniDeep),
-            ),
-            Text(box.name, style: AppTextStyles.h2),
-            if (box.location != null)
-              Text(box.location!, style: AppTextStyles.subtitle),
-            const SizedBox(height: 13),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                PillButton(
-                  label: box.isNfcBound ? 'NFC vinculada' : 'Vincular NFC',
-                  onPressed: busy || box.isNfcBound ? null : onBind,
-                  icon: Symbols.nfc,
-                  expand: false,
-                ),
-                if (canDesignLabels)
-                  OutlinedButton.icon(
-                    onPressed: onDesign,
-                    icon: const Icon(Symbols.design_services),
-                    label: const Text('Diseñar'),
-                  ),
-                OutlinedButton.icon(
-                  onPressed: busy ? null : onPrintBox,
-                  icon: const Icon(Symbols.print),
-                  label: const Text('Imprimir'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: busy || box.items.isEmpty ? null : onCount,
-                  icon: const Icon(Symbols.fact_check),
-                  label: const Text('Conteo'),
-                ),
-              ],
-            ),
-          ],
-        ),
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 16),
+      decoration: const BoxDecoration(
+        color: AppColors.surfaceCream,
+        border: Border(top: BorderSide(color: AppColors.line)),
       ),
-      const SizedBox(height: 16),
-      Row(
-        children: [
-          Text(
-            'Artículos (${box.items.length})',
-            style: AppTextStyles.h2.copyWith(fontSize: 17),
-          ),
-          const Spacer(),
-          TextButton.icon(
-            onPressed: busy ? null : onAdd,
-            icon: const Icon(Symbols.add),
-            label: const Text('Agregar'),
-          ),
-        ],
-      ),
-      ...box.items.map(
-        (item) => Card(
-          child: ListTile(
-            title: Text(item.name),
-            subtitle: Text(
-              '${item.variant ?? 'Sin variante'} · ${item.barcode ?? item.labelCode}',
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  onPressed: busy || item.quantity == 0
-                      ? null
-                      : () => onAdjust(item, -1),
-                  icon: const Icon(Symbols.remove_circle_outline),
-                ),
-                Text(
-                  '${item.quantity}',
-                  style: AppTextStyles.body.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                IconButton(
-                  onPressed: busy ? null : () => onAdjust(item, 1),
-                  icon: const Icon(Symbols.add_circle),
-                ),
-                IconButton(
-                  onPressed: busy ? null : () => onPrintItem(item),
-                  icon: const Icon(Symbols.print),
-                  tooltip: 'Imprimir etiqueta del artículo',
-                ),
-                IconButton(
-                  onPressed: busy || item.quantity == 0
-                      ? null
-                      : () => onTransfer(item),
-                  icon: const Icon(Symbols.swap_horiz),
-                  tooltip: 'Mover a otra caja',
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    ],
-  );
-}
-
-class _Sheet extends StatelessWidget {
-  const _Sheet({required this.title, required this.child});
-
-  final String title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: EdgeInsets.fromLTRB(
-      20,
-      20,
-      20,
-      MediaQuery.viewInsetsOf(context).bottom + 24,
-    ),
-    child: Material(
-      color: AppColors.surfaceCream,
-      borderRadius: AppRadii.cardRadius,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
+      child: SafeArea(
+        top: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: AppTextStyles.h2),
-            const SizedBox(height: 16),
-            child,
+            Padding(
+              padding: const EdgeInsets.only(bottom: 9),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '$boxesCount ${boxesCount == 1 ? 'caja' : 'cajas'} · '
+                      '$nfcCount con tarjeta NFC',
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '$pendingNfc '
+                    '${pendingNfc == 1 ? 'pendiente' : 'pendientes'} de vincular',
+                    style: AppTextStyles.subtitle.copyWith(fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+            PillButton(
+              label: 'Nueva caja',
+              icon: Symbols.add_box,
+              onPressed: busy ? null : onNewBox,
+            ),
           ],
         ),
       ),
-    ),
-  );
+    );
+  }
+}
+
+String _plural(int count, String singular, String plural) =>
+    '$count ${count == 1 ? singular : plural}';
+
+String _formatThousands(int value) {
+  final digits = value.toString();
+  final buffer = StringBuffer();
+  for (var index = 0; index < digits.length; index++) {
+    if (index > 0 && (digits.length - index) % 3 == 0) buffer.write(',');
+    buffer.write(digits[index]);
+  }
+  return buffer.toString();
 }

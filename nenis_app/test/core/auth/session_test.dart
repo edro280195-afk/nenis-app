@@ -37,6 +37,45 @@ void main() {
       expect(_session(role: 'Scaner').canManageStoreEngagement, isFalse);
     });
   });
+
+  test('lee y conserva el estado de onboarding del servidor', () {
+    final session = Session.fromLoginJson({
+      'token': 'token',
+      'accountId': 7,
+      'name': 'Ana',
+      'role': 'None',
+      'expiresAt': DateTime.now()
+          .add(const Duration(days: 1))
+          .toIso8601String(),
+      'memberships': <Object>[],
+      'onboarding': {
+        'buyerCompleted': true,
+        'sellerCompleted': false,
+        'hasVerifiedPhone': true,
+      },
+    });
+
+    expect(session.onboarding.buyerCompleted, isTrue);
+    expect(session.onboarding.sellerCompleted, isFalse);
+    expect(session.onboarding.hasVerifiedPhone, isTrue);
+    expect(Session.decode(session.encode()).onboarding.buyerCompleted, isTrue);
+  });
+
+  test('una respuesta de API anterior no bloquea la navegación', () {
+    final session = Session.fromLoginJson({
+      'token': 'token',
+      'accountId': 8,
+      'name': 'Ana',
+      'role': 'None',
+      'expiresAt': DateTime.now()
+          .add(const Duration(days: 1))
+          .toIso8601String(),
+      'memberships': <Object>[],
+    });
+
+    expect(session.onboarding.buyerCompleted, isTrue);
+    expect(session.onboarding.sellerCompleted, isTrue);
+  });
 }
 
 Session _session({required String role}) => _baseSession(

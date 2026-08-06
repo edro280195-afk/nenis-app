@@ -455,3 +455,30 @@ class SellerRoutesWorkspace {
       .where((r) => r.status == SellerRouteStatus.completed)
       .toList(growable: false);
 }
+
+class RouteGeometry {
+  const RouteGeometry({
+    this.polylineEncoded,
+    required this.depotLatitude,
+    required this.depotLongitude,
+    required this.source,
+    this.distanceMeters = 0,
+    this.durationSeconds = 0,
+  });
+
+  final String? polylineEncoded;
+  final double depotLatitude;
+  final double depotLongitude;
+  final String source;
+  final int distanceMeters;
+  final int durationSeconds;
+
+  factory RouteGeometry.fromJson(Map<String, dynamic> json) => RouteGeometry(
+    polylineEncoded: json['polylineEncoded'] as String?,
+    depotLatitude: _d(json['depotLatitude']),
+    depotLongitude: _d(json['depotLongitude']),
+    source: (json['source'] ?? '') as String,
+    distanceMeters: _i(json['distanceMeters']),
+    durationSeconds: _i(json['durationSeconds']),
+  );
+}

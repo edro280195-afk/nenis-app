@@ -260,6 +260,22 @@ class AuthRepository {
 
   final Dio _dio;
 
+  Future<AccountOnboarding> completeOnboarding(String role) async {
+    try {
+      final response = await _dio.put(
+        '/api/onboarding/complete',
+        data: {'role': role},
+      );
+      return AccountOnboarding.fromJson(
+        (response.data as Map).cast<String, dynamic>(),
+      );
+    } on DioException catch (e) {
+      throw AuthException(
+        _message(e, 'No pudimos guardar el recorrido. Intenta de nuevo.'),
+      );
+    }
+  }
+
   /// Alta de la compradora: nombre, apellido, correo, teléfono y contraseña.
   /// El backend envía un código por WhatsApp que se confirma en [confirmPhone].
   Future<OtpRequestResult> registerPhone({

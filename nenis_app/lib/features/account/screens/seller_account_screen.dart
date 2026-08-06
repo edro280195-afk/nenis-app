@@ -50,7 +50,7 @@ class SellerAccountScreen extends ConsumerWidget {
           bottom: false,
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(22, 4, 22, 28),
+            padding: const EdgeInsets.fromLTRB(22, 4, 22, 120),
             children: [
               _SellerHeader(
                 title: 'Mi negocio',
@@ -130,6 +130,21 @@ class SellerAccountScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 10),
               _SellerMenuTile(
+                icon: Symbols.sell,
+                title: 'Etiquetas e impresión',
+                subtitle:
+                    'Diseña y reimprime etiquetas de bolsas e inventario.',
+                onTap: () => context.push('/seller/labels'),
+              ),
+              const SizedBox(height: 10),
+              _SellerMenuTile(
+                icon: Symbols.inventory_2,
+                title: 'Bodega',
+                subtitle: 'Cajas y artículos con etiquetas NFC.',
+                onTap: () => context.push('/seller/inventory'),
+              ),
+              const SizedBox(height: 10),
+              _SellerMenuTile(
                 icon: Symbols.groups,
                 title: 'Equipo de reparto',
                 subtitle: 'Permisos del chofer y mensajes de ruta.',
@@ -141,6 +156,13 @@ class SellerAccountScreen extends ConsumerWidget {
                 title: 'Preferencias',
                 subtitle: 'Alertas, mensajes y operación diaria.',
                 onTap: () => context.push('/seller/settings/preferences'),
+              ),
+              const SizedBox(height: 10),
+              _SellerMenuTile(
+                icon: Symbols.school,
+                title: 'Ver tutorial de la app',
+                subtitle: 'Repasa pedidos, clientas, rutas y tu plan.',
+                onTap: () => context.push('/onboarding/seller?replay=true'),
               ),
               const SizedBox(height: 22),
               PillButton(
@@ -251,20 +273,30 @@ class _SellerHeader extends StatelessWidget {
             ],
           ),
         ),
-        Container(
-          width: 44,
-          height: 44,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.line),
-            boxShadow: AppShadows.small,
-          ),
-          child: const Icon(
-            Symbols.notifications,
-            size: 22,
-            color: AppColors.ink,
+        Material(
+          color: Colors.transparent,
+          shape: const CircleBorder(),
+          clipBehavior: Clip.antiAlias,
+          // Hallazgo QA 2026-08-05: esta campanita no tenía onTap — se veía
+          // igual a la de Inicio (círculo, sombra, ícono) pero no hacía nada
+          // al tocarla. Mismo destino que la de SellerHomeScreen.
+          child: InkWell(
+            onTap: () => context.push('/notifications'),
+            child: Ink(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.line),
+                boxShadow: AppShadows.small,
+              ),
+              child: const Icon(
+                Symbols.notifications,
+                size: 22,
+                color: AppColors.ink,
+              ),
+            ),
           ),
         ),
       ],

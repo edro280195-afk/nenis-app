@@ -34,6 +34,7 @@ class BuyerStore {
 class BuyerActiveOrder {
   const BuyerActiveOrder({
     required this.orderId,
+    required this.orderNumber,
     required this.businessId,
     required this.businessName,
     required this.brandPrimaryColor,
@@ -44,6 +45,7 @@ class BuyerActiveOrder {
   });
 
   final int orderId;
+  final int orderNumber;
   final int businessId;
   final String businessName;
   final String brandPrimaryColor;
@@ -51,9 +53,11 @@ class BuyerActiveOrder {
   final double total;
   final String? accessToken;
   final DateTime? scheduledDeliveryDate;
+  int get displayNumber => orderNumber > 0 ? orderNumber : orderId;
 
   factory BuyerActiveOrder.fromJson(Map<String, dynamic> j) => BuyerActiveOrder(
         orderId: (j['orderId'] as num).toInt(),
+        orderNumber: (j['orderNumber'] as num?)?.toInt() ?? 0,
         businessId: (j['businessId'] as num).toInt(),
         businessName: (j['businessName'] ?? '') as String,
         brandPrimaryColor: (j['brandPrimaryColor'] ?? '#FB6F9C') as String,
@@ -69,6 +73,7 @@ class BuyerActiveOrder {
 class BuyerRecentOrder {
   const BuyerRecentOrder({
     required this.orderId,
+    required this.orderNumber,
     required this.businessId,
     required this.businessName,
     required this.brandPrimaryColor,
@@ -80,6 +85,7 @@ class BuyerRecentOrder {
   });
 
   final int orderId;
+  final int orderNumber;
   final int businessId;
   final String businessName;
   final String brandPrimaryColor;
@@ -88,9 +94,11 @@ class BuyerRecentOrder {
   final double total;
   final DateTime createdAt;
   final String? accessToken;
+  int get displayNumber => orderNumber > 0 ? orderNumber : orderId;
 
   factory BuyerRecentOrder.fromJson(Map<String, dynamic> j) => BuyerRecentOrder(
         orderId: (j['orderId'] as num).toInt(),
+        orderNumber: (j['orderNumber'] as num?)?.toInt() ?? 0,
         businessId: (j['businessId'] as num).toInt(),
         businessName: (j['businessName'] ?? '') as String,
         brandPrimaryColor: (j['brandPrimaryColor'] ?? '#FB6F9C') as String,

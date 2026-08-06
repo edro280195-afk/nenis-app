@@ -47,70 +47,64 @@ class SellerHomeScreen extends ConsumerWidget {
       body: NeniBackground(
         child: SafeArea(
           bottom: false,
-          child: Stack(
-            children: [
-              RefreshIndicator(
-                color: AppColors.neniDeep,
-                onRefresh: () async {
-                  ref.invalidate(sellerDashboardProvider);
-                  await ref.read(sellerDashboardProvider.future);
-                },
-                child: CustomScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: _AppBar(
-                        session: session,
-                        businessName: businessName,
-                        logoInitial: logoInitial,
-                        hasMultipleBusinesses: hasMultipleBusinesses,
-                        onBell: () => context.push('/notifications'),
-                      ),
-                    ),
-                    async.when(
-                      loading: () => const SliverFillRemaining(
-                        hasScrollBody: false,
-                        child: _SellerHomeLoading(),
-                      ),
-                      error: (e, _) => SliverFillRemaining(
-                        hasScrollBody: false,
-                        child: _ErrorState(
-                          message: e.toString(),
-                          onRetry: () =>
-                              ref.invalidate(sellerDashboardProvider),
-                        ),
-                      ),
-                      data: (d) => SliverPadding(
-                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
-                        sliver: SliverList(
-                          delegate: SliverChildListDelegate([
-                            _Greeting(
-                              firstName: firstName,
-                              hasActivePeriod: d.activePeriod != null,
-                            ),
-                            const SizedBox(height: 16),
-                            if (d.activePeriod != null) ...[
-                              _CorteCard(period: d.activePeriod!),
-                              const SizedBox(height: 14),
-                            ],
-                            _KpiGrid(dashboard: d),
-                            const SizedBox(height: 16),
-                            _SalesChartCard(data: d.salesByMonth),
-                            const SizedBox(height: 20),
-                            _RecentActivity(orders: d.recentOrders),
-                          ]),
-                        ),
-                      ),
-                    ),
-                  ],
+          child: RefreshIndicator(
+            color: AppColors.neniDeep,
+            onRefresh: () async {
+              ref.invalidate(sellerDashboardProvider);
+              await ref.read(sellerDashboardProvider.future);
+            },
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: _AppBar(
+                    session: session,
+                    businessName: businessName,
+                    logoInitial: logoInitial,
+                    hasMultipleBusinesses: hasMultipleBusinesses,
+                    onBell: () => context.push('/notifications'),
+                  ),
                 ),
-              ),
-              Positioned(
-                right: 20,
-                bottom: 16,
-                child: _Fab(onTap: () => context.push('/orders/new')),
-              ),
-            ],
+                async.when(
+                  loading: () => const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: _SellerHomeLoading(),
+                  ),
+                  error: (e, _) => SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: _ErrorState(
+                      message: e.toString(),
+                      onRetry: () => ref.invalidate(sellerDashboardProvider),
+                    ),
+                  ),
+                  data: (d) => SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 140),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        _Greeting(
+                          firstName: firstName,
+                          hasActivePeriod: d.activePeriod != null,
+                        ),
+                        const SizedBox(height: 10),
+                        _CreateOrderAction(
+                          onTap: () => context.push('/orders/new'),
+                        ),
+                        const SizedBox(height: 16),
+                        if (d.activePeriod != null) ...[
+                          _CorteCard(period: d.activePeriod!),
+                          const SizedBox(height: 14),
+                        ],
+                        _KpiGrid(dashboard: d),
+                        const SizedBox(height: 16),
+                        _SalesChartCard(data: d.salesByMonth),
+                        const SizedBox(height: 20),
+                        _RecentActivity(orders: d.recentOrders),
+                      ]),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -144,7 +138,9 @@ class _AppBar extends ConsumerWidget {
       builder: (ctx) => _BusinessPickerSheet(memberships: session.memberships),
     );
     if (chosen == null) return;
-    ref.read(authControllerProvider.notifier).setActiveBusiness(chosen.businessId);
+    ref
+        .read(authControllerProvider.notifier)
+        .setActiveBusiness(chosen.businessId);
     // Al cambiar de negocio, los providers cacheados con el header anterior
     // quedan stale. Invalidamos el dashboard (lo que muestra esta pantalla);
     // el resto de pantallas son autoDispose y se recargan al navegar.
@@ -154,7 +150,8 @@ class _AppBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final unread = ref.watch(unreadNotificationsCountProvider).asData?.value ?? 0;
+    final unread =
+        ref.watch(unreadNotificationsCountProvider).asData?.value ?? 0;
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 6, 18, 0),
       child: Row(
@@ -371,10 +368,7 @@ class _BusinessPickerSheet extends StatelessWidget {
                           ],
                         ),
                       ),
-                      const Icon(
-                        Symbols.chevron_right,
-                        color: AppColors.ink3,
-                      ),
+                      const Icon(Symbols.chevron_right, color: AppColors.ink3),
                     ],
                   ),
                 ),
@@ -486,6 +480,46 @@ class _Greeting extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _CreateOrderAction extends StatelessWidget {
+  const _CreateOrderAction({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(999),
+          child: Ink(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [AppColors.neni, AppColors.neniDeep],
+              ),
+              borderRadius: BorderRadius.circular(999),
+              boxShadow: AppShadows.brandSmall(AppColors.neniDeep),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Symbols.add, size: 18, color: Colors.white),
+                const SizedBox(width: 7),
+                Text(
+                  'Nuevo pedido',
+                  style: AppTextStyles.button.copyWith(fontSize: 12.5),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1074,37 +1108,6 @@ class _MiniStatus extends StatelessWidget {
           color: status.fg,
           fontSize: 8,
           fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-}
-
-class _Fab extends StatelessWidget {
-  const _Fab({required this.onTap});
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      shape: const CircleBorder(),
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: Ink(
-          width: 54,
-          height: 54,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.neni, AppColors.neniDeep],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            shape: BoxShape.circle,
-            boxShadow: AppShadows.brandPrimary(AppColors.neniDeep),
-          ),
-          child: const Icon(Symbols.add, size: 27, color: Colors.white),
         ),
       ),
     );
