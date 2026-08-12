@@ -6,8 +6,14 @@ import 'package:dio/dio.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 import '../data/label_print_models.dart';
+
+/// 8 puntos/mm ≈ 203 dpi: resolución estándar de los cabezales térmicos de
+/// la NIIMBOT B1 y la AIYIN E40 Pro, usada para imprimir directo por
+/// Bluetooth sin pasar por su app de configuración.
+const double kThermalPrinterDpi = 8 * 25.4;
 
 class LabelPrintRenderException implements Exception {
   const LabelPrintRenderException(this.message);
@@ -44,7 +50,7 @@ class LabelPdfRenderer {
       designJson: job.templateVersion.designJson,
       mediaSize: job.mediaSize,
       assets: job.assets,
-      documents: job.items.map((item) => _payloadData(item.payload)).toList(),
+      documents: job.items.map((item) => payloadData(item.payload)).toList(),
       copies: job.copies,
     );
   }
@@ -118,6 +124,29 @@ class LabelPdfRenderer {
     }
 
     return document.save();
+  }
+
+  /// Rasteriza una sola etiqueta a PNG monocromo listo para enviar por
+  /// Bluetooth a una impresora térmica (NIIMBOT B1 / AIYIN E40 Pro). Reusa
+  /// el mismo PDF que ya se valida contra la plantilla, así el diseño que
+  /// ve la vendedora en la vista previa es el que sale impreso.
+  Future<Uint8List> renderPng({
+    required String designJson,
+    required LabelMediaSize mediaSize,
+    required List<LabelAssetSnapshot> assets,
+    required Map<String, String> document,
+    double dpi = kThermalPrinterDpi,
+  }) async {
+    final pdfBytes = await renderData(
+      designJson: designJson,
+      mediaSize: mediaSize,
+      assets: assets,
+      documents: [document],
+      copies: 1,
+    );
+    final pages = Printing.raster(pdfBytes, pages: const [0], dpi: dpi);
+    final raster = await pages.first;
+    return raster.toPng();
   }
 
   Map<String, dynamic> _readDesign(String json) {
@@ -282,7 +311,7 @@ class LabelPdfRenderer {
     );
   }
 
-  Map<String, String> _payloadData(LabelPrintPayload payload) => {
+  Map<String, String> payloadData(LabelPrintPayload payload) => {
     'business.name': payload.businessName,
     'order.clientName': payload.order.clientName,
     'order.phone': payload.order.phone ?? '',

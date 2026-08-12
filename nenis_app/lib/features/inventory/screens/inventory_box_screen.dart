@@ -9,6 +9,9 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../../labels/data/label_template_models.dart';
+import '../../labels/data/printer_pairing_repository.dart';
+import '../../labels/services/direct_print/aiyin_e40_print_service.dart';
+import '../../labels/services/direct_print/niimbot_b1_print_service.dart';
 import '../../labels/services/label_print_service.dart';
 import '../../labels/widgets/label_widgets.dart';
 import '../../subscription/data/subscription_repository.dart';
@@ -32,7 +35,7 @@ class InventoryBoxScreen extends ConsumerStatefulWidget {
 class _InventoryBoxScreenState extends ConsumerState<InventoryBoxScreen> {
   bool _busy = false;
 
-  void _message(String text, {bool error = false}) {
+  void _message(String text, {bool error = false, SnackBarAction? action}) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -40,6 +43,7 @@ class _InventoryBoxScreenState extends ConsumerState<InventoryBoxScreen> {
           behavior: SnackBarBehavior.floating,
           backgroundColor: error ? AppColors.liveRed : AppColors.ink,
           content: Text(text),
+          action: action,
         ),
       );
   }
@@ -194,44 +198,96 @@ class _InventoryBoxScreenState extends ConsumerState<InventoryBoxScreen> {
             mediaSize: options.mediaSize,
             copies: options.copies,
           );
-      final handedOff = await const LabelPrintService().handOffData(
-        designJson: print.templateVersion.designJson,
-        mediaSize: print.mediaSize,
-        assets: print.assets,
-        documents: [print.data],
-        copies: print.copies,
-        name: 'Etiqueta · $name',
-      );
+      const service = LabelPrintService();
+      final paired = ref
+          .read(pairedPrintersProvider)
+          .forMediaSize(print.mediaSize);
+      String status;
+      String feedback;
+      if (paired != null) {
+        await service.printDirect(
+          printer: paired,
+          designJson: print.templateVersion.designJson,
+          mediaSize: print.mediaSize,
+          assets: print.assets,
+          documents: [print.data],
+          copies: print.copies,
+        );
+        status = 'SentToSystem';
+        feedback = 'Etiqueta enviada a ${paired.name}.';
+      } else {
+        final handedOff = await service.handOffData(
+          designJson: print.templateVersion.designJson,
+          mediaSize: print.mediaSize,
+          assets: print.assets,
+          documents: [print.data],
+          copies: print.copies,
+          name: 'Etiqueta · $name',
+        );
+        status = handedOff ? 'SentToSystem' : 'Canceled';
+        feedback = handedOff
+            ? 'Etiqueta entregada al selector de impresión. Empareja tu '
+                  'impresora en Configurar impresoras para imprimir directo.'
+            : 'Cancelaste la impresión antes de enviarla.';
+      }
       await ref
           .read(inventoryRepositoryProvider)
-          .updateLabelPrintStatus(
-            print.id,
-            handedOff ? 'SentToSystem' : 'Canceled',
-          );
+          .updateLabelPrintStatus(print.id, status);
       if (mounted) {
         _message(
-          handedOff
-              ? 'Etiqueta entregada al selector de impresión.'
-              : 'Cancelaste la impresión antes de enviarla.',
+          feedback,
+          action: paired == null
+              ? SnackBarAction(
+                  label: 'Configurar',
+                  textColor: Colors.white,
+                  onPressed: () => context.push('/seller/labels/printers'),
+                )
+              : null,
         );
       }
+    } on NiimbotPrintException catch (error) {
+      await _recordLabelFailure(print, error.message);
+      _message(
+        error.message,
+        error: true,
+        action: SnackBarAction(
+          label: 'Configurar',
+          textColor: Colors.white,
+          onPressed: () => context.push('/seller/labels/printers'),
+        ),
+      );
+    } on AiyinPrintException catch (error) {
+      await _recordLabelFailure(print, error.message);
+      _message(
+        error.message,
+        error: true,
+        action: SnackBarAction(
+          label: 'Configurar',
+          textColor: Colors.white,
+          onPressed: () => context.push('/seller/labels/printers'),
+        ),
+      );
     } catch (_) {
-      if (print != null) {
-        try {
-          await ref
-              .read(inventoryRepositoryProvider)
-              .updateLabelPrintStatus(
-                print.id,
-                'Failed',
-                failureReason:
-                    'No se pudo preparar o entregar la etiqueta.',
-              );
-        } catch (_) {}
-      }
+      await _recordLabelFailure(
+        print,
+        'No se pudo preparar o entregar la etiqueta.',
+      );
       _message('No pudimos preparar esta etiqueta para imprimir.', error: true);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _recordLabelFailure(
+    InventoryLabelPrint? print,
+    String reason,
+  ) async {
+    if (print == null) return;
+    try {
+      await ref
+          .read(inventoryRepositoryProvider)
+          .updateLabelPrintStatus(print.id, 'Failed', failureReason: reason);
+    } catch (_) {}
   }
 
   @override

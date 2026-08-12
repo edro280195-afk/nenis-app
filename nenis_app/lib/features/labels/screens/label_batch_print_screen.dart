@@ -13,6 +13,9 @@ import '../../../shared/widgets/interactive_bounce.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../data/label_print_models.dart';
 import '../data/label_print_repository.dart';
+import '../data/printer_pairing_repository.dart';
+import '../services/direct_print/aiyin_e40_print_service.dart';
+import '../services/direct_print/niimbot_b1_print_service.dart';
 import '../services/label_pdf_renderer.dart';
 import '../services/label_print_service.dart';
 import '../widgets/label_widgets.dart';
@@ -101,6 +104,7 @@ class _LabelBatchPrintScreenState extends ConsumerState<LabelBatchPrintScreen> {
 
     setState(() => _busy = true);
     final repository = ref.read(labelPrintRepositoryProvider);
+    const service = LabelPrintService();
     LabelPrintJob? job;
     try {
       job = await repository.createJob(
@@ -108,19 +112,35 @@ class _LabelBatchPrintScreenState extends ConsumerState<LabelBatchPrintScreen> {
         mediaSize: options.mediaSize,
         copies: options.copies,
       );
-      final accepted = await const LabelPrintService().handOffToSystem(job);
-      await repository.updateJobStatus(
-        jobId: job.id,
-        status: accepted ? 'SentToSystem' : 'Canceled',
-      );
-      if (accepted) {
+      final paired = ref
+          .read(pairedPrintersProvider)
+          .forMediaSize(job.mediaSize);
+      if (paired != null) {
+        await service.printDirectJob(paired, job);
+        await repository.updateJobStatus(
+          jobId: job.id,
+          status: 'SentToSystem',
+        );
         setState(_selectedPackageIds.clear);
         _showMessage(
-          '${job.totalLabels} ${job.totalLabels == 1 ? 'etiqueta enviada' : 'etiquetas enviadas'} al selector de impresión',
+          '${job.totalLabels} ${job.totalLabels == 1 ? 'etiqueta enviada' : 'etiquetas enviadas'} a ${paired.name}',
           color: AppColors.lavender,
         );
       } else {
-        _showMessage('Cancelaste la impresión antes de enviarla.');
+        final accepted = await service.handOffToSystem(job);
+        await repository.updateJobStatus(
+          jobId: job.id,
+          status: accepted ? 'SentToSystem' : 'Canceled',
+        );
+        if (accepted) {
+          setState(_selectedPackageIds.clear);
+          _showMessage(
+            '${job.totalLabels} ${job.totalLabels == 1 ? 'etiqueta enviada' : 'etiquetas enviadas'} al selector de impresión. Empareja tu impresora en Configurar impresoras para imprimir directo.',
+            color: AppColors.lavender,
+          );
+        } else {
+          _showMessage('Cancelaste la impresión antes de enviarla.');
+        }
       }
     } on LabelPrintException catch (error) {
       if (job != null) await _recordFailure(repository, job.id, error.message);
@@ -128,6 +148,12 @@ class _LabelBatchPrintScreenState extends ConsumerState<LabelBatchPrintScreen> {
       _showMessage(error.message, color: AppColors.liveRed);
       if (error.isFeatureLocked) context.push('/seller/plan');
     } on LabelPrintRenderException catch (error) {
+      if (job != null) await _recordFailure(repository, job.id, error.message);
+      _showMessage(error.message, color: AppColors.liveRed);
+    } on NiimbotPrintException catch (error) {
+      if (job != null) await _recordFailure(repository, job.id, error.message);
+      _showMessage(error.message, color: AppColors.liveRed);
+    } on AiyinPrintException catch (error) {
       if (job != null) await _recordFailure(repository, job.id, error.message);
       _showMessage(error.message, color: AppColors.liveRed);
     } catch (_) {
@@ -183,6 +209,7 @@ class _LabelBatchPrintScreenState extends ConsumerState<LabelBatchPrintScreen> {
                 onInventory: () => context.push('/seller/inventory'),
                 onEditTemplate: () =>
                     context.push('/seller/labels/editor?mediaSize=Shipping4x6'),
+                onPrinters: () => context.push('/seller/labels/printers'),
               ),
               Expanded(
                 child: Center(
@@ -239,12 +266,14 @@ class _Header extends StatelessWidget {
     required this.showInventory,
     required this.onInventory,
     required this.onEditTemplate,
+    required this.onPrinters,
   });
 
   final VoidCallback onBack;
   final bool showInventory;
   final VoidCallback onInventory;
   final VoidCallback onEditTemplate;
+  final VoidCallback onPrinters;
 
   @override
   Widget build(BuildContext context) {
@@ -276,6 +305,13 @@ class _Header extends StatelessWidget {
             ),
             const SizedBox(width: 7),
           ],
+          PillIconButton(
+            onPressed: onPrinters,
+            icon: Symbols.bluetooth,
+            iconColor: AppColors.neniDeep,
+            size: 44,
+          ),
+          const SizedBox(width: 7),
           PillIconButton(
             onPressed: onEditTemplate,
             icon: Symbols.edit_square,

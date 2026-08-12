@@ -12,6 +12,9 @@ import '../../../shared/widgets/interactive_bounce.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../data/label_print_models.dart';
 import '../data/label_print_repository.dart';
+import '../data/printer_pairing_repository.dart';
+import '../services/direct_print/aiyin_e40_print_service.dart';
+import '../services/direct_print/niimbot_b1_print_service.dart';
 import '../services/label_pdf_renderer.dart';
 import '../services/label_print_service.dart';
 import '../widgets/label_widgets.dart';
@@ -91,6 +94,7 @@ class _OrderLabelSectionState extends ConsumerState<OrderLabelSection> {
 
     setState(() => _busy = true);
     final repository = ref.read(labelPrintRepositoryProvider);
+    const service = LabelPrintService();
     LabelPrintJob? job;
     try {
       job = await repository.createJob(
@@ -98,18 +102,33 @@ class _OrderLabelSectionState extends ConsumerState<OrderLabelSection> {
         mediaSize: options.mediaSize,
         copies: options.copies,
       );
-      final accepted = await const LabelPrintService().handOffToSystem(job);
-      await repository.updateJobStatus(
-        jobId: job.id,
-        status: accepted ? 'SentToSystem' : 'Canceled',
-      );
-      if (accepted) {
+      final paired = ref
+          .read(pairedPrintersProvider)
+          .forMediaSize(job.mediaSize);
+      if (paired != null) {
+        await service.printDirectJob(paired, job);
+        await repository.updateJobStatus(
+          jobId: job.id,
+          status: 'SentToSystem',
+        );
         _showMessage(
-          '${job.totalLabels} ${job.totalLabels == 1 ? 'etiqueta enviada' : 'etiquetas enviadas'} al selector de impresión',
+          '${job.totalLabels} ${job.totalLabels == 1 ? 'etiqueta enviada' : 'etiquetas enviadas'} a ${paired.name}',
           color: AppColors.lavender,
         );
       } else {
-        _showMessage('No se envió ninguna etiqueta a imprimir.');
+        final accepted = await service.handOffToSystem(job);
+        await repository.updateJobStatus(
+          jobId: job.id,
+          status: accepted ? 'SentToSystem' : 'Canceled',
+        );
+        if (accepted) {
+          _showMessage(
+            '${job.totalLabels} ${job.totalLabels == 1 ? 'etiqueta enviada' : 'etiquetas enviadas'} al selector de impresión',
+            color: AppColors.lavender,
+          );
+        } else {
+          _showMessage('No se envió ninguna etiqueta a imprimir.');
+        }
       }
     } on LabelPrintException catch (error) {
       if (job != null) await _recordFailure(repository, job.id, error.message);
@@ -117,6 +136,12 @@ class _OrderLabelSectionState extends ConsumerState<OrderLabelSection> {
       _showMessage(error.message, color: AppColors.liveRed);
       if (error.isFeatureLocked) context.push('/seller/plan');
     } on LabelPrintRenderException catch (error) {
+      if (job != null) await _recordFailure(repository, job.id, error.message);
+      _showMessage(error.message, color: AppColors.liveRed);
+    } on NiimbotPrintException catch (error) {
+      if (job != null) await _recordFailure(repository, job.id, error.message);
+      _showMessage(error.message, color: AppColors.liveRed);
+    } on AiyinPrintException catch (error) {
       if (job != null) await _recordFailure(repository, job.id, error.message);
       _showMessage(error.message, color: AppColors.liveRed);
     } catch (_) {

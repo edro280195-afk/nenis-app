@@ -64,6 +64,19 @@ dependencies:
   printing: ^5.15.0
   nfc_manager: ^4.2.1
   nfc_manager_ndef: ^1.1.0
+  niim_blue_flutter: ^1.0.1
+  bluetooth_print_plus: ^2.4.6
+  image: ^4.9.1
+  flutter_blue_plus: 1.36.8
+
+# bluetooth_print_plus 2.4.6 tiene un NullPointerException nativo cuando el
+# EventSink de estado se desconecta mientras un connect() sigue en vuelo
+# (ver third_party/bluetooth_print_plus/android/.../BluetoothPrintPlusPlugin.java).
+# Vendorizamos el paquete con el fix hasta que haya una versión publicada
+# que lo incluya.
+dependency_overrides:
+  bluetooth_print_plus:
+    path: third_party/bluetooth_print_plus
 
 dev_dependencies:
   flutter_test:

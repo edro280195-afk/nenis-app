@@ -1,15 +1,98 @@
+import 'package:flutter/foundation.dart';
+import 'package:image/image.dart' as img;
 import 'package:printing/printing.dart';
 
 import '../data/label_print_models.dart';
+import '../data/printer_pairing_models.dart';
+import 'direct_print/aiyin_e40_print_service.dart';
+import 'direct_print/niimbot_b1_print_service.dart';
 import 'label_pdf_renderer.dart';
 
 /// Envía el PDF al selector de impresión del sistema operativo. El resultado
 /// confirma que Android/iOS recibió el trabajo; no afirma que una impresora
 /// física haya terminado de imprimirlo.
 class LabelPrintService {
-  const LabelPrintService({this.renderer = const LabelPdfRenderer()});
+  const LabelPrintService({
+    this.renderer = const LabelPdfRenderer(),
+    this.niimbot = const NiimbotB1PrintService(),
+    this.aiyin = const AiyinE40PrintService(),
+  });
 
   final LabelPdfRenderer renderer;
+  final NiimbotB1PrintService niimbot;
+  final AiyinE40PrintService aiyin;
+
+  /// Imprime directo por Bluetooth a la impresora emparejada para este
+  /// tamaño de etiqueta, sin pasar por el selector del sistema ni la app
+  /// del fabricante (NIIMBOT B1 para 50×50mm, AIYIN E40 Pro para 4×6").
+  Future<void> printDirect({
+    required PairedPrinter printer,
+    required String designJson,
+    required LabelMediaSize mediaSize,
+    required List<LabelAssetSnapshot> assets,
+    required List<Map<String, String>> documents,
+    required int copies,
+  }) async {
+    for (final document in documents) {
+      final png = await renderer.renderPng(
+        designJson: designJson,
+        mediaSize: mediaSize,
+        assets: assets,
+        document: document,
+      );
+      _debugLogPngContent(png);
+      switch (printer.brand) {
+        case PrinterBrand.niimbotB1:
+          await niimbot.printLabel(
+            address: printer.address,
+            name: printer.name,
+            png: png,
+            copies: copies,
+          );
+        case PrinterBrand.aiyinE40Pro:
+          await aiyin.printLabel(
+            address: printer.address,
+            name: printer.name,
+            png: png,
+            copies: copies,
+          );
+      }
+    }
+  }
+
+  /// Igual que [printDirect], pero a partir de un [LabelPrintJob] ya armado
+  /// (usado por el flujo de bolsas de pedido).
+  Future<void> printDirectJob(PairedPrinter printer, LabelPrintJob job) {
+    return printDirect(
+      printer: printer,
+      designJson: job.templateVersion.designJson,
+      mediaSize: job.mediaSize,
+      assets: job.assets,
+      documents: job.items.map((item) => renderer.payloadData(item.payload)).toList(),
+      copies: job.copies,
+    );
+  }
+
+  void _debugLogPngContent(Uint8List png) {
+    final decoded = img.decodeImage(png);
+    if (decoded == null) {
+      debugPrint('[LabelPrintService] renderPng: no se pudo decodificar el PNG (${png.length} bytes)');
+      return;
+    }
+    var darkPixels = 0;
+    for (var y = 0; y < decoded.height; y++) {
+      for (var x = 0; x < decoded.width; x++) {
+        final p = decoded.getPixel(x, y);
+        if ((p.r + p.g + p.b) / 3 < 200) darkPixels++;
+      }
+    }
+    final total = decoded.width * decoded.height;
+    final pct = total == 0 ? 0 : (darkPixels * 100 / total).toStringAsFixed(1);
+    debugPrint(
+      '[LabelPrintService] renderPng: ${decoded.width}x${decoded.height}, '
+      '$darkPixels/$total px oscuros ($pct%)',
+    );
+  }
 
   Future<bool> handOffToSystem(LabelPrintJob job) async {
     final bytes = await renderer.render(job);

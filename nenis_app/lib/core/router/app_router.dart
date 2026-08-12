@@ -22,6 +22,7 @@ import '../../features/orders/screens/order_create_screen.dart';
 import '../../features/orders/screens/order_detail_screen.dart';
 import '../../features/labels/screens/label_batch_print_screen.dart';
 import '../../features/labels/screens/label_template_editor_screen.dart';
+import '../../features/labels/screens/printer_pairing_screen.dart';
 import '../../features/labels/data/label_print_models.dart';
 import '../../features/labels/data/label_template_models.dart';
 import '../../features/inventory/screens/inventory_box_screen.dart';
@@ -419,6 +420,13 @@ final routerProvider = Provider<GoRouter>((ref) {
               state.uri.queryParameters['mediaSize'] ?? 'Shipping4x6',
             ),
           ),
+        ),
+      ),
+      GoRoute(
+        path: '/seller/labels/printers',
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: const PrinterPairingScreen(),
         ),
       ),
       GoRoute(
