@@ -137,6 +137,16 @@ App `1427323549158529`, sigue en modo Desarrollo ("Sin publicar"). Ya confirmado
 - Confirmar si Meta pide **Business Verification** al intentar activar el switch (el dashboard lo dice explícitamente si aplica).
 - Solo se piden permisos `public_profile` + `email` (default de Meta) → no hay cola de App Review manual.
 
+## Registro informado y recorridos iniciales (2026-08-03)
+
+- Registro de vendedora: muestra antes del alta el aviso de 14 días Pro, sin tarjeta ni cobro, la regla de bloqueo al vencer y los precios reales de Entrada/Pro/Elite. El alta queda deshabilitada mientras no se pueda consultar el catálogo del backend.
+- Registro de clienta: teléfono obligatorio y contexto claro sobre por qué se confirma por WhatsApp para proteger pedidos, historial y puntos.
+- La app genera una identidad aleatoria de instalación en `flutter_secure_storage` y la envía como `X-Device-Id`; no usa IMEI, Android ID ni datos de hardware.
+- Tour de vendedora: prueba/cobro, pedidos, clientas, rutas, tienda/en vivos y plan.
+- Tour de clienta: identidad por teléfono, pedidos/rastreo, tiendas/puntos y notificaciones.
+- El avance se guarda en el backend por Account y rol. Ambos recorridos se pueden repetir desde `Mi cuenta` / `Mi negocio`.
+- Validación: `flutter analyze` sin hallazgos y 108/108 pruebas Flutter.
+
 ## Cómo correr / validar
 - Backend dev: en `C:\Codigos\sellgeneral-api` → `ASPNETCORE_ENVIRONMENT=Development dotnet run` (escucha en `:5080`). Requiere `appsettings.Development.json` (gitignored, connection string real).
 - Tests backend: `dotnet test Tests\EntregasApi.Tests\EntregasApi.Tests.csproj` (si falla la copia de `runtimeconfig`, primero `dotnet build` del test project y luego `dotnet test --no-build`). Se puede acotar con `--filter "FullyQualifiedName~NombreDeLaClase"`.
