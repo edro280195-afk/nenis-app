@@ -12,7 +12,10 @@ import '../../labels/data/label_template_models.dart';
 import '../../labels/data/printer_pairing_repository.dart';
 import '../../labels/services/direct_print/aiyin_e40_print_service.dart';
 import '../../labels/services/direct_print/niimbot_b1_print_service.dart';
+import '../../labels/services/label_pdf_renderer.dart';
 import '../../labels/services/label_print_service.dart';
+import '../../labels/services/print_failure_reason.dart';
+import '../../labels/services/print_messages.dart';
 import '../../labels/widgets/label_widgets.dart';
 import '../../subscription/data/subscription_repository.dart';
 import '../data/inventory_models.dart';
@@ -225,14 +228,15 @@ class _InventoryBoxScreenState extends ConsumerState<InventoryBoxScreen> {
           name: 'Etiqueta · $name',
         );
         status = handedOff ? 'SentToSystem' : 'Canceled';
-        feedback = handedOff
-            ? 'Etiqueta entregada al selector de impresión. Empareja tu '
-                  'impresora en Configurar impresoras para imprimir directo.'
-            : 'Cancelaste la impresión antes de enviarla.';
+        feedback = handedOff ? printedViaSystemMessage(1) : printCanceledMessage;
       }
       await ref
           .read(inventoryRepositoryProvider)
-          .updateLabelPrintStatus(print.id, status);
+          .updateLabelPrintStatus(
+            print.id,
+            status,
+            output: paired != null ? 'BluetoothDirect' : 'SystemPrint',
+          );
       if (mounted) {
         _message(
           feedback,
@@ -246,7 +250,7 @@ class _InventoryBoxScreenState extends ConsumerState<InventoryBoxScreen> {
         );
       }
     } on NiimbotPrintException catch (error) {
-      await _recordLabelFailure(print, error.message);
+      await _recordLabelFailure(print, printFailureReason(error.code, error.message));
       _message(
         error.message,
         error: true,
@@ -257,7 +261,7 @@ class _InventoryBoxScreenState extends ConsumerState<InventoryBoxScreen> {
         ),
       );
     } on AiyinPrintException catch (error) {
-      await _recordLabelFailure(print, error.message);
+      await _recordLabelFailure(print, printFailureReason(error.code, error.message));
       _message(
         error.message,
         error: true,
@@ -267,11 +271,14 @@ class _InventoryBoxScreenState extends ConsumerState<InventoryBoxScreen> {
           onPressed: () => context.push('/seller/labels/printers'),
         ),
       );
-    } catch (_) {
-      await _recordLabelFailure(
-        print,
-        'No se pudo preparar o entregar la etiqueta.',
-      );
+    } on LabelPrintRenderException catch (error) {
+      // Antes caía en el catch genérico de abajo (mensaje fijo sin
+      // distinguir "problema de plantilla" de "problema de impresora");
+      // las otras dos pantallas de impresión sí lo distinguen.
+      await _recordLabelFailure(print, printFailureReason(error.code, error.message));
+      _message(error.message, error: true);
+    } catch (e) {
+      await _recordLabelFailure(print, unknownPrintFailureReason(e));
       _message('No pudimos preparar esta etiqueta para imprimir.', error: true);
     } finally {
       if (mounted) setState(() => _busy = false);

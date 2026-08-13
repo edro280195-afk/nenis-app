@@ -5,10 +5,15 @@ import '../../../core/api/dio_provider.dart';
 import 'label_print_models.dart';
 
 class LabelPrintException implements Exception {
-  const LabelPrintException(this.message, {this.isFeatureLocked = false});
+  const LabelPrintException(this.message, {this.isFeatureLocked = false, this.code = 'server_error'});
 
   final String message;
   final bool isFeatureLocked;
+
+  /// Código corto y estable para diagnóstico remoto (se manda al backend
+  /// como parte de `failureReason`); la vendedora nunca ve este valor, solo
+  /// [message]. Derivado del tipo de [DioException] en [_exception].
+  final String code;
 
   @override
   String toString() => message;
@@ -99,6 +104,11 @@ class LabelPrintRepository {
     required String jobId,
     required String status,
     String? failureReason,
+    // Al crear el trabajo, el backend fija Output en 'SystemPrint' por
+    // defecto porque todavía no se sabe qué camino se va a tomar (depende
+    // de si hay una impresora emparejada). Aquí, ya con el resultado real
+    // del intento de impresión, se corrige al valor real.
+    String? output,
   }) async {
     try {
       await _dio.put(
@@ -107,6 +117,7 @@ class LabelPrintRepository {
           'status': status,
           if (failureReason != null && failureReason.trim().isNotEmpty)
             'failureReason': failureReason.trim(),
+          if (output != null) 'output': output,
         },
       );
     } on DioException catch (error) {
@@ -124,16 +135,35 @@ class LabelPrintRepository {
       return const LabelPrintException(
         'Las etiquetas de bolsas están disponibles con Pro o Elite.',
         isFeatureLocked: true,
+        code: 'feature_locked',
       );
     }
+    // 'server_message' distingue, en el diagnóstico remoto, un rechazo
+    // explícito del backend (ya con su propio texto) de una falla de red
+    // genérica (timeout/sin conexión) que cae en el fallback de abajo.
     if (data is Map && data['message'] is String) {
       final message = (data['message'] as String).trim();
-      if (message.isNotEmpty) return LabelPrintException(message);
+      if (message.isNotEmpty) {
+        return LabelPrintException(message, code: 'server_message');
+      }
     }
     if (data is String && data.trim().isNotEmpty) {
-      return LabelPrintException(data.trim());
+      return LabelPrintException(data.trim(), code: 'server_message');
     }
-    return LabelPrintException(fallback);
+    return LabelPrintException(fallback, code: _networkErrorCode(error));
+  }
+
+  String _networkErrorCode(DioException error) {
+    return switch (error.type) {
+      DioExceptionType.connectionTimeout ||
+      DioExceptionType.sendTimeout ||
+      DioExceptionType.receiveTimeout => 'network_timeout',
+      DioExceptionType.connectionError => 'network_error',
+      DioExceptionType.badResponse => 'server_error',
+      DioExceptionType.cancel => 'request_canceled',
+      DioExceptionType.badCertificate ||
+      DioExceptionType.unknown => 'unknown',
+    };
   }
 }
 

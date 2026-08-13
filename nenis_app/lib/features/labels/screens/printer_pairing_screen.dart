@@ -12,6 +12,20 @@ import '../data/printer_pairing_repository.dart';
 import '../services/direct_print/aiyin_e40_print_service.dart';
 import '../services/direct_print/niimbot_b1_print_service.dart';
 
+/// Las tarjetas de NIIMBOT y AIYIN comparten el mismo plugin estático
+/// (bluetooth_print_plus) para el escaneo clásico: si ambas llaman
+/// startScan() casi al mismo tiempo, la segunda llamada corta la ventana
+/// de descubrimiento de la primera (stopScan() interno del plugin antes de
+/// reiniciar). Este lock evita que las dos tarjetas escaneen a la vez.
+class _BluetoothScanLock extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void setBusy(bool value) => state = value;
+}
+
+final _bluetoothScanBusyProvider = NotifierProvider<_BluetoothScanLock, bool>(_BluetoothScanLock.new);
+
 /// Empareja, por teléfono, la impresora física de cada marca para poder
 /// imprimir directo por Bluetooth (sin la app del fabricante).
 class PrinterPairingScreen extends ConsumerWidget {
@@ -95,6 +109,10 @@ class _PrinterCardState extends ConsumerState<_PrinterCard> {
   List<({String name, String address})> _found = const [];
 
   Future<void> _scan() async {
+    // Guard contra la carrera entre las dos tarjetas: si la otra marca ya
+    // está escaneando, no arrancamos un segundo scan que la cortaría.
+    if (ref.read(_bluetoothScanBusyProvider)) return;
+    ref.read(_bluetoothScanBusyProvider.notifier).setBusy(true);
     setState(() {
       _scanning = true;
       _error = null;
@@ -118,10 +136,21 @@ class _PrinterCardState extends ConsumerState<_PrinterCard> {
         _error = 'No encontramos ninguna impresora encendida cerca. '
             'Enciéndela, acércala al teléfono e inténtalo de nuevo.';
       }
+    } on NiimbotPrintException catch (e) {
+      // Ya trae un mensaje orientado a la vendedora (p.ej. permiso de
+      // Bluetooth denegado) — mostrarlo tal cual, sin envolverlo.
+      _error = e.message;
+    } on AiyinPrintException catch (e) {
+      _error = e.message;
     } catch (e) {
+      // Antes se interpolaba $e crudo aquí, exponiendo texto técnico del
+      // SDK nativo (a veces en inglés) directo a la vendedora. El detalle
+      // real solo queda en el log de debug.
+      debugPrint('[PrinterPairing] scan failed: $e');
       _error = 'No pudimos buscar impresoras. Revisa que el Bluetooth del '
-          'teléfono esté encendido. ($e)';
+          'teléfono esté encendido e inténtalo de nuevo.';
     } finally {
+      ref.read(_bluetoothScanBusyProvider.notifier).setBusy(false);
       if (mounted) setState(() => _scanning = false);
     }
   }
@@ -131,16 +160,48 @@ class _PrinterCardState extends ConsumerState<_PrinterCard> {
     await ref.read(pairedPrintersProvider.notifier).pair(
       PairedPrinter(brand: widget.brand, address: device.address, name: name),
     );
-    if (mounted) setState(() => _found = const []);
+    if (!mounted) return;
+    setState(() => _found = const []);
+    // Antes no había ninguna señal de éxito aquí — la única pista era que
+    // la lista de dispositivos encontrados desaparecía.
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$name emparejada. Ya puedes imprimir directo desde aquí.'),
+        backgroundColor: AppColors.lavender,
+      ),
+    );
   }
 
   Future<void> _unpair() async {
+    final pairedName = widget.paired?.name ?? widget.title;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('¿Quitar impresora emparejada?'),
+        content: Text(
+          'Dejarás de poder imprimir directo en $pairedName hasta que la '
+          'vuelvas a emparejar.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Quitar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
     await ref.read(pairedPrintersProvider.notifier).unpair(widget.brand);
   }
 
   @override
   Widget build(BuildContext context) {
     final paired = widget.paired;
+    final anyScanning = ref.watch(_bluetoothScanBusyProvider);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -199,7 +260,10 @@ class _PrinterCardState extends ConsumerState<_PrinterCard> {
           PillButton(
             label: _scanning ? 'Buscando…' : 'Buscar impresoras',
             icon: Symbols.bluetooth_searching,
-            onPressed: _scanning ? null : _scan,
+            // Deshabilitado también si la OTRA tarjeta está escaneando:
+            // ambas comparten el mismo plugin estático de escaneo clásico,
+            // y dos búsquedas a la vez se cortan entre sí.
+            onPressed: anyScanning ? null : _scan,
           ),
           if (_error != null) ...[
             const SizedBox(height: 8),

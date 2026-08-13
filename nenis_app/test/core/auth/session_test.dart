@@ -26,6 +26,18 @@ void main() {
     });
   });
 
+  group('Session.canManageLabels', () {
+    test('permite Owner y Admin', () {
+      expect(_session(role: 'Owner').canManageLabels, isTrue);
+      expect(_session(role: 'Admin').canManageLabels, isTrue);
+    });
+
+    test('bloquea Driver y Scaner', () {
+      expect(_session(role: 'Driver').canManageLabels, isFalse);
+      expect(_session(role: 'Scaner').canManageLabels, isFalse);
+    });
+  });
+
   group('Session.canManageStoreEngagement', () {
     test('permite Owner y Admin', () {
       expect(_session(role: 'Owner').canManageStoreEngagement, isTrue);

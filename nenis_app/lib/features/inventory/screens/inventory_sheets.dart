@@ -603,80 +603,20 @@ class _LabelSheetState extends State<_LabelSheet> {
     final total = _copies;
     return _Sheet(
       title: 'Imprimir etiqueta',
-      subtitle: '${widget.subject} · eliges la impresora después',
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const LabelFieldLabel(
-            icon: Symbols.sell,
-            label: 'Formato de etiqueta',
-          ),
-          const SizedBox(height: 9),
-          for (final size in LabelMediaSize.values) ...[
-            LabelMediaChoice(
-              size: size,
-              selected: _mediaSize == size,
-              detailOverride: _detailFor(size),
-              onTap: () => setState(() => _mediaSize = size),
-            ),
-            const SizedBox(height: 9),
-          ],
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Copias',
-                  style: AppTextStyles.body.copyWith(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              LabelCopiesControl(
-                value: _copies,
-                onChanged: (value) => setState(() => _copies = value),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.lineSoft),
-            ),
-            child: Row(
-              children: [
-                Text(
-                  '1 caja × $_copies '
-                  '${_copies == 1 ? 'copia' : 'copias'}',
-                  style: AppTextStyles.subtitle.copyWith(fontSize: 12),
-                ),
-                const Spacer(),
-                Text(
-                  '$total ${total == 1 ? 'etiqueta' : 'etiquetas'}',
-                  style: AppTextStyles.h2.copyWith(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.neniDeep,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          PillButton(
-            label: 'Abrir impresión',
-            icon: Symbols.print,
-            onPressed: () => Navigator.pop(context, (
-              mediaSize: _mediaSize,
-              copies: _copies,
-            )),
-          ),
-        ],
+      subtitle: '${widget.subject} · imprime directo si ya emparejaste tu impresora',
+      child: LabelPrintOptionsBody(
+        mediaSize: _mediaSize,
+        onMediaSizeChanged: (size) => setState(() => _mediaSize = size),
+        copies: _copies,
+        onCopiesChanged: (value) => setState(() => _copies = value),
+        copiesLabel: 'Copias',
+        mediaDetailOverride: _detailFor,
+        summaryLeft: '1 caja × $_copies ${_copies == 1 ? 'copia' : 'copias'}',
+        total: total,
+        onSubmit: () => Navigator.pop(context, (
+          mediaSize: _mediaSize,
+          copies: _copies,
+        )),
       ),
     );
   }

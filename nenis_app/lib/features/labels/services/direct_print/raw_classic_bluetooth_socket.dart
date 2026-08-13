@@ -19,7 +19,17 @@ class RawClassicBluetoothSocket {
   }
 
   static Future<void> connect(String address) {
-    return _methodChannel.invokeMethod('connect', {'address': address});
+    // El lado nativo (MainActivity.kt) ya acota su propio socket.connect()
+    // a ~8s y responde con error si expira; este timeout es una red de
+    // seguridad adicional por si esa respuesta nunca llegara (p.ej. un
+    // deadlock nativo no previsto), para no dejar la UI esperando
+    // indefinidamente un canal de plataforma que nunca resuelve.
+    return _methodChannel
+        .invokeMethod('connect', {'address': address})
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => throw TimeoutException('Tiempo de espera agotado conectando por Bluetooth clásico.'),
+        );
   }
 
   static Future<bool> write(Uint8List data) async {

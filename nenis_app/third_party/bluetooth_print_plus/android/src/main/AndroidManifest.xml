@@ -1,10 +1,21 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
   package="com.example.bluetooth_print_plus.bluetooth_print_plus">
-    <uses-permission android:name="android.permission.BLUETOOTH"/>
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <!-- Permisos "legacy" (pre-Android 12 / API 30 y anteriores): en esas
+         versiones no existen BLUETOOTH_SCAN/BLUETOOTH_CONNECT, y el
+         descubrimiento clásico requiere permiso de ubicación. maxSdkVersion
+         evita pedirlos de más en Android 12+, donde ya no aplican. -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="30"/>
+
+    <!-- Android 12+ (API 31+): permisos de tiempo de ejecución dedicados.
+         neverForLocation declara que esta app no deriva ubicación física
+         del escaneo Bluetooth (no la usa), lo que evita tener que pedir
+         además el permiso de ubicación en estas versiones — antes se
+         pedía igual, generando fricción y desconfianza sin necesidad
+         real. -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"/>
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation"/>
 </manifest>

@@ -16,9 +16,14 @@ import '../data/label_print_models.dart';
 const double kThermalPrinterDpi = 8 * 25.4;
 
 class LabelPrintRenderException implements Exception {
-  const LabelPrintRenderException(this.message);
+  const LabelPrintRenderException(this.message, {required this.code});
 
   final String message;
+
+  /// Código corto y estable para diagnóstico remoto (se manda al backend
+  /// como parte de `failureReason`); la vendedora nunca ve este valor, solo
+  /// [message].
+  final String code;
 
   @override
   String toString() => message;
@@ -63,7 +68,10 @@ class LabelPdfRenderer {
     int copies = 1,
   }) async {
     if (documents.isEmpty || copies < 1) {
-      throw const LabelPrintRenderException('No hay etiquetas para imprimir.');
+      throw const LabelPrintRenderException(
+        'No hay etiquetas para imprimir.',
+        code: 'no_documents',
+      );
     }
     final design = _readDesign(designJson);
     final canvas = _map(design['canvas']);
@@ -74,6 +82,7 @@ class LabelPdfRenderer {
         (heightMm - expected.heightMm).abs() > 0.01) {
       throw const LabelPrintRenderException(
         'La plantilla no coincide con el formato de etiqueta seleccionado.',
+        code: 'template_media_mismatch',
       );
     }
 
@@ -155,6 +164,7 @@ class LabelPdfRenderer {
     } on FormatException {
       throw const LabelPrintRenderException(
         'La plantilla de etiquetas tiene un formato inválido.',
+        code: 'invalid_template_json',
       );
     }
   }
@@ -178,6 +188,7 @@ class LabelPdfRenderer {
         y + height > canvasHeightMm) {
       throw const LabelPrintRenderException(
         'La plantilla contiene un elemento fuera del área imprimible.',
+        code: 'element_out_of_bounds',
       );
     }
 
@@ -224,6 +235,7 @@ class LabelPdfRenderer {
         if (value.isEmpty) {
           throw const LabelPrintRenderException(
             'Falta el código QR de una bolsa.',
+            code: 'missing_qr_data',
           );
         }
         return pw.BarcodeWidget(
@@ -240,6 +252,7 @@ class LabelPdfRenderer {
         if (value.isEmpty) {
           throw const LabelPrintRenderException(
             'Falta el código de una bolsa.',
+            code: 'missing_barcode_data',
           );
         }
         return pw.BarcodeWidget(
@@ -270,6 +283,7 @@ class LabelPdfRenderer {
         if (image == null) {
           throw const LabelPrintRenderException(
             'La plantilla usa una imagen que ya no está disponible.',
+            code: 'missing_asset',
           );
         }
         return pw.Image(
@@ -281,6 +295,7 @@ class LabelPdfRenderer {
       default:
         throw LabelPrintRenderException(
           'La plantilla contiene un elemento no compatible: $type.',
+          code: 'unsupported_element',
         );
     }
   }
@@ -328,6 +343,7 @@ class LabelPdfRenderer {
     if (value != null) return value;
     throw LabelPrintRenderException(
       'La plantilla pide un dato no disponible: $binding.',
+      code: 'missing_binding',
     );
   }
 
@@ -379,6 +395,7 @@ class LabelPdfRenderer {
       if (url == null || url.isEmpty) {
         throw const LabelPrintRenderException(
           'La plantilla usa una imagen que ya no está disponible.',
+          code: 'missing_asset',
         );
       }
       try {
@@ -387,12 +404,14 @@ class LabelPdfRenderer {
         if (bytes == null || bytes.isEmpty) {
           throw const LabelPrintRenderException(
             'No pudimos cargar una imagen de la etiqueta.',
+            code: 'asset_download_empty',
           );
         }
         images[id] = pw.MemoryImage(Uint8List.fromList(bytes));
       } on DioException {
         throw const LabelPrintRenderException(
           'No pudimos cargar una imagen de la etiqueta. Revisa tu conexión e inténtalo de nuevo.',
+          code: 'asset_network_error',
         );
       }
     }

@@ -67,7 +67,20 @@ dependencies:
   niim_blue_flutter: ^1.0.1
   bluetooth_print_plus: ^2.4.6
   image: ^4.9.1
-  flutter_blue_plus: 1.36.8
+  # Fijo en la serie 1.x a propósito: la 2.x reescribió la API interna con
+  # RxDart (cambios de comportamiento documentados, p.ej. discoverServices
+  # ahora falla si no hay conexión activa) y no hay forma de probar ese
+  # salto de versión contra las impresoras físicas desde aquí. ^ para poder
+  # recibir parches/fixes menores dentro de 1.x sin arriesgar una ruptura
+  # de API no verificable.
+  flutter_blue_plus: ^1.36.8
+  # Fijo (sin ^): permission_handler 13.x+ tira de permission_handler_android
+  # 14.0.0, que referencia constantes de una versión de Android más nueva
+  # que el compileSdk 36 instalado aquí (Manifest.permission.ACCESS_LOCAL_NETWORK,
+  # Build.VERSION_CODES.CINNAMON_BUN) y no compila. 12.0.3 usa
+  # permission_handler_android ^13.0.0, que sí compila contra compileSdk 36.
+  # Al subir compileSdk en el futuro, probar si ya se puede quitar este pin.
+  permission_handler: 12.0.3
 
 # bluetooth_print_plus 2.4.6 tiene un NullPointerException nativo cuando el
 # EventSink de estado se desconecta mientras un connect() sigue en vuelo

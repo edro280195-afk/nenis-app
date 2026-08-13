@@ -47,6 +47,10 @@
 	<string>$(GOOGLE_MAPS_API_KEY)</string>
 	<key>NFCReaderUsageDescription</key>
 	<string>Usamos NFC para abrir y vincular cajas de tu inventario.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Usamos Bluetooth para conectar e imprimir directo en tus impresoras de etiquetas NIIMBOT y AIYIN.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Usamos Bluetooth para conectar e imprimir directo en tus impresoras de etiquetas NIIMBOT y AIYIN.</string>
 	<key>FacebookAppID</key>
 	<string>1427323549158529</string>
 	<key>FacebookClientToken</key>

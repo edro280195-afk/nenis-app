@@ -13,6 +13,12 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import java.io.IOException
 import java.util.UUID
+import java.util.concurrent.Callable
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 
 class MainActivity : FlutterActivity() {
     private val googleMapsChannel = "nenis_app/google_maps"
@@ -25,6 +31,13 @@ class MainActivity : FlutterActivity() {
     private var rawSocket: BluetoothSocket? = null
     private var rawReadThread: Thread? = null
     private var rawDataSink: EventChannel.EventSink? = null
+
+    // socket.connect() es bloqueante y no tiene timeout propio: el stack
+    // clásico de Android puede tardar ~12s no documentados en darse por
+    // vencido, sin ningún feedback intermedio. Lo corremos aquí para poder
+    // acotarlo a CONNECT_TIMEOUT_MS con Future.get(timeout).
+    private val connectExecutor: ExecutorService = Executors.newCachedThreadPool()
+    private val connectTimeoutMs = 8000L
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -113,7 +126,27 @@ class MainActivity : FlutterActivity() {
                 }
                 adapter.cancelDiscovery()
                 val socket = device.createRfcommSocketToServiceRecord(sppUuid)
-                socket.connect()
+
+                // Acotamos el connect() bloqueante a un tiempo predecible.
+                // Si expira, cerramos el socket: es la forma soportada de
+                // cancelar un connect() en curso (hace que el hilo que
+                // sigue bloqueado en él reciba IOException y termine).
+                val pendingConnect = connectExecutor.submit(Callable { socket.connect() })
+                try {
+                    pendingConnect.get(connectTimeoutMs, TimeUnit.MILLISECONDS)
+                } catch (e: TimeoutException) {
+                    try { socket.close() } catch (_: IOException) { }
+                    mainHandler.post {
+                        result.error("connect_timeout", "La conexión tardó más de ${connectTimeoutMs}ms", null)
+                    }
+                    return@Thread
+                } catch (e: ExecutionException) {
+                    try { socket.close() } catch (_: IOException) { }
+                    val cause = e.cause
+                    mainHandler.post { result.error("connect_failed", cause?.message ?: e.message, null) }
+                    return@Thread
+                }
+
                 rawSocket = socket
                 startRawReadLoop(socket)
                 mainHandler.post { result.success(null) }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -8,6 +9,8 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/interactive_bounce.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../data/label_print_models.dart';
+import '../data/printer_pairing_models.dart';
+import '../data/printer_pairing_repository.dart';
 import '../widgets/label_widgets.dart';
 
 class LabelPrintOptions {
@@ -86,85 +89,188 @@ class _LabelPrintOptionsSheetState extends State<_LabelPrintOptionsSheet> {
               ),
               const SizedBox(height: 3),
               Text(
-                '${widget.packageCount} ${widget.packageCount == 1 ? 'etiqueta' : 'etiquetas'} · eliges la impresora después',
+                '${widget.packageCount} ${widget.packageCount == 1 ? 'etiqueta' : 'etiquetas'} · imprime directo si ya emparejaste tu impresora',
                 style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
               ),
               const SizedBox(height: 18),
-              const LabelFieldLabel(icon: Symbols.sell, label: 'Formato de etiqueta'),
-              const SizedBox(height: 9),
-              for (final size in LabelMediaSize.values) ...[
-                LabelMediaChoice(
-                  size: size,
-                  selected: _mediaSize == size,
-                  onTap: () => setState(() => _mediaSize = size),
-                ),
-                const SizedBox(height: 9),
-              ],
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Copias por bolsa',
-                          style: AppTextStyles.body.copyWith(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 1),
-                        Text(
-                          'Cada bolsa conserva su propio QR.',
-                          style: AppTextStyles.subtitle.copyWith(fontSize: 10.5),
-                        ),
-                      ],
-                    ),
-                  ),
-                  LabelCopiesControl(
-                    value: _copies,
-                    onChanged: (value) => setState(() => _copies = value),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  border: Border.all(color: AppColors.lineSoft),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      '${widget.packageCount} ${widget.packageCount == 1 ? 'bolsa' : 'bolsas'} × $_copies ${_copies == 1 ? 'copia' : 'copias'}',
-                      style: AppTextStyles.subtitle.copyWith(fontSize: 12),
-                    ),
-                    const Spacer(),
-                    Text(
-                      '$total ${total == 1 ? 'etiqueta' : 'etiquetas'}',
-                      style: AppTextStyles.h2.copyWith(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.neniDeep,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-              PillButton(
-                label: 'Continuar a impresoras',
-                icon: Symbols.print,
-                onPressed: () => Navigator.of(context).pop(
+              LabelPrintOptionsBody(
+                mediaSize: _mediaSize,
+                onMediaSizeChanged: (size) => setState(() => _mediaSize = size),
+                copies: _copies,
+                onCopiesChanged: (value) => setState(() => _copies = value),
+                copiesLabel: 'Copias por bolsa',
+                copiesHint: 'Cada bolsa conserva su propio QR.',
+                summaryLeft:
+                    '${widget.packageCount} ${widget.packageCount == 1 ? 'bolsa' : 'bolsas'} × $_copies ${_copies == 1 ? 'copia' : 'copias'}',
+                total: total,
+                onSubmit: () => Navigator.of(context).pop(
                   LabelPrintOptions(mediaSize: _mediaSize, copies: _copies),
                 ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Cuerpo compartido de "elegir formato + copias + confirmar" que usan
+/// tanto el sheet de impresión de bolsas (pedidos / centro de impresión
+/// masiva) como el de etiquetas de bodega — antes eran ~70 líneas
+/// duplicadas por archivo, con textos que se iban desalineando entre sí
+/// cada vez que se tocaba solo uno de los dos.
+class LabelPrintOptionsBody extends StatelessWidget {
+  const LabelPrintOptionsBody({
+    super.key,
+    required this.mediaSize,
+    required this.onMediaSizeChanged,
+    required this.copies,
+    required this.onCopiesChanged,
+    required this.copiesLabel,
+    this.copiesHint,
+    this.mediaDetailOverride,
+    required this.summaryLeft,
+    required this.total,
+    required this.onSubmit,
+  });
+
+  final LabelMediaSize mediaSize;
+  final ValueChanged<LabelMediaSize> onMediaSizeChanged;
+  final int copies;
+  final ValueChanged<int> onCopiesChanged;
+  final String copiesLabel;
+  final String? copiesHint;
+  final String? Function(LabelMediaSize size)? mediaDetailOverride;
+  final String summaryLeft;
+  final int total;
+  final VoidCallback onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const LabelFieldLabel(icon: Symbols.sell, label: 'Formato de etiqueta'),
+        const SizedBox(height: 9),
+        for (final size in LabelMediaSize.values) ...[
+          LabelMediaChoice(
+            size: size,
+            selected: mediaSize == size,
+            detailOverride: mediaDetailOverride?.call(size),
+            onTap: () => onMediaSizeChanged(size),
+          ),
+          const SizedBox(height: 9),
+        ],
+        // Antes la vendedora solo se enteraba de si iba a imprimir directo
+        // o caer al selector del sistema DESPUÉS de tocar "Imprimir", vía
+        // el texto del SnackBar resultante.
+        Consumer(
+          builder: (context, ref, _) {
+            final paired = ref.watch(pairedPrintersProvider).forMediaSize(mediaSize);
+            return PairedPrinterIndicator(paired: paired);
+          },
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    copiesLabel,
+                    style: AppTextStyles.body.copyWith(fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
+                  if (copiesHint != null) ...[
+                    const SizedBox(height: 1),
+                    Text(copiesHint!, style: AppTextStyles.subtitle.copyWith(fontSize: 10.5)),
+                  ],
+                ],
+              ),
+            ),
+            LabelCopiesControl(value: copies, onChanged: onCopiesChanged),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: Border.all(color: AppColors.lineSoft),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              Text(summaryLeft, style: AppTextStyles.subtitle.copyWith(fontSize: 12)),
+              const Spacer(),
+              Text(
+                '$total ${total == 1 ? 'etiqueta' : 'etiquetas'}',
+                style: AppTextStyles.h2.copyWith(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.neniDeep,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        PillButton(
+          // Antes decía "Continuar a impresoras" en un sheet y "Abrir
+          // impresión" en el otro, pero nunca aparece ninguna pantalla de
+          // selección después — la app decide sola entre Bluetooth directo
+          // (si hay impresora emparejada) y el selector del sistema.
+          label: 'Confirmar e imprimir',
+          icon: Symbols.print,
+          onPressed: onSubmit,
+        ),
+      ],
+    );
+  }
+}
+
+/// Indicador de qué impresora (si alguna) está emparejada para el formato
+/// elegido — antes ninguna de las pantallas de impresión mostraba esto de
+/// antemano, así que la vendedora solo se enteraba de si iba a imprimir
+/// directo o caer al selector del sistema después de tocar "Imprimir".
+class PairedPrinterIndicator extends StatelessWidget {
+  const PairedPrinterIndicator({super.key, required this.paired});
+
+  final PairedPrinter? paired;
+
+  @override
+  Widget build(BuildContext context) {
+    final connected = paired != null;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: connected ? AppColors.neni.withValues(alpha: 0.08) : AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: connected ? null : Border.all(color: AppColors.lineSoft),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            connected ? Symbols.bluetooth_connected : Symbols.bluetooth_disabled,
+            size: 16,
+            color: connected ? AppColors.neniDeep : AppColors.ink3,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              connected
+                  ? 'Imprimirá directo en ${paired!.name}'
+                  : 'Sin impresora emparejada: se abrirá el selector del sistema',
+              style: AppTextStyles.subtitle.copyWith(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: connected ? AppColors.neniDeep : AppColors.ink3,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

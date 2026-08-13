@@ -110,10 +110,15 @@ class InventoryRepository {
     String id,
     String status, {
     String? failureReason,
+    // Al crear el trabajo, el backend fija Output en 'SystemPrint' por
+    // defecto porque todavía no se sabe qué camino se va a tomar (depende
+    // de si hay una impresora emparejada). Aquí, ya con el resultado real
+    // del intento de impresión, se corrige al valor real.
+    String? output,
   }) async {
     await _dio.put(
       '/api/inventory/label-prints/$id/status',
-      data: {'status': status, 'failureReason': failureReason},
+      data: {'status': status, 'failureReason': failureReason, 'output': output},
     );
   }
 

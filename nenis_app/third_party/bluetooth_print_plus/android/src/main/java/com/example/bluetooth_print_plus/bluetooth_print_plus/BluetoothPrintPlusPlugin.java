@@ -65,7 +65,10 @@ public class BluetoothPrintPlusPlugin
   private FlutterPluginBinding pluginBinding;
   private ActivityPluginBinding activityBinding;
   private MethodChannel channel;
-  private EventSink sink;
+  // Se lee/escribe desde hilos de ThreadPoolManager (onSuccess/onDisconnect)
+  // y desde el hilo principal (onListen/onCancel del EventChannel); volatile
+  // asegura que un hilo en background siempre vea la asignación más reciente.
+  private volatile EventSink sink;
   private MethodChannel tscChannel;
   private MethodChannel cpclChannel;
   private MethodChannel escChannel;
@@ -260,15 +263,22 @@ public class BluetoothPrintPlusPlugin
       if (EasyPermissions.hasPermissions(this.context, perms)) {
         // Already have permission, do the thing
         startScan();
+        result.success(null);
       } else {
-        // Do not have permissions, request them now
+        // No tenemos los permisos: los pedimos ahora y NO resolvemos el
+        // Future todavía. Antes se llamaba result.success(null) de
+        // inmediato aquí (antes de que el usuario respondiera el diálogo
+        // del sistema), lo que hacía que el timeout de escaneo del lado
+        // Dart empezara a correr mientras el diálogo seguía abierto. Ahora
+        // guardamos el Result y lo resolvemos en onRequestPermissionsResult
+        // cuando ya sabemos si el permiso se concedió o se negó.
+        pendingResult = result;
         EasyPermissions.requestPermissions(
                 this.activity,
                 "Bluetooth requires location permission!!!",
                 REQUEST_LOCATION_PERMISSIONS,
                 perms);
       }
-      result.success(null);
     } catch (Exception e) {
       result.error("startScan", e.getMessage(), e);
     }
@@ -342,7 +352,14 @@ public class BluetoothPrintPlusPlugin
                     @Override
                     public void onSuccess(PrinterDevices printerDevices) {
                       // LogUtils.d(TAG, "onSuccess");
-                      if (sink != null) sink.success(BPPState.DeviceConnected.getValue());
+                      // Copiamos `sink` a una variable local antes del
+                      // chequeo: este callback corre en un hilo de
+                      // ThreadPoolManager y `sink` puede volverse null en
+                      // cualquier momento desde onCancel() (hilo principal).
+                      // Releer el campo entre el chequeo y el uso era una
+                      // condición de carrera que podía tumbar el proceso.
+                      final EventSink currentSink = sink;
+                      if (currentSink != null) currentSink.success(BPPState.DeviceConnected.getValue());
                     }
 
                     @Override
@@ -360,7 +377,9 @@ public class BluetoothPrintPlusPlugin
                     @Override
                     public void onDisconnect() {
                       // LogUtils.d(TAG, "onDisconnect");
-                      if (sink != null) sink.success(BPPState.DeviceDisconnected.getValue());
+                      // Mismo motivo que en onSuccess: copia local antes de usar.
+                      final EventSink currentSink = sink;
+                      if (currentSink != null) currentSink.success(BPPState.DeviceDisconnected.getValue());
                     }
                   })
                   .build();
@@ -381,11 +400,20 @@ public class BluetoothPrintPlusPlugin
   public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
     LogUtils.d(TAG, "onRequestPermissionsResult");
     if (requestCode == REQUEST_LOCATION_PERMISSIONS) {
-      if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+      // Capturamos pendingResult en una variable local y lo limpiamos de
+      // inmediato: antes este campo nunca se asignaba (bug), lo que
+      // garantizaba un NullPointerException nativo al negar el permiso.
+      // Usar una copia local también evita resolver el mismo Result dos
+      // veces si por algún motivo este callback se disparara más de una vez.
+      final Result result = pendingResult;
+      pendingResult = null;
+      final boolean granted = grantResults.length > 0
+              && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+      if (granted) {
         startScan();
-      } else {
-        pendingResult.error("no_permissions", "this plugin requires location permissions for scanning", null);
-        pendingResult = null;
+        if (result != null) result.success(null);
+      } else if (result != null) {
+        result.error("no_permissions", "this plugin requires location permissions for scanning", null);
       }
       return true;
     }

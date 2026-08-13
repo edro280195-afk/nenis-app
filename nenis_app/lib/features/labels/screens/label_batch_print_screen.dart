@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../../core/auth/auth_controller.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
@@ -18,6 +19,8 @@ import '../services/direct_print/aiyin_e40_print_service.dart';
 import '../services/direct_print/niimbot_b1_print_service.dart';
 import '../services/label_pdf_renderer.dart';
 import '../services/label_print_service.dart';
+import '../services/print_failure_reason.dart';
+import '../services/print_messages.dart';
 import '../widgets/label_widgets.dart';
 import 'label_print_options_sheet.dart';
 
@@ -120,6 +123,7 @@ class _LabelBatchPrintScreenState extends ConsumerState<LabelBatchPrintScreen> {
         await repository.updateJobStatus(
           jobId: job.id,
           status: 'SentToSystem',
+          output: 'BluetoothDirect',
         );
         setState(_selectedPackageIds.clear);
         _showMessage(
@@ -131,38 +135,43 @@ class _LabelBatchPrintScreenState extends ConsumerState<LabelBatchPrintScreen> {
         await repository.updateJobStatus(
           jobId: job.id,
           status: accepted ? 'SentToSystem' : 'Canceled',
+          output: 'SystemPrint',
         );
         if (accepted) {
           setState(_selectedPackageIds.clear);
           _showMessage(
-            '${job.totalLabels} ${job.totalLabels == 1 ? 'etiqueta enviada' : 'etiquetas enviadas'} al selector de impresión. Empareja tu impresora en Configurar impresoras para imprimir directo.',
+            printedViaSystemMessage(job.totalLabels),
             color: AppColors.lavender,
           );
         } else {
-          _showMessage('Cancelaste la impresión antes de enviarla.');
+          _showMessage(printCanceledMessage);
         }
       }
     } on LabelPrintException catch (error) {
-      if (job != null) await _recordFailure(repository, job.id, error.message);
+      if (job != null) {
+        await _recordFailure(repository, job.id, printFailureReason(error.code, error.message));
+      }
       if (!mounted) return;
       _showMessage(error.message, color: AppColors.liveRed);
       if (error.isFeatureLocked) context.push('/seller/plan');
     } on LabelPrintRenderException catch (error) {
-      if (job != null) await _recordFailure(repository, job.id, error.message);
+      if (job != null) {
+        await _recordFailure(repository, job.id, printFailureReason(error.code, error.message));
+      }
       _showMessage(error.message, color: AppColors.liveRed);
     } on NiimbotPrintException catch (error) {
-      if (job != null) await _recordFailure(repository, job.id, error.message);
+      if (job != null) {
+        await _recordFailure(repository, job.id, printFailureReason(error.code, error.message));
+      }
       _showMessage(error.message, color: AppColors.liveRed);
     } on AiyinPrintException catch (error) {
-      if (job != null) await _recordFailure(repository, job.id, error.message);
-      _showMessage(error.message, color: AppColors.liveRed);
-    } catch (_) {
       if (job != null) {
-        await _recordFailure(
-          repository,
-          job.id,
-          'El sistema no pudo abrir la impresión.',
-        );
+        await _recordFailure(repository, job.id, printFailureReason(error.code, error.message));
+      }
+      _showMessage(error.message, color: AppColors.liveRed);
+    } catch (e) {
+      if (job != null) {
+        await _recordFailure(repository, job.id, unknownPrintFailureReason(e));
       }
       _showMessage(
         'No pudimos abrir el selector de impresión.',
@@ -195,6 +204,12 @@ class _LabelBatchPrintScreenState extends ConsumerState<LabelBatchPrintScreen> {
     final packages = ref.watch(availableLabelPackagesProvider);
     final activePlan = subscription.asData?.value.effectivePlan;
     final unlocked = activePlan == null || _hasLabelPlan(activePlan);
+    final session = ref.watch(authControllerProvider).asData?.value;
+    // El router redirige en silencio a /seller/inventory si alguien sin
+    // este permiso llega a /seller/labels/editor; antes el botón/chip para
+    // llegar ahí siempre aparecía habilitado igual, así que quien no tenía
+    // permiso solo se enteraba después de tocarlo, sin explicación.
+    final canManageLabels = session?.canManageLabels ?? false;
 
     return Scaffold(
       backgroundColor: AppColors.surfaceCream,
@@ -207,6 +222,7 @@ class _LabelBatchPrintScreenState extends ConsumerState<LabelBatchPrintScreen> {
                 onBack: _back,
                 showInventory: unlocked,
                 onInventory: () => context.push('/seller/inventory'),
+                canManageLabels: canManageLabels,
                 onEditTemplate: () =>
                     context.push('/seller/labels/editor?mediaSize=Shipping4x6'),
                 onPrinters: () => context.push('/seller/labels/printers'),
@@ -232,6 +248,7 @@ class _LabelBatchPrintScreenState extends ConsumerState<LabelBatchPrintScreen> {
                                 packages: items,
                                 selectedIds: _selectedPackageIds,
                                 busy: _busy,
+                                canManageLabels: canManageLabels,
                                 onToggle: _toggle,
                                 onToggleAll: () => _toggleAll(items),
                                 onEditTemplate: () => context.push(
@@ -265,6 +282,7 @@ class _Header extends StatelessWidget {
     required this.onBack,
     required this.showInventory,
     required this.onInventory,
+    required this.canManageLabels,
     required this.onEditTemplate,
     required this.onPrinters,
   });
@@ -272,6 +290,7 @@ class _Header extends StatelessWidget {
   final VoidCallback onBack;
   final bool showInventory;
   final VoidCallback onInventory;
+  final bool canManageLabels;
   final VoidCallback onEditTemplate;
   final VoidCallback onPrinters;
 
@@ -311,13 +330,15 @@ class _Header extends StatelessWidget {
             iconColor: AppColors.neniDeep,
             size: 44,
           ),
-          const SizedBox(width: 7),
-          PillIconButton(
-            onPressed: onEditTemplate,
-            icon: Symbols.edit_square,
-            iconColor: AppColors.neniDeep,
-            size: 44,
-          ),
+          if (canManageLabels) ...[
+            const SizedBox(width: 7),
+            PillIconButton(
+              onPressed: onEditTemplate,
+              icon: Symbols.edit_square,
+              iconColor: AppColors.neniDeep,
+              size: 44,
+            ),
+          ],
         ],
       ),
     );
@@ -329,6 +350,7 @@ class _BatchPackageList extends StatelessWidget {
     required this.packages,
     required this.selectedIds,
     required this.busy,
+    required this.canManageLabels,
     required this.onToggle,
     required this.onToggleAll,
     required this.onEditTemplate,
@@ -337,6 +359,7 @@ class _BatchPackageList extends StatelessWidget {
   final List<AvailableLabelPackage> packages;
   final Set<String> selectedIds;
   final bool busy;
+  final bool canManageLabels;
   final ValueChanged<String> onToggle;
   final VoidCallback onToggleAll;
   final VoidCallback onEditTemplate;
@@ -355,6 +378,7 @@ class _BatchPackageList extends StatelessWidget {
         _Hero(
           bagCount: packages.length,
           orderCount: entries.length,
+          canManageLabels: canManageLabels,
           onEditTemplate: onEditTemplate,
         ),
         const SizedBox(height: 14),
@@ -394,11 +418,13 @@ class _Hero extends StatelessWidget {
   const _Hero({
     required this.bagCount,
     required this.orderCount,
+    required this.canManageLabels,
     required this.onEditTemplate,
   });
 
   final int bagCount;
   final int orderCount;
+  final bool canManageLabels;
   final VoidCallback onEditTemplate;
 
   @override
@@ -487,11 +513,12 @@ class _Hero extends StatelessWidget {
                 runSpacing: 7,
                 children: [
                   const _GhostChip(icon: Symbols.schedule, label: 'Listas hoy'),
-                  _GhostChip(
-                    icon: Symbols.design_services,
-                    label: 'Diseñar etiqueta',
-                    onTap: onEditTemplate,
-                  ),
+                  if (canManageLabels)
+                    _GhostChip(
+                      icon: Symbols.design_services,
+                      label: 'Diseñar etiqueta',
+                      onTap: onEditTemplate,
+                    ),
                 ],
               ),
             ],

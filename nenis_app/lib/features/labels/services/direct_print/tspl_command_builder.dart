@@ -20,7 +20,16 @@ class TsplCommandBuilder {
     int density = 15,
     int copies = 1,
   }) {
-    final decoded = img.decodeImage(png);
+    img.Image? decoded;
+    try {
+      decoded = img.decodeImage(png);
+    } catch (_) {
+      // Con bytes corruptos/demasiado cortos, decodeImage() no siempre
+      // devuelve null: el paquete image puede lanzar un error crudo (p.ej.
+      // RangeError) al probar formatos candidatos (visto con PSD) antes de
+      // descartarlos. Lo normalizamos al mismo error controlado.
+      decoded = null;
+    }
     if (decoded == null) {
       throw const FormatException('No se pudo decodificar la imagen de la etiqueta.');
     }

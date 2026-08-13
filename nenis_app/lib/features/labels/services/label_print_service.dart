@@ -25,6 +25,11 @@ class LabelPrintService {
   /// Imprime directo por Bluetooth a la impresora emparejada para este
   /// tamaño de etiqueta, sin pasar por el selector del sistema ni la app
   /// del fabricante (NIIMBOT B1 para 50×50mm, AIYIN E40 Pro para 4×6").
+  ///
+  /// Renderiza todos los documentos primero y los envía en un solo
+  /// [NiimbotB1PrintService.printBatch]/[AiyinE40PrintService.printBatch]:
+  /// antes cada documento del lote conectaba y desconectaba la impresora
+  /// por separado, multiplicando los puntos de fallo por cada etiqueta.
   Future<void> printDirect({
     required PairedPrinter printer,
     required String designJson,
@@ -33,6 +38,7 @@ class LabelPrintService {
     required List<Map<String, String>> documents,
     required int copies,
   }) async {
+    final pngs = <Uint8List>[];
     for (final document in documents) {
       final png = await renderer.renderPng(
         designJson: designJson,
@@ -41,22 +47,25 @@ class LabelPrintService {
         document: document,
       );
       _debugLogPngContent(png);
-      switch (printer.brand) {
-        case PrinterBrand.niimbotB1:
-          await niimbot.printLabel(
-            address: printer.address,
-            name: printer.name,
-            png: png,
-            copies: copies,
-          );
-        case PrinterBrand.aiyinE40Pro:
-          await aiyin.printLabel(
-            address: printer.address,
-            name: printer.name,
-            png: png,
-            copies: copies,
-          );
-      }
+      pngs.add(png);
+    }
+    if (pngs.isEmpty) return;
+
+    switch (printer.brand) {
+      case PrinterBrand.niimbotB1:
+        await niimbot.printBatch(
+          address: printer.address,
+          name: printer.name,
+          pngs: pngs,
+          copies: copies,
+        );
+      case PrinterBrand.aiyinE40Pro:
+        await aiyin.printBatch(
+          address: printer.address,
+          name: printer.name,
+          pngs: pngs,
+          copies: copies,
+        );
     }
   }
 

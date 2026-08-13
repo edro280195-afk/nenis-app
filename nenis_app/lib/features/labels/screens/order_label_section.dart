@@ -17,6 +17,8 @@ import '../services/direct_print/aiyin_e40_print_service.dart';
 import '../services/direct_print/niimbot_b1_print_service.dart';
 import '../services/label_pdf_renderer.dart';
 import '../services/label_print_service.dart';
+import '../services/print_failure_reason.dart';
+import '../services/print_messages.dart';
 import '../widgets/label_widgets.dart';
 import 'label_print_options_sheet.dart';
 
@@ -110,6 +112,7 @@ class _OrderLabelSectionState extends ConsumerState<OrderLabelSection> {
         await repository.updateJobStatus(
           jobId: job.id,
           status: 'SentToSystem',
+          output: 'BluetoothDirect',
         );
         _showMessage(
           '${job.totalLabels} ${job.totalLabels == 1 ? 'etiqueta enviada' : 'etiquetas enviadas'} a ${paired.name}',
@@ -120,37 +123,42 @@ class _OrderLabelSectionState extends ConsumerState<OrderLabelSection> {
         await repository.updateJobStatus(
           jobId: job.id,
           status: accepted ? 'SentToSystem' : 'Canceled',
+          output: 'SystemPrint',
         );
         if (accepted) {
           _showMessage(
-            '${job.totalLabels} ${job.totalLabels == 1 ? 'etiqueta enviada' : 'etiquetas enviadas'} al selector de impresión',
+            printedViaSystemMessage(job.totalLabels),
             color: AppColors.lavender,
           );
         } else {
-          _showMessage('No se envió ninguna etiqueta a imprimir.');
+          _showMessage(printCanceledMessage);
         }
       }
     } on LabelPrintException catch (error) {
-      if (job != null) await _recordFailure(repository, job.id, error.message);
+      if (job != null) {
+        await _recordFailure(repository, job.id, printFailureReason(error.code, error.message));
+      }
       if (!mounted) return;
       _showMessage(error.message, color: AppColors.liveRed);
       if (error.isFeatureLocked) context.push('/seller/plan');
     } on LabelPrintRenderException catch (error) {
-      if (job != null) await _recordFailure(repository, job.id, error.message);
+      if (job != null) {
+        await _recordFailure(repository, job.id, printFailureReason(error.code, error.message));
+      }
       _showMessage(error.message, color: AppColors.liveRed);
     } on NiimbotPrintException catch (error) {
-      if (job != null) await _recordFailure(repository, job.id, error.message);
+      if (job != null) {
+        await _recordFailure(repository, job.id, printFailureReason(error.code, error.message));
+      }
       _showMessage(error.message, color: AppColors.liveRed);
     } on AiyinPrintException catch (error) {
-      if (job != null) await _recordFailure(repository, job.id, error.message);
-      _showMessage(error.message, color: AppColors.liveRed);
-    } catch (_) {
       if (job != null) {
-        await _recordFailure(
-          repository,
-          job.id,
-          'El sistema no pudo abrir la impresión.',
-        );
+        await _recordFailure(repository, job.id, printFailureReason(error.code, error.message));
+      }
+      _showMessage(error.message, color: AppColors.liveRed);
+    } catch (e) {
+      if (job != null) {
+        await _recordFailure(repository, job.id, unknownPrintFailureReason(e));
       }
       _showMessage(
         'No pudimos abrir el selector de impresión.',
@@ -275,6 +283,7 @@ class _PackageCountSheet extends StatefulWidget {
 
 class _PackageCountSheetState extends State<_PackageCountSheet> {
   final TextEditingController _controller = TextEditingController(text: '1');
+  String? _error;
 
   @override
   void dispose() {
@@ -284,7 +293,12 @@ class _PackageCountSheetState extends State<_PackageCountSheet> {
 
   void _submit() {
     final value = int.tryParse(_controller.text.trim());
-    if (value == null || value < 1 || value > 100) return;
+    if (value == null || value < 1 || value > 100) {
+      // Antes el botón simplemente no reaccionaba fuera de este rango, sin
+      // explicar por qué — parecía un botón roto.
+      setState(() => _error = 'Escribe un número entre 1 y 100.');
+      return;
+    }
     Navigator.of(context).pop(value);
   }
 
@@ -330,6 +344,9 @@ class _PackageCountSheetState extends State<_PackageCountSheet> {
               keyboardType: TextInputType.number,
               textAlign: TextAlign.center,
               style: AppTextStyles.h1.copyWith(fontSize: 26),
+              onChanged: (_) {
+                if (_error != null) setState(() => _error = null);
+              },
               onSubmitted: (_) => _submit(),
               decoration: InputDecoration(
                 filled: true,
@@ -341,6 +358,13 @@ class _PackageCountSheetState extends State<_PackageCountSheet> {
                 ),
               ),
             ),
+            if (_error != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                _error!,
+                style: AppTextStyles.subtitle.copyWith(fontSize: 11.5, color: AppColors.liveRed),
+              ),
+            ],
             const SizedBox(height: 18),
             PillButton(
               label: 'Crear bolsas',

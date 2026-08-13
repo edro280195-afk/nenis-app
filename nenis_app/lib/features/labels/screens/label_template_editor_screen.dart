@@ -351,7 +351,7 @@ class _LabelTemplateEditorScreenState
       ref.invalidate(
         labelTemplateProvider((kind: widget.kind, mediaSize: widget.mediaSize)),
       );
-      _showMessage('Borrador recuperado.');
+      _showMessage('Borrador recuperado.', color: AppColors.lavender);
     } on LabelTemplateException catch (error) {
       _showMessage(error.message, color: AppColors.liveRed);
     } finally {
@@ -359,39 +359,56 @@ class _LabelTemplateEditorScreenState
     }
   }
 
-  Future<void> _back(LabelTemplateEditor template) async {
-    if (_isDirty) {
-      final choice = await showDialog<_LeaveChoice>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Tienes cambios sin guardar'),
-          content: const Text(
-            'Guárdalos para conservarlos como borrador o descártalos antes de salir.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () =>
-                  Navigator.of(dialogContext).pop(_LeaveChoice.cancel),
-              child: const Text('Cancelar'),
-            ),
-            TextButton(
-              onPressed: () =>
-                  Navigator.of(dialogContext).pop(_LeaveChoice.discard),
-              child: const Text('Descartar'),
-            ),
-            TextButton(
-              onPressed: () =>
-                  Navigator.of(dialogContext).pop(_LeaveChoice.save),
-              child: const Text('Guardar'),
-            ),
-          ],
+  /// true si es seguro continuar (no había cambios sin guardar, o el
+  /// usuario ya decidió qué hacer con ellos: guardarlos o descartarlos).
+  /// false si debe cancelarse lo que se iba a hacer (salir / cambiar de
+  /// formato). Compartido entre [_back] y el selector de formato: antes
+  /// solo `_back` pasaba por esta verificación, y cambiar de formato con
+  /// el segmented control podía perder cambios sin guardar en silencio.
+  Future<bool> _confirmLeaveIfDirty(LabelTemplateEditor template) async {
+    if (!_isDirty) return true;
+    final choice = await showDialog<_LeaveChoice>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Tienes cambios sin guardar'),
+        content: const Text(
+          'Guárdalos para conservarlos como borrador o descártalos antes de continuar.',
         ),
-      );
-      if (choice == null || choice == _LeaveChoice.cancel) return;
-      if (choice == _LeaveChoice.save && !await _save(template)) return;
-    }
+        actions: [
+          TextButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(_LeaveChoice.cancel),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(_LeaveChoice.discard),
+            child: const Text('Descartar'),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(_LeaveChoice.save),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+    if (choice == null || choice == _LeaveChoice.cancel) return false;
+    if (choice == _LeaveChoice.save) return _save(template);
+    return true;
+  }
+
+  Future<void> _back(LabelTemplateEditor template) async {
+    if (!await _confirmLeaveIfDirty(template)) return;
     if (!mounted) return;
     context.canPop() ? context.pop() : context.go('/seller/labels');
+  }
+
+  Future<void> _changeFormat(LabelTemplateEditor template, LabelMediaSize size) async {
+    if (size == widget.mediaSize) return;
+    if (!await _confirmLeaveIfDirty(template)) return;
+    if (!mounted) return;
+    context.go('/seller/labels/editor?kind=${widget.kind.api}&mediaSize=${size.api}');
   }
 
   @override
@@ -409,10 +426,21 @@ class _LabelTemplateEditorScreenState
             loading: () => const Center(
               child: CircularProgressIndicator(color: AppColors.neniDeep),
             ),
-            error: (error, _) => _EditorError(
-              error: error.toString(),
-              onBack: () => context.go('/seller/labels'),
-            ),
+            error: (error, _) {
+              // LabelTemplateException ya trae un mensaje orientado a la
+              // vendedora; cualquier otro tipo de error (inesperado) antes
+              // se mostraba crudo vía error.toString() — texto técnico que
+              // no le dice nada útil a quien lo ve.
+              if (error is! LabelTemplateException) {
+                debugPrint('[LabelTemplateEditor] unexpected error: $error');
+              }
+              return _EditorError(
+                error: error is LabelTemplateException
+                    ? error.message
+                    : 'Ocurrió un problema inesperado. Vuelve a intentarlo.',
+                onBack: () => context.go('/seller/labels'),
+              );
+            },
             data: (template) {
               _adopt(template);
               final design = _design!;
@@ -420,7 +448,10 @@ class _LabelTemplateEditorScreenState
               final selected = _selected;
 
               final canvasChildren = <Widget>[
-                _FormatSegmented(current: widget.mediaSize, kind: widget.kind),
+                _FormatSegmented(
+                  current: widget.mediaSize,
+                  onSelect: (size) => _changeFormat(template, size),
+                ),
                 const SizedBox(height: 14),
                 Container(
                   width: double.infinity,
@@ -666,9 +697,9 @@ class _EditorHeader extends StatelessWidget {
 }
 
 class _FormatSegmented extends StatelessWidget {
-  const _FormatSegmented({required this.current, required this.kind});
+  const _FormatSegmented({required this.current, required this.onSelect});
   final LabelMediaSize current;
-  final LabelTemplateKind kind;
+  final ValueChanged<LabelMediaSize> onSelect;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -685,11 +716,11 @@ class _FormatSegmented extends StatelessWidget {
             child: _SegOption(
               label: size == LabelMediaSize.shipping4x6 ? '4 × 6”' : '50 × 50 mm',
               active: size == current,
-              onTap: size == current
-                  ? null
-                  : () => context.go(
-                      '/seller/labels/editor?kind=${kind.api}&mediaSize=${size.api}',
-                    ),
+              // Antes navegaba directo con context.go(...) sin pasar por
+              // _confirmLeaveIfDirty: cambiar de formato con cambios sin
+              // guardar los perdía en silencio (el botón "atrás" sí los
+              // protegía, este control no).
+              onTap: size == current ? null : () => onSelect(size),
             ),
           ),
           if (size != LabelMediaSize.values.last) const SizedBox(width: 6),
