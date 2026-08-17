@@ -16,9 +16,9 @@ Future<void> main() async {
   await initializeDateFormatting('es');
   await initializeDateFormatting('es_MX');
   try {
-    // Falla en silencio hasta que se agreguen los archivos nativos de
-    // Firebase (google-services.json / GoogleService-Info.plist): sin
-    // ellos simplemente no hay push, el resto de la app sigue funcionando.
+    // Firebase se usa para Auth por teléfono y notificaciones push. Si falta
+    // la configuración nativa, el proveedor de Auth mostrará un error seguro;
+    // el resto de la app sigue funcionando.
     await Firebase.initializeApp();
   } catch (_) {}
   runApp(const ProviderScope(child: NenisApp()));

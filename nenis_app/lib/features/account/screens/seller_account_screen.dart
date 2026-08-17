@@ -13,6 +13,7 @@ import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../data/seller_settings_models.dart';
 import '../data/seller_settings_repository.dart';
+import '../widgets/account_deletion_button.dart';
 
 class SellerAccountScreen extends ConsumerWidget {
   const SellerAccountScreen({super.key});
@@ -165,6 +166,11 @@ class SellerAccountScreen extends ConsumerWidget {
                 onTap: () => context.push('/onboarding/seller?replay=true'),
               ),
               const SizedBox(height: 22),
+              AccountDeletionButton(
+                onConfirm: () =>
+                    ref.read(authControllerProvider.notifier).deleteAccount(),
+              ),
+              const SizedBox(height: 8),
               PillButton(
                 label: 'Cerrar sesión',
                 icon: Symbols.logout,

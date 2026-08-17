@@ -16,10 +16,8 @@ import '../data/live_hub_client.dart';
 import '../data/live_models.dart';
 
 /// Visor de la clienta durante el Live de una tienda. No procesa ni
-/// reproduce el video de Facebook para nada — solo escucha, por SignalR,
-/// qué producto anunció la vendedora, y deja apartarlo en un toque. La
-/// clienta sigue viendo el Live de verdad en Facebook, en otra pantalla o
-/// pestaña; esta pantalla es la capa de compra en paralelo.
+/// reproduce video externo: solo escucha, por SignalR, qué producto anunció
+/// la vendedora y deja apartarlo en un toque.
 class LiveScreen extends ConsumerStatefulWidget {
   const LiveScreen({super.key, required this.businessId});
   final String businessId;

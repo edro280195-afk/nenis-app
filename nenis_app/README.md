@@ -32,34 +32,6 @@ lib/
 
 Por defecto `http://localhost:5080` (configurable en `lib/core/api/` cuando se implemente el cliente HTTP). Repo backend: `sellgeneral-api`.
 
-## Facebook Login
-
-La app usa el mismo Facebook App ID en Android, iOS y el backend. El SDK móvil
-ya está configurado para:
-
-- Android: `com.nenisapp.nenis_app`
-- iOS: `com.nenisapp.nenisApp`
-
-En Meta for Developers deben existir ambas plataformas. Android también requiere
-los hashes de la llave de debug y de la llave de release; sin el hash de release
-el acceso funciona localmente pero falla al instalar la versión publicada.
-
-El `AppSecret` nunca va dentro de la app móvil. Se configura únicamente en el
-servidor, preferentemente con variables de entorno:
-
-```text
-Facebook__AppId=1427323549158529
-Facebook__AppSecret=<APP_SECRET>
-Facebook__GraphApiVersion=v25.0
-```
-
-La aplicación de Meta debe estar en modo Live para usuarias externas y tener
-habilitados `public_profile` y `email`.
-
-La guía completa, con el hash debug verificado y las instrucciones para obtener
-los hashes de release y Google Play, está en
-[`FACEBOOK_LOGIN_CONFIGURACION.md`](FACEBOOK_LOGIN_CONFIGURACION.md).
-
 ## Firma de Android para release
 
 Los builds de producción no usan la llave de debug. La configuración admite

@@ -93,7 +93,7 @@ void main() {
     );
 
     expect(find.text('Tu número protege tus compras'), findsOneWidget);
-    expect(find.textContaining('confirmamos por WhatsApp'), findsOneWidget);
+    expect(find.textContaining('confirmamos por SMS'), findsOneWidget);
     expect(find.textContaining('sólo tú reclames'), findsOneWidget);
   });
 

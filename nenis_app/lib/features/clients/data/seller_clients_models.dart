@@ -86,7 +86,6 @@ class SellerClientProfile {
     this.latitude,
     this.longitude,
     this.aliases = const [],
-    this.facebookProfileUrl,
   });
 
   final int id;
@@ -101,7 +100,6 @@ class SellerClientProfile {
   final double? latitude;
   final double? longitude;
   final List<String> aliases;
-  final String? facebookProfileUrl;
 
   bool get isFrequent =>
       ordersCount > 0 || type.trim().toLowerCase() == 'frecuente';
@@ -144,7 +142,6 @@ class SellerClientProfile {
       aliases: ((json['aliases'] as List?) ?? const [])
           .map((value) => value.toString())
           .toList(),
-      facebookProfileUrl: json['facebookProfileUrl'] as String?,
     );
   }
 }
@@ -157,7 +154,6 @@ class UpdateSellerClientRequest {
     this.phone,
     this.address,
     this.deliveryInstructions,
-    this.facebookProfileUrl,
     this.latitude,
     this.longitude,
     this.clearCoordinates = false,
@@ -169,7 +165,6 @@ class UpdateSellerClientRequest {
   final String? phone;
   final String? address;
   final String? deliveryInstructions;
-  final String? facebookProfileUrl;
   final double? latitude;
   final double? longitude;
   final bool clearCoordinates;
@@ -181,7 +176,6 @@ class UpdateSellerClientRequest {
     'tag': tag.api,
     'type': type.trim().isEmpty ? 'Nueva' : type.trim(),
     'deliveryInstructions': deliveryInstructions?.trim(),
-    if (facebookProfileUrl != null) 'facebookProfileUrl': facebookProfileUrl,
     if (latitude != null && longitude != null) ...{
       'latitude': latitude,
       'longitude': longitude,

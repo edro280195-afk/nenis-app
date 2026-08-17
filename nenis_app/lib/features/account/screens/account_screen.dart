@@ -14,6 +14,7 @@ import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/store_avatar.dart';
 import '../data/account_models.dart';
 import '../data/account_repository.dart';
+import '../widgets/account_deletion_button.dart';
 
 import 'seller_account_screen.dart';
 
@@ -92,6 +93,12 @@ class BuyerAccountScreen extends ConsumerWidget {
                           context.push('/onboarding/client?replay=true'),
                     ),
                     const SizedBox(height: 18),
+                    AccountDeletionButton(
+                      onConfirm: () => ref
+                          .read(authControllerProvider.notifier)
+                          .deleteAccount(),
+                    ),
+                    const SizedBox(height: 8),
                     _LogoutButton(
                       onConfirm: () async {
                         await ref

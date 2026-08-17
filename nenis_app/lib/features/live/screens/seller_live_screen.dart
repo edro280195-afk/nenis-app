@@ -16,10 +16,9 @@ import '../../seller_updates/data/seller_updates_repository.dart';
 import '../data/live_hub_client.dart';
 import '../data/live_models.dart';
 import '../data/seller_products_repository.dart';
-import '../widgets/meta_live_probe_card.dart';
 
-/// Control de la vendedora durante su Live: no toca el video de Facebook
-/// para nada — solo anuncia con un toque qué producto está mostrando, y eso
+/// Control de la vendedora durante su Live: solo anuncia con un toque qué
+/// producto está mostrando, y eso
 /// llega al instante a las compradoras conectadas (LiveHub). Requiere que
 /// ya haya un "Estoy en vivo" activo (se inicia desde Novedades).
 class SellerLiveScreen extends ConsumerStatefulWidget {
@@ -137,8 +136,6 @@ class _SellerLiveScreenState extends ConsumerState<SellerLiveScreen> {
                 'clientas lo ven aparecer al instante en la app.',
                 style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
               ),
-              const SizedBox(height: 20),
-              const MetaLiveProbeCard(),
               const SizedBox(height: 20),
               if (!hasLivePush)
                 const FeatureLockedCard(

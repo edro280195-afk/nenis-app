@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
@@ -34,7 +33,6 @@ class StoreScreen extends ConsumerStatefulWidget {
   @override
   ConsumerState<StoreScreen> createState() => _StoreScreenState();
 }
-
 class _StoreScreenState extends ConsumerState<StoreScreen> {
   @override
   void initState() {
@@ -732,8 +730,7 @@ class _PtsBar extends StatelessWidget {
 
 /// Aviso en tiempo real de "está en vivo ahora" (`LiveAnnouncement`). Tocar
 /// el banner entra al visor en vivo dentro de la app (feed de productos
-/// anunciados + apartar); el botón "Ver en Facebook" abre el video real —
-/// las dos cosas coexisten a propósito, una no reemplaza a la otra.
+/// anunciados + apartar).
 class _LiveNowBanner extends StatefulWidget {
   const _LiveNowBanner({required this.store});
   final BuyerStoreDetail store;
@@ -795,14 +792,6 @@ class _LiveNowBannerState extends State<_LiveNowBanner>
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-              ),
-              PillButton(
-                label: 'Ver en Facebook',
-                icon: Symbols.open_in_new,
-                expand: false,
-                variant: PillButtonVariant.ghost,
-                onPressed: () =>
-                    _openStoreFacebook(context, widget.store.facebookUrl),
               ),
             ],
           ),
@@ -1601,28 +1590,6 @@ class _EmptyTab extends StatelessWidget {
 
 void _soonToast(BuildContext context, String message) {
   context.showPremiumToast(message, type: PremiumToastType.info);
-}
-
-/// Abre el Facebook de la tienda (`Business.FacebookUrl`) en el navegador o
-/// la app de Facebook. Si la vendedora todavía no lo configuró, avisa en
-/// vez de fingir que existe.
-Future<void> _openStoreFacebook(
-  BuildContext context,
-  String? facebookUrl,
-) async {
-  if (facebookUrl == null || facebookUrl.isEmpty) {
-    _soonToast(context, 'Esta tienda aún no agregó su Facebook.');
-    return;
-  }
-  final uri = Uri.tryParse(facebookUrl);
-  final opened =
-      uri != null && await launchUrl(uri, mode: LaunchMode.externalApplication);
-  if (!opened && context.mounted) {
-    context.showPremiumToast(
-      'No pudimos abrir Facebook.',
-      type: PremiumToastType.error,
-    );
-  }
 }
 
 /// Comparte un link a la tienda. Si quien lo recibe ya tiene la app

@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/auth/auth_controller.dart';
 import '../../../core/auth/auth_repository.dart';
+import '../../../core/auth/firebase_phone_auth_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -15,9 +17,9 @@ import '../../../shared/widgets/otp_cell.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../widgets/auth_feedback.dart';
 
-/// Confirmación del teléfono con el código de 6 dígitos enviado por WhatsApp.
-/// Se usa tanto al registrarse como cuando un login detecta un teléfono sin
-/// confirmar.
+/// Confirmación del teléfono con el código de 6 dígitos enviado por SMS.
+/// Conserva el camino legacy para cuentas que todavía estaban en confirmación
+/// por WhatsApp antes de esta migración.
 class ConfirmScreen extends ConsumerStatefulWidget {
   const ConfirmScreen({super.key});
 
@@ -33,6 +35,7 @@ class _ConfirmScreenState extends ConsumerState<ConfirmScreen> {
   int _otpRevision = 0;
   int _seconds = 42;
   Timer? _timer;
+  bool _finalizing = false;
 
   @override
   void initState() {
@@ -68,7 +71,15 @@ class _ConfirmScreenState extends ConsumerState<ConfirmScreen> {
       _errorMessage = null;
     });
     try {
-      await ref.read(authControllerProvider.notifier).confirmPhone(code);
+      final controller = ref.read(authControllerProvider.notifier);
+      if (controller.pendingFirebaseAuth) {
+        final idToken = await ref
+            .read(firebasePhoneAuthServiceProvider)
+            .verifyCode(code);
+        await controller.loginWithFirebaseIdToken(idToken);
+      } else {
+        await controller.confirmPhone(code);
+      }
       // Éxito: el redirect del router lleva a /home (o /claim) automáticamente.
     } on AuthException catch (e) {
       if (mounted) {
@@ -99,12 +110,33 @@ class _ConfirmScreenState extends ConsumerState<ConfirmScreen> {
       _errorMessage = null;
     });
     try {
-      await ref.read(authControllerProvider.notifier).resendCode();
+      final controller = ref.read(authControllerProvider.notifier);
+      if (controller.pendingFirebaseAuth) {
+        final phone = controller.pendingPhone;
+        if (phone == null) throw AuthException('Escribe tu teléfono de nuevo.');
+        await ref
+            .read(firebasePhoneAuthServiceProvider)
+            .sendCode(
+              phone,
+              onCodeSent: () {},
+              onVerificationFailed: (error) {
+                if (mounted) {
+                  setState(
+                    () => _errorMessage =
+                        FirebasePhoneAuthService.friendlyMessage(error),
+                  );
+                }
+              },
+              onVerificationCompleted: _completeCredential,
+            );
+      } else {
+        await controller.resendCode();
+      }
       _startCountdown();
       if (mounted) {
         showAuthNotification(
           context,
-          'Solicitamos un nuevo código para tu WhatsApp.',
+          'Solicitamos un nuevo código por SMS.',
           tone: AuthFeedbackTone.success,
         );
       }
@@ -124,8 +156,34 @@ class _ConfirmScreenState extends ConsumerState<ConfirmScreen> {
 
   String get _maskedPhone {
     final p = _phone;
-    if (p == null || p.length < 2) return 'tu WhatsApp';
-    return '+52 ··· ${p.substring(p.length - 2)}';
+    if (p == null || p.length < 4) return 'tu teléfono';
+    return '+52 ··· ${p.substring(p.length - 4)}';
+  }
+
+  Future<void> _completeCredential(PhoneAuthCredential credential) async {
+    if (_finalizing) return;
+    _finalizing = true;
+    if (mounted) setState(() => _verifying = true);
+    try {
+      final idToken = await ref
+          .read(firebasePhoneAuthServiceProvider)
+          .signInWithCredential(credential);
+      await ref
+          .read(authControllerProvider.notifier)
+          .loginWithFirebaseIdToken(idToken);
+    } on AuthException catch (error) {
+      if (mounted) setState(() => _errorMessage = error.message);
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _errorMessage =
+              'No pudimos validar tu teléfono. Inténtalo nuevamente.',
+        );
+      }
+    } finally {
+      _finalizing = false;
+      if (mounted) setState(() => _verifying = false);
+    }
   }
 
   @override
@@ -182,7 +240,7 @@ class _ConfirmScreenState extends ConsumerState<ConfirmScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Escribe el código de 6 dígitos que te enviamos por WhatsApp a $_maskedPhone',
+                        'Escribe el código de 6 dígitos que te enviamos por SMS a $_maskedPhone',
                         textAlign: TextAlign.center,
                         style: AppTextStyles.subtitle,
                       ),

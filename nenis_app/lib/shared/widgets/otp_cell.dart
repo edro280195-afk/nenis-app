@@ -10,21 +10,14 @@ class OtpCell extends StatelessWidget {
     super.key,
     required this.controller,
     required this.focusNode,
-    required this.autoSubmit,
-    this.nextFocusNode,
+    required this.onChanged,
     this.width = 56,
     this.height = 64,
   });
 
   final TextEditingController controller;
   final FocusNode focusNode;
-  final bool autoSubmit;
-  // Nodo de la celda siguiente. Se pide el foco de forma explícita en vez de
-  // usar FocusScope.of(context).nextFocus(): con el Row de celdas generado
-  // por LayoutBuilder, nextFocus() no encontraba el nodo siguiente y el
-  // avance automático al escribir un dígito se quedaba sin efecto (bug
-  // encontrado en QA 2026-08-05, afectaba las 5 pantallas que usan OtpInput).
-  final FocusNode? nextFocusNode;
+  final ValueChanged<String> onChanged;
   final double width;
   final double height;
 
@@ -59,7 +52,6 @@ class OtpCell extends StatelessWidget {
         focusNode: focusNode,
         keyboardType: TextInputType.number,
         textAlign: TextAlign.center,
-        maxLength: 1,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         style: AppTextStyles.display.copyWith(
           fontSize: 24,
@@ -73,11 +65,7 @@ class OtpCell extends StatelessWidget {
           contentPadding: EdgeInsets.zero,
           isDense: true,
         ),
-        onChanged: (value) {
-          if (autoSubmit && value.isNotEmpty) {
-            nextFocusNode?.requestFocus();
-          }
-        },
+        onChanged: onChanged,
       ),
     );
   }
@@ -97,54 +85,94 @@ class OtpInput extends StatefulWidget {
 class _OtpInputState extends State<OtpInput> {
   late final List<TextEditingController> _controllers;
   late final List<FocusNode> _focusNodes;
-  late final List<VoidCallback> _listeners;
+  bool _normalizing = false;
+  String? _lastCompletedCode;
 
   @override
   void initState() {
     super.initState();
     _controllers = List.generate(widget.length, (_) => TextEditingController());
     _focusNodes = List.generate(widget.length, (_) => FocusNode());
-    _listeners = [];
-    for (var i = 0; i < widget.length; i++) {
-      final focusNode = _focusNodes[i];
-      focusNode.addListener(() => setState(() {}));
-      final controller = _controllers[i];
-      void onChange() => _onControllerChanged(i, controller.text);
-      _listeners.add(onChange);
-      controller.addListener(onChange);
+    for (final focusNode in _focusNodes) {
+      focusNode.addListener(_refresh);
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _focusNodes.isNotEmpty) {
+        _focusNodes.first.requestFocus();
+      }
+    });
   }
 
   @override
   void dispose() {
+    for (final focusNode in _focusNodes) {
+      focusNode.removeListener(_refresh);
+    }
     for (var i = 0; i < widget.length; i++) {
-      _controllers[i].removeListener(_listeners[i]);
       _controllers[i].dispose();
       _focusNodes[i].dispose();
     }
     super.dispose();
   }
 
-  void _onControllerChanged(int index, String text) {
-    if (text.length > 1) {
-      final newText = text.characters.last;
-      _controllers[index].text = newText;
-      _controllers[index].selection = TextSelection.collapsed(offset: 1);
+  void _refresh() {
+    if (mounted) setState(() {});
+  }
+
+  void _onChanged(int index, String text) {
+    if (_normalizing) return;
+
+    final digits = text.replaceAll(RegExp(r'\D'), '');
+    if (digits.length > 1) {
+      // Permite pegar el código completo desde el SMS y repartirlo en las
+      // seis celdas, además de conservar el avance normal al teclear.
+      _normalizing = true;
+      for (var offset = 0; offset < digits.length; offset++) {
+        final targetIndex = index + offset;
+        if (targetIndex >= widget.length) break;
+        _setCellValue(targetIndex, digits[offset]);
+      }
+      _normalizing = false;
+      final nextIndex = (index + digits.length)
+          .clamp(0, widget.length - 1)
+          .toInt();
+      _focusNodes[nextIndex].requestFocus();
+      _refresh();
+      _checkCompleted();
       return;
     }
-    if (text.isEmpty && _controllers[index].text.isEmpty) {
+
+    if (digits.isEmpty) {
       if (index > 0) {
         _focusNodes[index - 1].requestFocus();
       }
+    } else {
+      _setCellValue(index, digits);
+      if (index < widget.length - 1) {
+        _focusNodes[index + 1].requestFocus();
+      } else {
+        _focusNodes[index].unfocus();
+      }
     }
-    setState(() {});
+    _refresh();
     _checkCompleted();
+  }
+
+  void _setCellValue(int index, String value) {
+    _controllers[index].value = TextEditingValue(
+      text: value,
+      selection: TextSelection.collapsed(offset: value.length),
+    );
   }
 
   void _checkCompleted() {
     final code = _controllers.map((c) => c.text).join();
     if (code.length == widget.length) {
+      if (_lastCompletedCode == code) return;
+      _lastCompletedCode = code;
       widget.onCompleted(code);
+    } else {
+      _lastCompletedCode = null;
     }
   }
 
@@ -166,12 +194,10 @@ class _OtpInputState extends State<OtpInput> {
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: List.generate(widget.length, (i) {
-            final isLast = i == widget.length - 1;
             return OtpCell(
               controller: _controllers[i],
               focusNode: _focusNodes[i],
-              autoSubmit: !isLast,
-              nextFocusNode: isLast ? null : _focusNodes[i + 1],
+              onChanged: (value) => _onChanged(i, value),
               width: cellWidth,
               height: cellHeight,
             );

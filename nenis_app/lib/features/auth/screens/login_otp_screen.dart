@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,10 +8,12 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/auth/auth_controller.dart';
 import '../../../core/auth/auth_repository.dart';
+import '../../../core/auth/firebase_phone_auth_service.dart';
 import '../../../core/legal/legal_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/phone_number.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/nenis_logo.dart';
@@ -20,7 +23,7 @@ import '../widgets/auth_feedback.dart';
 import '../widgets/auth_motion.dart';
 import '../widgets/legal_acceptance.dart';
 
-/// Login passwordless generico: telefono + codigo por WhatsApp.
+/// Login passwordless genérico: teléfono + código por SMS mediante Firebase.
 /// Si el telefono no existe, el backend puede crear una cuenta de clienta.
 class LoginOtpScreen extends ConsumerStatefulWidget {
   const LoginOtpScreen({super.key});
@@ -38,6 +41,7 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
   bool _acceptedLegal = false;
   String? _error;
   int _otpRevision = 0;
+  bool _finalizing = false;
 
   Timer? _timer;
   int _seconds = 0;
@@ -64,9 +68,10 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
 
   Future<void> _sendCode() async {
     if (_loading) return;
-    final phone = _phone.text.replaceAll(RegExp(r'\D'), '');
-    if (phone.length != 10) {
-      setState(() => _error = 'Escribe tu telefono a 10 digitos.');
+    final phoneDigits = _phone.text.replaceAll(RegExp(r'\D'), '');
+    final phone = PhoneNumberNormalizer.toE164(_phone.text);
+    if (phoneDigits.length != 10 || !PhoneNumberNormalizer.isValidE164(phone)) {
+      setState(() => _error = 'Escribe un teléfono válido a 10 dígitos.');
       return;
     }
     if (!_acceptedLegal) {
@@ -82,16 +87,16 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
       _error = null;
     });
     try {
-      await ref
-          .read(authControllerProvider.notifier)
-          .requestPasswordlessOtp(
-            phone,
-            acceptedLegal: _acceptedLegal,
-            legalVersion: LegalConfig.currentVersion,
-          );
-      if (!mounted) return;
-      setState(() => _step = _Step.code);
-      _startCountdown();
+      final controller = ref.read(authControllerProvider.notifier);
+      controller.beginFirebaseAuth(
+        phone: phone!,
+        profile: FirebaseLoginProfile(
+          accountType: AccountType.client,
+          acceptedLegal: _acceptedLegal,
+          legalVersion: LegalConfig.currentVersion,
+        ),
+      );
+      await _sendFirebaseCode(phone, showSuccess: false);
     } on AuthException catch (e) {
       _fail(e.message);
     } catch (_) {
@@ -108,9 +113,11 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
       _error = null;
     });
     try {
+      final service = ref.read(firebasePhoneAuthServiceProvider);
+      final idToken = await service.verifyCode(code);
       await ref
           .read(authControllerProvider.notifier)
-          .verifyPasswordlessOtp(code);
+          .loginWithFirebaseIdToken(idToken);
       // Exito: el redirect del router lleva a /home o /pedido/{token}.
     } on AuthException catch (e) {
       _fail(e.message, resetCode: true);
@@ -126,18 +133,76 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
 
   Future<void> _resend() async {
     if (_seconds > 0 || _loading) return;
+    final phone = PhoneNumberNormalizer.toE164(_phone.text);
+    if (!PhoneNumberNormalizer.isValidE164(phone)) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
-      await ref.read(authControllerProvider.notifier).resendCode();
-      _startCountdown();
-      if (mounted) {
-        showAuthNotification(
-          context,
-          'Te enviamos un nuevo codigo.',
-          tone: AuthFeedbackTone.success,
-        );
-      }
+      await _sendFirebaseCode(phone!, showSuccess: true);
+    } on AuthException catch (e) {
+      _fail(e.message);
     } catch (_) {
-      if (mounted) setState(() => _error = 'No pudimos reenviar el codigo.');
+      _fail('No pudimos reenviar el código.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _sendFirebaseCode(
+    String phone, {
+    required bool showSuccess,
+  }) async {
+    final service = ref.read(firebasePhoneAuthServiceProvider);
+    await service.sendCode(
+      phone,
+      onCodeSent: () {
+        if (_finalizing) return;
+        if (!mounted) return;
+        setState(() => _step = _Step.code);
+        _startCountdown();
+        if (showSuccess) {
+          showAuthNotification(
+            context,
+            'Te enviamos un nuevo código por SMS.',
+            tone: AuthFeedbackTone.success,
+          );
+        }
+      },
+      onVerificationFailed: (error) {
+        _fail(FirebasePhoneAuthService.friendlyMessage(error));
+      },
+      onVerificationCompleted: _completeCredential,
+    );
+  }
+
+  Future<void> _completeCredential(PhoneAuthCredential credential) async {
+    if (_finalizing) return;
+    _finalizing = true;
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
+    try {
+      final idToken = await ref
+          .read(firebasePhoneAuthServiceProvider)
+          .signInWithCredential(credential);
+      await ref
+          .read(authControllerProvider.notifier)
+          .loginWithFirebaseIdToken(idToken);
+    } on AuthException catch (e) {
+      _fail(e.message, resetCode: true);
+    } catch (_) {
+      _fail(
+        'No pudimos validar tu teléfono. Inténtalo de nuevo.',
+        resetCode: true,
+      );
+    } finally {
+      _finalizing = false;
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -172,7 +237,7 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Te mandamos un codigo por WhatsApp. Si es tu primera vez, crearemos tu cuenta de clienta.',
+                    'Te mandamos un código por SMS. Si es tu primera vez, crearemos tu cuenta de clienta.',
                     textAlign: TextAlign.center,
                     style: AppTextStyles.subtitle,
                   ),
@@ -180,7 +245,7 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
                   AppTextField(
                     key: const Key('login-otp-phone-field'),
                     controller: _phone,
-                    label: 'Telefono (WhatsApp)',
+                    label: 'Teléfono',
                     prefix: '+52',
                     hint: '868 145 22 90',
                     keyboardType: TextInputType.phone,
@@ -221,7 +286,7 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Te lo mandamos por WhatsApp al +52 ... ${_last2(_phone.text)}.',
+                    'Te lo mandamos por SMS al +52 ··· ${_last4(_phone.text)}.',
                     textAlign: TextAlign.center,
                     style: AppTextStyles.subtitle,
                   ),
@@ -305,9 +370,9 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
     );
   }
 
-  static String _last2(String phone) {
+  static String _last4(String phone) {
     final digits = phone.replaceAll(RegExp(r'\D'), '');
-    return digits.length >= 2 ? digits.substring(digits.length - 2) : '..';
+    return digits.length >= 4 ? digits.substring(digits.length - 4) : '····';
   }
 }
 

@@ -1676,7 +1676,7 @@ class _AliasesCard extends ConsumerWidget {
         error: (error, _) => _InlineError(message: error.toString()),
         data: (aliases) => aliases.isEmpty
             ? Text(
-                'Agrega apodos o nombres de Facebook para que el sistema reconozca a la misma clienta al capturar pedidos.',
+                'Agrega apodos o nombres alternativos para reconocer a la misma clienta al capturar pedidos.',
                 style: AppTextStyles.subtitle.copyWith(fontSize: 12),
               )
             : Wrap(
@@ -1817,7 +1817,6 @@ class _ClientEditSheetState extends State<_ClientEditSheet> {
   late final TextEditingController _phoneCtrl;
   late final TextEditingController _addressCtrl;
   late final TextEditingController _instructionsCtrl;
-  late final TextEditingController _facebookCtrl;
   late final String _originalAddress;
   late final double? _originalLatitude;
   late final double? _originalLongitude;
@@ -1841,9 +1840,6 @@ class _ClientEditSheetState extends State<_ClientEditSheet> {
     _instructionsCtrl = TextEditingController(
       text: client.deliveryInstructions ?? '',
     );
-    _facebookCtrl = TextEditingController(
-      text: client.facebookProfileUrl ?? '',
-    );
     _tag = client.tag;
     _type = client.displayType;
     _selectedLatitude = client.latitude;
@@ -1856,7 +1852,6 @@ class _ClientEditSheetState extends State<_ClientEditSheet> {
     _phoneCtrl.dispose();
     _addressCtrl.dispose();
     _instructionsCtrl.dispose();
-    _facebookCtrl.dispose();
     super.dispose();
   }
 
@@ -1872,9 +1867,6 @@ class _ClientEditSheetState extends State<_ClientEditSheet> {
           tag: _tag,
           type: _type,
           deliveryInstructions: _instructionsCtrl.text,
-          facebookProfileUrl: _facebookCtrl.text.trim().isEmpty
-              ? null
-              : _facebookCtrl.text.trim(),
           latitude: _selectedLatitude,
           longitude: _selectedLongitude,
           clearCoordinates:
@@ -2031,14 +2023,6 @@ class _ClientEditSheetState extends State<_ClientEditSheet> {
                   maxLines: 2,
                   helperText: 'Dejarlas vacías no borra el dato guardado.',
                 ),
-                const SizedBox(height: 12),
-                _EditField(
-                  label: 'Facebook o Messenger',
-                  controller: _facebookCtrl,
-                  icon: Symbols.alternate_email,
-                  keyboardType: TextInputType.url,
-                ),
-                const SizedBox(height: 18),
                 PillButton(
                   label: _saving ? 'Guardando...' : 'Guardar cambios',
                   icon: Symbols.save,
@@ -2099,7 +2083,7 @@ class _AliasDialogState extends State<_AliasDialog> {
         controller: _ctrl,
         autofocus: true,
         decoration: const InputDecoration(
-          labelText: 'Apodo, nombre de Facebook o variación',
+          labelText: 'Apodo o variación',
         ),
         onSubmitted: (value) => Navigator.pop(context, value),
       ),

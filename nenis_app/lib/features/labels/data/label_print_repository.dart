@@ -5,7 +5,11 @@ import '../../../core/api/dio_provider.dart';
 import 'label_print_models.dart';
 
 class LabelPrintException implements Exception {
-  const LabelPrintException(this.message, {this.isFeatureLocked = false, this.code = 'server_error'});
+  const LabelPrintException(
+    this.message, {
+    this.isFeatureLocked = false,
+    this.code = 'server_error',
+  });
 
   final String message;
   final bool isFeatureLocked;
@@ -161,8 +165,7 @@ class LabelPrintRepository {
       DioExceptionType.connectionError => 'network_error',
       DioExceptionType.badResponse => 'server_error',
       DioExceptionType.cancel => 'request_canceled',
-      DioExceptionType.badCertificate ||
-      DioExceptionType.unknown => 'unknown',
+      DioExceptionType.badCertificate || DioExceptionType.unknown => 'unknown',
     };
   }
 }

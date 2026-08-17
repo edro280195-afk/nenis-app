@@ -170,7 +170,6 @@ class SellerOrder {
     this.postponedAt,
     this.postponedNote,
     this.expiresAt,
-    this.clientFacebookProfileUrl,
     this.notifiedAt,
     this.clientPoints = 0,
     this.salesPeriodName,
@@ -207,7 +206,6 @@ class SellerOrder {
   final DateTime? postponedAt;
   final String? postponedNote;
   final DateTime? expiresAt;
-  final String? clientFacebookProfileUrl;
   final DateTime? notifiedAt;
   final int clientPoints;
   final String? salesPeriodName;
@@ -281,7 +279,6 @@ class SellerOrder {
     expiresAt: j['expiresAt'] == null
         ? null
         : DateTime.tryParse(j['expiresAt'] as String)?.toLocal(),
-    clientFacebookProfileUrl: j['clientFacebookProfileUrl'] as String?,
     notifiedAt: j['notifiedAt'] == null
         ? null
         : DateTime.tryParse(j['notifiedAt'] as String)?.toLocal(),

@@ -8,9 +8,7 @@ import 'package:nenis_app/features/subscription/data/subscription_models.dart';
 import 'package:nenis_app/features/subscription/data/subscription_repository.dart';
 
 void main() {
-  Widget buildSubject({
-    FacebookAccountType initialRole = FacebookAccountType.client,
-  }) {
+  Widget buildSubject({AccountType initialRole = AccountType.client}) {
     return ProviderScope(
       overrides: [
         subscriptionPricingProvider.overrideWith(
@@ -63,12 +61,21 @@ void main() {
   ) async {
     await tester.pumpWidget(buildSubject());
 
-    await tester.ensureVisible(find.text('Crear cuenta'));
-    await tester.tap(find.text('Crear cuenta'));
+    await tester.ensureVisible(find.text('Enviar código SMS'));
+    await tester.tap(find.text('Enviar código SMS'));
     await tester.pump();
 
     expect(find.byKey(const Key('register-error')), findsOneWidget);
     expect(find.text('Escribe tu nombre y tu apellido.'), findsOneWidget);
+  });
+
+  testWidgets('no solicita correo porque el teléfono es la identidad', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(buildSubject());
+
+    expect(find.byKey(const Key('register-email-field')), findsNothing);
+    expect(find.text('Teléfono celular'), findsOneWidget);
   });
 
   testWidgets('valida que el teléfono tenga exactamente 10 dígitos', (
@@ -92,13 +99,6 @@ void main() {
     );
     await tester.enterText(
       find.descendant(
-        of: find.byKey(const Key('register-email-field')),
-        matching: find.byType(TextField),
-      ),
-      'ana@example.com',
-    );
-    await tester.enterText(
-      find.descendant(
         of: find.byKey(const Key('register-phone-field')),
         matching: find.byType(TextField),
       ),
@@ -111,8 +111,8 @@ void main() {
       ),
       'segura-123',
     );
-    await tester.ensureVisible(find.text('Crear cuenta'));
-    await tester.tap(find.text('Crear cuenta'));
+    await tester.ensureVisible(find.text('Enviar código SMS'));
+    await tester.tap(find.text('Enviar código SMS'));
     await tester.pump();
 
     expect(find.byKey(const Key('register-error')), findsOneWidget);
@@ -122,9 +122,7 @@ void main() {
   testWidgets('muestra campos de negocio para vendedora', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(
-      buildSubject(initialRole: FacebookAccountType.seller),
-    );
+    await tester.pumpWidget(buildSubject(initialRole: AccountType.seller));
 
     expect(find.byKey(const Key('register-role-seller')), findsOneWidget);
     expect(
@@ -134,7 +132,7 @@ void main() {
     expect(find.byKey(const Key('register-city-field')), findsOneWidget);
     await tester.pump();
     expect(find.text('14 días gratis en Pro'), findsOneWidget);
-    expect(find.text('Iniciar prueba Pro y confirmar'), findsOneWidget);
+    expect(find.text('Continuar y confirmar teléfono'), findsOneWidget);
     expect(find.text('Entrada'), findsOneWidget);
     expect(find.text('Pro'), findsOneWidget);
     expect(find.text('Elite'), findsOneWidget);
@@ -161,13 +159,6 @@ void main() {
     );
     await tester.enterText(
       find.descendant(
-        of: find.byKey(const Key('register-email-field')),
-        matching: find.byType(TextField),
-      ),
-      'ana@example.com',
-    );
-    await tester.enterText(
-      find.descendant(
         of: find.byKey(const Key('register-phone-field')),
         matching: find.byType(TextField),
       ),
@@ -181,8 +172,8 @@ void main() {
       'segura-123',
     );
 
-    await tester.ensureVisible(find.text('Crear cuenta'));
-    await tester.tap(find.text('Crear cuenta'));
+    await tester.ensureVisible(find.text('Enviar código SMS'));
+    await tester.tap(find.text('Enviar código SMS'));
     await tester.pump();
 
     expect(find.byKey(const Key('register-error')), findsOneWidget);

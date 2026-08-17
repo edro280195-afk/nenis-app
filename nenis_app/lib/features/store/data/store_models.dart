@@ -49,8 +49,6 @@ class BuyerStoreDetail {
     this.city,
     this.logoUrl,
     this.brandAccentColor,
-    this.facebookUrl,
-    this.messengerUrl,
   });
 
   final int businessId;
@@ -77,8 +75,6 @@ class BuyerStoreDetail {
   final DateTime? liveCurrentAnnouncedAt;
   final double? averageRating;
   final int ratingsCount;
-  final String? facebookUrl;
-  final String? messengerUrl;
 
   bool get hasCurrentLiveProduct => isLiveNow && liveCurrentProductId != null;
   bool get hasRatings => ratingsCount > 0 && averageRating != null;
@@ -117,8 +113,6 @@ class BuyerStoreDetail {
             : null,
         averageRating: (j['averageRating'] as num?)?.toDouble(),
         ratingsCount: (j['ratingsCount'] as num?)?.toInt() ?? 0,
-        facebookUrl: j['facebookUrl'] as String?,
-        messengerUrl: j['messengerUrl'] as String?,
       );
 
   BuyerStoreDetail copyWith({
@@ -150,8 +144,6 @@ class BuyerStoreDetail {
         liveCurrentAnnouncedAt: liveCurrentAnnouncedAt,
         averageRating: averageRating,
         ratingsCount: ratingsCount,
-        facebookUrl: facebookUrl,
-        messengerUrl: messengerUrl,
       );
 }
 

@@ -33,6 +33,18 @@ class AccountRepository {
       throw AccountException('No pudimos cargar tu cuenta.');
     }
   }
+
+  Future<void> deleteAccount() async {
+    try {
+      await _dio.delete('/api/auth/me');
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final message = (data is Map && data['message'] is String)
+          ? data['message'] as String
+          : 'No pudimos eliminar tu cuenta. Inténtalo nuevamente.';
+      throw AccountException(message);
+    }
+  }
 }
 
 final accountRepositoryProvider = Provider<AccountRepository>((ref) {
@@ -43,5 +55,5 @@ final accountRepositoryProvider = Provider<AccountRepository>((ref) {
 /// no ha vinculado ninguna.
 final myClaimedClientsProvider =
     FutureProvider.autoDispose<List<ClaimedClientSummary>>((ref) {
-  return ref.read(accountRepositoryProvider).getMyClaimedClients();
-});
+      return ref.read(accountRepositoryProvider).getMyClaimedClients();
+    });

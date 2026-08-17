@@ -6,6 +6,8 @@ import '../deeplinks/deep_link_service.dart';
 import '../legal/legal_config.dart';
 import '../notifications/push_service.dart';
 import '../storage/session_storage.dart';
+import '../../features/account/data/account_repository.dart';
+import 'firebase_phone_auth_service.dart';
 import 'auth_repository.dart';
 import 'session.dart';
 
@@ -15,27 +17,28 @@ import 'session.dart';
 class AuthController extends AsyncNotifier<Session?> {
   // Datos del flujo de verificación en curso.
   String? _pendingPhone;
+  String? _pendingFirebasePhone;
+  FirebaseLoginProfile? _pendingFirebaseProfile;
+  bool _pendingFirebaseAuth = false;
   bool _pendingDevMode = false;
   // Nombre pendiente para el alta passwordless pre-llenada desde el pedido.
   String? _pendingFirstName;
   String? _pendingLastName;
-  FacebookAccountType? _pendingAccountType;
+  AccountType? _pendingAccountType;
   String? _pendingBusinessName;
   String? _pendingCity;
   bool _pendingAcceptedLegal = false;
   String _pendingLegalVersion = LegalConfig.currentVersion;
-
-  // Datos del Facebook en espera de completar perfil o verificar teléfono.
-  FacebookAccessCredential? _pendingFacebookCredential;
 
   /// Marca que el login passwordless terminó y hay un pedido pendiente por
   /// deep link que debe "rescatarse" (reclamar). El router la usa para decidir
   /// a dónde llevar tras autenticar: `/pedido/{token}` (rescate) vs `/home`.
   bool _needsOrderRescue = false;
 
-  /// Teléfono al que se le envió el código de WhatsApp (lo usa la pantalla de
-  /// verificación).
-  String? get pendingPhone => _pendingPhone;
+  /// Teléfono al que se le envió el código (E.164 para Firebase; nacional en
+  /// los flujos legacy).
+  String? get pendingPhone => _pendingFirebasePhone ?? _pendingPhone;
+  bool get pendingFirebaseAuth => _pendingFirebaseAuth;
   bool get pendingDevMode => _pendingDevMode;
   bool get needsOrderRescue => _needsOrderRescue;
 
@@ -172,7 +175,7 @@ class AuthController extends AsyncNotifier<Session?> {
     _pendingPhone = phone;
     _pendingFirstName = firstName;
     _pendingLastName = lastName;
-    _pendingAccountType = FacebookAccountType.client;
+    _pendingAccountType = AccountType.client;
     _pendingBusinessName = null;
     _pendingCity = null;
     _pendingAcceptedLegal = acceptedLegal;
@@ -205,6 +208,40 @@ class AuthController extends AsyncNotifier<Session?> {
     await _apply(session);
   }
 
+  /// Guarda el perfil local mientras Firebase envía el SMS. La identidad real
+  /// se valida después, al canjear el ID token en la API.
+  void beginFirebaseAuth({
+    required String phone,
+    required FirebaseLoginProfile profile,
+  }) {
+    _pendingFirebaseAuth = true;
+    _pendingFirebasePhone = phone;
+    _pendingFirebaseProfile = profile;
+    _pendingPhone = null;
+    _pendingFirstName = profile.firstName;
+    _pendingLastName = profile.lastName;
+    _pendingAccountType = profile.accountType;
+    _pendingBusinessName = profile.businessName;
+    _pendingCity = profile.city;
+    _pendingAcceptedLegal = profile.acceptedLegal;
+    _pendingLegalVersion = profile.legalVersion;
+    _pendingDevMode = false;
+  }
+
+  /// Canjea el ID token de Firebase por el JWT de Nenis y conserva el flujo
+  /// actual de refresh token, memberships y selección de negocio.
+  Future<void> loginWithFirebaseIdToken(String idToken) async {
+    final profile = _pendingFirebaseProfile;
+    if (!_pendingFirebaseAuth || profile == null) {
+      throw AuthException('Primero solicita un código por SMS.');
+    }
+    final session = await ref
+        .read(authRepositoryProvider)
+        .firebaseLogin(idToken: idToken, profile: profile);
+    _needsOrderRescue = ref.read(pendingDeepLinkProvider) != null;
+    await _apply(session);
+  }
+
   // ── Registro/login por contraseña (se conserva; ya no guarda la contraseña) ──
 
   /// Paso 1 del registro con contraseña: crea la cuenta y dispara el código.
@@ -214,7 +251,7 @@ class AuthController extends AsyncNotifier<Session?> {
     required String phone,
     required String email,
     required String password,
-    required FacebookAccountType accountType,
+    required AccountType accountType,
     required bool acceptedLegal,
     String legalVersion = LegalConfig.currentVersion,
     String? businessName,
@@ -302,62 +339,12 @@ class AuthController extends AsyncNotifier<Session?> {
     await _apply(session);
   }
 
-  /// Acceso con Facebook para clientas o vendedoras. Una cuenta vinculada y
-  /// completa entra directamente; una nueva solicita los datos restantes.
-  Future<void> loginFacebook(FacebookAccountType accountType) async {
-    final repo = ref.read(authRepositoryProvider);
-    final credential = await repo.facebookAccessToken();
-    _pendingFacebookCredential = credential;
-    _pendingAccountType = accountType;
-    try {
-      final session = await repo.facebookLogin(
-        credential,
-        accountType: accountType,
-      );
-      await _apply(session);
-    } on FacebookTerminalConflictException {
-      _pendingFacebookCredential = null;
-      await repo.facebookLogout();
-      rethrow;
-    }
-  }
-
-  /// Completa una cuenta nueva o vincula una existente con Facebook. Si falta
-  /// validar el teléfono, deja los datos listos para la pantalla de código.
-  Future<void> completeFacebookProfile(
-    FacebookProfileCompletion profile,
-  ) async {
-    final credential = _pendingFacebookCredential;
-    if (credential == null) {
-      throw AuthException('Vuelve a intentar con Facebook.');
-    }
-    _pendingAccountType = profile.accountType;
-    _pendingBusinessName = profile.businessName;
-    _pendingCity = profile.city;
-    _pendingAcceptedLegal = profile.acceptedLegal;
-    _pendingLegalVersion = profile.legalVersion;
-
-    try {
-      final session = await ref
-          .read(authRepositoryProvider)
-          .completeFacebookProfile(credential, profile);
-      await _apply(session);
-    } on FacebookPhoneVerificationRequiredException catch (e) {
-      _pendingPhone = e.phone;
-      _pendingDevMode = e.devMode;
-      rethrow;
-    } on FacebookTerminalConflictException {
-      _pendingFacebookCredential = null;
-      await ref.read(authRepositoryProvider).facebookLogout();
-      rethrow;
-    }
-  }
-
   Future<void> logout() async {
     // 1. Capturamos lo necesario ANTES de tocar el estado.
     final rt = state.asData?.value?.refreshToken;
     final repo = ref.read(authRepositoryProvider);
     final push = ref.read(pushServiceProvider);
+    final firebase = ref.read(firebasePhoneAuthServiceProvider);
     final storage = ref.read(sessionStorageProvider);
 
     // 2. Logout LOCAL inmediato e incondicional: limpiamos estado pendiente,
@@ -368,12 +355,33 @@ class AuthController extends AsyncNotifier<Session?> {
     state = const AsyncData<Session?>(null);
     await _safeClear(storage);
 
-    // 3. Cleanup del backend "fire and forget": revocar el refresh token,
-    //    desregistrar el push y cerrar Facebook. Ninguno debe bloquear el
+    // 3. Cleanup del backend "fire and forget": revocar el refresh token y
+    //    desregistrar el push. Ninguno debe bloquear el
     //    logout (ya ocurrió) ni fallar de forma visible. El timeout protege
     //    contra `FirebaseMessaging.getToken()`, que no tiene timeout propio y
     //    puede colgarse indefinidamente.
-    unawaited(_cleanupAfterLogout(repo: repo, push: push, refreshToken: rt));
+    unawaited(
+      _cleanupAfterLogout(
+        repo: repo,
+        push: push,
+        firebase: firebase,
+        refreshToken: rt,
+      ),
+    );
+  }
+
+  Future<void> deleteAccount() async {
+    final repo = ref.read(accountRepositoryProvider);
+    final firebase = ref.read(firebasePhoneAuthServiceProvider);
+    final storage = ref.read(sessionStorageProvider);
+
+    // Solo se limpia la sesión local después de que la API confirma la baja.
+    // Si falla la red, la usuaria conserva su sesión y puede reintentar.
+    await repo.deleteAccount();
+    await firebase.signOut();
+    _clearPending();
+    state = const AsyncData<Session?>(null);
+    await _safeClear(storage);
   }
 
   Future<void> completeOnboarding(String role) async {
@@ -396,11 +404,17 @@ class AuthController extends AsyncNotifier<Session?> {
   Future<void> _cleanupAfterLogout({
     required AuthRepository repo,
     required PushService push,
+    required FirebasePhoneAuthService firebase,
     required String? refreshToken,
   }) async {
     try {
       await Future.any([
-        _doCleanup(repo: repo, push: push, refreshToken: refreshToken),
+        _doCleanup(
+          repo: repo,
+          push: push,
+          firebase: firebase,
+          refreshToken: refreshToken,
+        ),
         Future<void>.delayed(const Duration(seconds: 8)),
       ]);
     } catch (_) {
@@ -411,13 +425,14 @@ class AuthController extends AsyncNotifier<Session?> {
   Future<void> _doCleanup({
     required AuthRepository repo,
     required PushService push,
+    required FirebasePhoneAuthService firebase,
     required String? refreshToken,
   }) async {
     await Future.wait([
       if (refreshToken != null && refreshToken.isNotEmpty)
         repo.revokeRefreshToken(refreshToken),
       push.unregisterCurrentToken(),
-      repo.facebookLogout(),
+      firebase.signOut(),
     ]);
   }
 
@@ -450,6 +465,9 @@ class AuthController extends AsyncNotifier<Session?> {
 
   void _clearPending() {
     _pendingPhone = null;
+    _pendingFirebasePhone = null;
+    _pendingFirebaseProfile = null;
+    _pendingFirebaseAuth = false;
     _pendingFirstName = null;
     _pendingLastName = null;
     _pendingAccountType = null;
@@ -459,7 +477,6 @@ class AuthController extends AsyncNotifier<Session?> {
     _pendingLegalVersion = LegalConfig.currentVersion;
     _pendingDevMode = false;
     _needsOrderRescue = false;
-    _pendingFacebookCredential = null;
   }
 }
 

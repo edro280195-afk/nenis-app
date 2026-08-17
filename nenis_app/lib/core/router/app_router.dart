@@ -204,8 +204,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
           child: RegisterScreen(
             initialRole: state.uri.queryParameters['role'] == 'seller'
-                ? FacebookAccountType.seller
-                : FacebookAccountType.client,
+                ? AccountType.seller
+                : AccountType.client,
           ),
         ),
       ),

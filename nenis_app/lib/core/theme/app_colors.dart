@@ -24,7 +24,6 @@ class AppColors {
 
   static const Color surfaceCream = Color(0xFFFDF4F7);
 
-  static const Color facebook = Color(0xFF1877F2);
   static const Color liveRed = Color(0xFFFF2D55);
 
   static const Color glassFill = Color(0xB8FFFFFF);

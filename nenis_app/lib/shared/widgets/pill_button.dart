@@ -7,7 +7,7 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/brand_theme.dart';
 import 'interactive_bounce.dart';
 
-enum PillButtonVariant { primary, brand, ghost, facebook }
+enum PillButtonVariant { primary, brand, ghost }
 
 class PillButton extends StatelessWidget {
   const PillButton({
@@ -31,7 +31,6 @@ class PillButton extends StatelessWidget {
     final disabled = onPressed == null;
     final isBrand = variant == PillButtonVariant.brand;
     final isPrimary = variant == PillButtonVariant.primary;
-    final isFb = variant == PillButtonVariant.facebook;
 
     final Color bg;
     final Color fg;
@@ -47,18 +46,6 @@ class PillButton extends StatelessWidget {
       bg = brand.primary;
       fg = brand.onPrimary;
       shadow = AppShadows.brandPrimary(brand.primary);
-      border = null;
-    } else if (isFb) {
-      bg = AppColors.facebook;
-      fg = AppColors.surface;
-      shadow = const [
-        BoxShadow(
-          color: Color(0x991877F2),
-          offset: Offset(0, 14),
-          blurRadius: 26,
-          spreadRadius: -12,
-        ),
-      ];
       border = null;
     } else {
       bg = AppColors.surface;
@@ -101,13 +88,13 @@ class PillButton extends StatelessWidget {
                 borderRadius: AppRadii.pillRadius,
                 border: border,
                 boxShadow: disabled ? const [] : shadow,
-                gradient: (isPrimary || isBrand || isFb)
+                gradient: (isPrimary || isBrand)
                     ? LinearGradient(
                         colors: isPrimary
                             ? const [AppColors.neni, AppColors.neniDeep]
                             : isBrand
                             ? [brand.gradientStart, brand.gradientEnd]
-                            : const [Color(0xFF2190F8), AppColors.facebook],
+                            : [brand.gradientStart, brand.gradientEnd],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       )

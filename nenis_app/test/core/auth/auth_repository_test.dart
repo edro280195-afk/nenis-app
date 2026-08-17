@@ -25,269 +25,6 @@ void main() {
     });
   });
 
-  group('FacebookProfileRequiredException', () {
-    test('lee el perfil sugerido y el tipo de cuenta del API', () {
-      final result = FacebookProfileRequiredException.fromJson({
-        'message': 'Completa tus datos.',
-        'accountType': 'seller',
-        'requiresExistingPassword': false,
-        'firstName': 'Ana',
-        'lastName': 'López',
-        'email': 'ana@example.com',
-        'phone': '8681234567',
-        'missingFields': ['businessName'],
-      }, fallbackAccountType: FacebookAccountType.client);
-
-      expect(result.accountType, FacebookAccountType.seller);
-      expect(result.firstName, 'Ana');
-      expect(result.lastName, 'López');
-      expect(result.email, 'ana@example.com');
-      expect(result.phone, '8681234567');
-      expect(result.missingFields, ['businessName']);
-      expect(result.requiresExistingPassword, isFalse);
-    });
-
-    test('usa el tipo solicitado si el API omite accountType', () {
-      final result = FacebookProfileRequiredException.fromJson(
-        const {},
-        fallbackAccountType: FacebookAccountType.seller,
-      );
-
-      expect(result.accountType, FacebookAccountType.seller);
-      expect(result.missingFields, isEmpty);
-    });
-  });
-
-  group('FacebookTerminalConflictException', () {
-    test('clasifica un conflicto entre identidades', () {
-      final result = FacebookTerminalConflictException.fromJson({
-        'error': 'identity_conflict',
-        'message': 'Los datos pertenecen a cuentas distintas.',
-      });
-
-      expect(result.type, FacebookTerminalConflictType.identityConflict);
-      expect(result.message, 'Los datos pertenecen a cuentas distintas.');
-    });
-
-    test('clasifica un cambio de teléfono verificado', () {
-      final result = FacebookTerminalConflictException.fromJson({
-        'error': 'verified_phone_change_not_allowed',
-        'message': 'Entra con tu método habitual.',
-      });
-
-      expect(
-        result.type,
-        FacebookTerminalConflictType.verifiedPhoneChangeNotAllowed,
-      );
-    });
-  });
-
-  group('FacebookProfileCompletion', () {
-    test('envía los datos de negocio requeridos para una vendedora', () {
-      const profile = FacebookProfileCompletion(
-        accountType: FacebookAccountType.seller,
-        firstName: 'Ana',
-        lastName: 'López',
-        email: 'ana@example.com',
-        phone: '8681234567',
-        businessName: 'Regi Bazar',
-        city: 'Matamoros',
-        acceptedLegal: true,
-      );
-
-      expect(
-        profile.toJson(
-          const FacebookAccessCredential(
-            token: 'facebook-token',
-            type: FacebookTokenType.classic,
-          ),
-        ),
-        {
-          'accessToken': 'facebook-token',
-          'tokenType': 'classic',
-          'accountType': 'seller',
-          'firstName': 'Ana',
-          'lastName': 'López',
-          'email': 'ana@example.com',
-          'phone': '8681234567',
-          'acceptedLegal': true,
-          'legalVersion': '2026-07-08',
-          'businessName': 'Regi Bazar',
-          'city': 'Matamoros',
-        },
-      );
-    });
-
-    test('solo envía la contraseña cuando se vincula una cuenta existente', () {
-      const profile = FacebookProfileCompletion(
-        accountType: FacebookAccountType.client,
-        firstName: 'Ana',
-        lastName: 'López',
-        email: 'ana@example.com',
-        phone: '8681234567',
-        existingPassword: 'correcta-123',
-        acceptedLegal: true,
-      );
-
-      final json = profile.toJson(
-        const FacebookAccessCredential(
-          token: 'facebook-token',
-          type: FacebookTokenType.limited,
-        ),
-      );
-
-      expect(json['existingPassword'], 'correcta-123');
-      expect(json['tokenType'], 'limited');
-      expect(json.containsKey('businessName'), isFalse);
-      expect(json.containsKey('city'), isFalse);
-    });
-  });
-
-  group('Contrato HTTP de Facebook', () {
-    test('envía rol y tipo de token al iniciar sesión', () async {
-      Map<String, dynamic>? requestData;
-      final dio = Dio(BaseOptions(baseUrl: 'https://api.example.com'));
-      dio.interceptors.add(
-        InterceptorsWrapper(
-          onRequest: (options, handler) {
-            requestData = Map<String, dynamic>.from(options.data as Map);
-            handler.reject(
-              DioException(
-                requestOptions: options,
-                response: Response<Map<String, dynamic>>(
-                  requestOptions: options,
-                  statusCode: 409,
-                  data: {
-                    'message': 'Completa tus datos.',
-                    'accountType': 'seller',
-                    'requiresExistingPassword': false,
-                    'missingFields': ['businessName'],
-                  },
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      final repository = AuthRepository(dio);
-
-      await expectLater(
-        repository.facebookLogin(
-          const FacebookAccessCredential(
-            token: 'limited-token',
-            type: FacebookTokenType.limited,
-          ),
-          accountType: FacebookAccountType.seller,
-        ),
-        throwsA(isA<FacebookProfileRequiredException>()),
-      );
-
-      expect(requestData?['accessToken'], 'limited-token');
-      expect(requestData?['tokenType'], 'limited');
-      expect(requestData?['accountType'], 'seller');
-    });
-
-    test('interpreta el alta aceptada como verificación de teléfono', () async {
-      final dio = Dio(BaseOptions(baseUrl: 'https://api.example.com'));
-      dio.interceptors.add(
-        InterceptorsWrapper(
-          onRequest: (options, handler) {
-            handler.resolve(
-              Response<Map<String, dynamic>>(
-                requestOptions: options,
-                statusCode: 202,
-                data: {
-                  'message': 'Código enviado por WhatsApp.',
-                  'needsPhoneVerification': true,
-                  'phone': '8681234567',
-                  'devMode': false,
-                  'providerConfigured': true,
-                },
-              ),
-            );
-          },
-        ),
-      );
-      final repository = AuthRepository(dio);
-
-      await expectLater(
-        repository.completeFacebookProfile(
-          const FacebookAccessCredential(
-            token: 'classic-token',
-            type: FacebookTokenType.classic,
-          ),
-          const FacebookProfileCompletion(
-            accountType: FacebookAccountType.seller,
-            firstName: 'Ana',
-            lastName: 'López',
-            email: 'ana@example.com',
-            phone: '8681234567',
-            businessName: 'Regi Bazar',
-            acceptedLegal: true,
-          ),
-        ),
-        throwsA(
-          isA<FacebookPhoneVerificationRequiredException>()
-              .having((error) => error.phone, 'phone', '8681234567')
-              .having(
-                (error) => error.providerConfigured,
-                'providerConfigured',
-                isTrue,
-              ),
-        ),
-      );
-    });
-
-    test('separa un 409 terminal del formulario recuperable', () async {
-      final dio = Dio(BaseOptions(baseUrl: 'https://api.example.com'));
-      dio.interceptors.add(
-        InterceptorsWrapper(
-          onRequest: (options, handler) {
-            handler.reject(
-              DioException(
-                requestOptions: options,
-                type: DioExceptionType.badResponse,
-                response: Response<Map<String, dynamic>>(
-                  requestOptions: options,
-                  statusCode: 409,
-                  data: {
-                    'error': 'identity_conflict',
-                    'message': 'Los datos pertenecen a cuentas distintas.',
-                  },
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      final repository = AuthRepository(dio);
-
-      await expectLater(
-        repository.completeFacebookProfile(
-          const FacebookAccessCredential(
-            token: 'classic-token',
-            type: FacebookTokenType.classic,
-          ),
-          const FacebookProfileCompletion(
-            accountType: FacebookAccountType.client,
-            firstName: 'Ana',
-            lastName: 'López',
-            email: 'ana@example.com',
-            phone: '8681234567',
-            acceptedLegal: true,
-          ),
-        ),
-        throwsA(
-          isA<FacebookTerminalConflictException>().having(
-            (error) => error.type,
-            'type',
-            FacebookTerminalConflictType.identityConflict,
-          ),
-        ),
-      );
-    });
-  });
-
   group('Contrato HTTP de recuperación de contraseña', () {
     test('solicita el código sin enviar datos adicionales', () async {
       String? requestPath;
@@ -496,6 +233,45 @@ void main() {
             (error) => error.message,
             'message',
             'El servicio no está disponible por el momento. Inténtalo más tarde.',
+          ),
+        ),
+      );
+    });
+
+    test('identifica cuando la API publicada aún no tiene Firebase', () async {
+      final dio = Dio(BaseOptions(baseUrl: 'https://api.example.com'));
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            handler.reject(
+              DioException(
+                requestOptions: options,
+                type: DioExceptionType.badResponse,
+                response: Response<void>(
+                  requestOptions: options,
+                  statusCode: 405,
+                  data: null,
+                ),
+              ),
+            );
+          },
+        ),
+      );
+      final repository = AuthRepository(dio);
+
+      await expectLater(
+        repository.firebaseLogin(
+          idToken: 'firebase-token',
+          profile: const FirebaseLoginProfile(
+            accountType: AccountType.client,
+            acceptedLegal: true,
+          ),
+        ),
+        throwsA(
+          isA<AuthException>().having(
+            (error) => error.message,
+            'message',
+            'La autenticación por SMS está en actualización. Inténtalo en unos minutos.',
           ),
         ),
       );

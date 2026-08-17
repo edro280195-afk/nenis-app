@@ -539,7 +539,7 @@ const _clientPages = [
     icon: Symbols.verified_user,
     title: 'Tu número protege tus compras',
     body:
-        'Lo confirmamos por WhatsApp para que sólo tú reclames pedidos, historial y puntos.',
+        'Lo confirmamos por SMS para que sólo tú reclames pedidos, historial y puntos.',
     items: [
       _TourItem(
         Symbols.lock,

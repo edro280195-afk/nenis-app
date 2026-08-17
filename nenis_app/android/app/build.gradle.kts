@@ -64,7 +64,7 @@ if (isReleaseTask && !hasReleaseSigning) {
 android {
     namespace = "com.nenisapp.nenis_app"
     // compileSdk 36: requerido por plugins recientes (app_links,
-    // flutter_facebook_auth, flutter_secure_storage, google_maps_flutter_android,
+    // flutter_secure_storage, google_maps_flutter_android,
     // shared_preferences_android, sqflite_android, url_launcher_android).
     // No sube targetSdk (comportamiento runtime) ni minSdk (dispositivos).
     compileSdk = 36
@@ -79,7 +79,7 @@ android {
     }
 
     defaultConfig {
-        // Identificador definitivo de Android. También está registrado en Facebook Login.
+        // Identificador definitivo de Android.
         applicationId = "com.nenisapp.nenis_app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.

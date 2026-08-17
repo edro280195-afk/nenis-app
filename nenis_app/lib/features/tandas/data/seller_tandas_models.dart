@@ -507,7 +507,6 @@ class AddTandaParticipantRequest {
     required this.tandaId,
     this.customerId = 0,
     this.customerName,
-    this.facebookProfileUrl,
     required this.assignedTurn,
     this.variant,
     this.weeklyAmount,
@@ -516,7 +515,6 @@ class AddTandaParticipantRequest {
   final String tandaId;
   final int customerId;
   final String? customerName;
-  final String? facebookProfileUrl;
   final int assignedTurn;
   final String? variant;
   final double? weeklyAmount;
@@ -527,8 +525,6 @@ class AddTandaParticipantRequest {
       'customerId': customerId,
       if (customerName?.trim().isNotEmpty ?? false)
         'customerName': customerName!.trim(),
-      if (facebookProfileUrl?.trim().isNotEmpty ?? false)
-        'facebookProfileUrl': facebookProfileUrl!.trim(),
       'assignedTurn': assignedTurn,
       if (variant?.trim().isNotEmpty ?? false) 'variant': variant!.trim(),
       if (weeklyAmount != null && weeklyAmount! > 0)
