@@ -107,20 +107,20 @@ class InventoryMovementPage {
   final bool hasMore;
   final List<InventoryMovement> items;
 
-  factory InventoryMovementPage.fromJson(Map<String, dynamic> json) =>
-      InventoryMovementPage(
-        page: (json['page'] as num?)?.toInt() ?? 1,
-        pageSize: (json['pageSize'] as num?)?.toInt() ?? 30,
-        total: (json['total'] as num?)?.toInt() ?? 0,
-        hasMore: json['hasMore'] as bool? ?? false,
-        items: ((json['items'] as List?) ?? const [])
-            .map(
-              (item) => InventoryMovement.fromJson(
-                (item as Map).cast<String, dynamic>(),
-              ),
-            )
-            .toList(),
-      );
+  factory InventoryMovementPage.fromJson(
+    Map<String, dynamic> json,
+  ) => InventoryMovementPage(
+    page: (json['page'] as num?)?.toInt() ?? 1,
+    pageSize: (json['pageSize'] as num?)?.toInt() ?? 30,
+    total: (json['total'] as num?)?.toInt() ?? 0,
+    hasMore: json['hasMore'] as bool? ?? false,
+    items: ((json['items'] as List?) ?? const [])
+        .map(
+          (item) =>
+              InventoryMovement.fromJson((item as Map).cast<String, dynamic>()),
+        )
+        .toList(),
+  );
 }
 
 class InventoryBox extends InventoryBoxSummary {
@@ -176,6 +176,39 @@ class InventoryBox extends InventoryBoxSummary {
         DateTime.tryParse(json['createdAt'] as String? ?? '')?.toLocal() ??
         DateTime.now(),
   );
+}
+
+/// Completa los datos de una etiqueta de inventario con la caja y el artículo
+/// que ya están cargados en pantalla. El endpoint de impresión puede devolver
+/// un mapa parcial (por ejemplo, sin `box.totalUnits`), pero el cliente sí
+/// tiene esos valores en [InventoryBox] y debe poder renderizar la plantilla
+/// sin depender de que una versión concreta del backend los repita.
+Map<String, String> enrichInventoryLabelData({
+  required InventoryBox box,
+  required Map<String, String> data,
+  InventoryItem? item,
+}) {
+  final fallback = <String, String>{
+    'box.code': box.code,
+    'box.name': box.name,
+    'box.location': box.location ?? '',
+    'box.nfcUrl': box.nfcUrl,
+    'box.articleTypesCount': box.articleTypesCount.toString(),
+    'box.totalUnits': box.totalUnits.toString(),
+    // Compatibilidad con plantillas antiguas que guardaron el binding con
+    // una `u` minúscula en `totalunits`.
+    'box.totalunits': box.totalUnits.toString(),
+  };
+  if (item != null) {
+    fallback.addAll({
+      'item.name': item.name,
+      'item.variant': item.variant ?? '',
+      'item.scannableCode': item.labelCode,
+      'item.barcode': item.barcode ?? '',
+      'item.quantity': item.quantity.toString(),
+    });
+  }
+  return {...fallback, ...data};
 }
 
 class InventoryLabelPrint {

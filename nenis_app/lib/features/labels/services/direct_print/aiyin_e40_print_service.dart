@@ -1,10 +1,8 @@
-import 'package:bluetooth_print_plus/bluetooth_print_plus.dart' show BluetoothPrintPlus, BluetoothDevice;
 import 'package:flutter/foundation.dart';
-import 'package:niim_blue_flutter/niim_blue_flutter.dart' show getAllModelPrefixes;
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 import 'aiyin_ble_transport.dart';
 import 'bluetooth_permissions.dart';
-import 'bonded_bluetooth_devices.dart';
 import 'tspl_command_builder.dart';
 
 class AiyinPrintException implements Exception {
@@ -50,41 +48,36 @@ class AiyinE40PrintService {
     if (!result.granted) {
       throw AiyinPrintException(
         result.message,
-        code: result.permanentlyDenied ? 'permission_denied_permanently' : 'permission_denied',
+        code: result.permanentlyDenied
+            ? 'permission_denied_permanently'
+            : 'permission_denied',
       );
     }
-  }
-
-  /// Dispositivos ya vinculados en Ajustes > Bluetooth del sistema, sin
-  /// los que ya identificamos como NIIMBOT (esos se emparejan desde la
-  /// tarjeta de la B1). El emparejamiento sigue siendo por Bluetooth
-  /// clásico (así se identifica y guarda la impresora); solo el envío del
-  /// trabajo de impresión usa BLE.
-  Future<List<({String name, String address})>> listBonded() async {
-    await _ensurePermissions();
-    final prefixes = getAllModelPrefixes();
-    final bonded = await BondedBluetoothDevices.list();
-    return bonded
-        .where((d) => !prefixes.any((prefix) => d.name.startsWith(prefix)))
-        .toList();
   }
 
   Future<List<({String name, String address})>> scan({
     Duration timeout = const Duration(seconds: 6),
   }) async {
     await _ensurePermissions();
-    final result = await BluetoothPrintPlus.startScan(timeout: timeout);
-    final devices = (result as List).cast<BluetoothDevice>();
-    return devices.map((d) => (name: d.name, address: d.address)).toList();
+    final devices = await AiyinBleTransport.discoverDevices(timeout: timeout);
+    return devices
+        .where((device) => _isAiyinName(_deviceName(device)))
+        .map(
+          (device) => (
+            name: _baseName(_deviceName(device)),
+            address: device.remoteId.str,
+          ),
+        )
+        .toList();
   }
 
-  /// Imprime un lote de etiquetas (una PNG por etiqueta) en una sola
-  /// conexión BLE, reusándola entre todas — antes cada etiqueta de un
-  /// mismo trabajo reconectaba desde cero (scan + connect + discover
-  /// services), multiplicando los puntos de fallo por cada una.
+  /// Imprime un lote de etiquetas (una PNG por etiqueta) en una conexión BLE
+  /// persistente. El transporte aprende y guarda la identidad BLE real a
+  /// partir de la dirección clásica con la que se emparejó la impresora.
   Future<void> printBatch({
     required String address,
     required String name,
+    String? bleRemoteId,
     required List<Uint8List> pngs,
     int copies = 1,
   }) async {
@@ -102,13 +95,21 @@ class AiyinE40PrintService {
               // saturado de tinta. 8 es un punto medio razonable.
               density: 8,
               copies: copies,
+              compress: true,
             ),
           )
           .toList();
 
-      final bleName = '${name}_BLE';
-      debugPrint('[AiyinE40] printing ${commands.length} etiqueta(s) via BLE to $bleName');
-      await AiyinBleTransport.printBatch(bleName, commands);
+      final bleName = _bleName(name);
+      debugPrint(
+        '[AiyinE40] printing ${commands.length} etiqueta(s) via BLE to $bleName',
+      );
+      await AiyinBleTransport.printBatch(
+        bleName,
+        commands,
+        classicAddress: address,
+        preferredRemoteId: bleRemoteId,
+      );
       debugPrint('[AiyinE40] done');
     } on AiyinPrintException catch (e) {
       debugPrint('[AiyinE40] FAILED: $e');
@@ -126,9 +127,43 @@ class AiyinE40PrintService {
   Future<void> printLabel({
     required String address,
     required String name,
+    String? bleRemoteId,
     required Uint8List png,
     int copies = 1,
   }) {
-    return printBatch(address: address, name: name, pngs: [png], copies: copies);
+    return printBatch(
+      address: address,
+      name: name,
+      bleRemoteId: bleRemoteId,
+      pngs: [png],
+      copies: copies,
+    );
+  }
+
+  static String _deviceName(BluetoothDevice device) {
+    final platformName = device.platformName.trim();
+    if (platformName.isNotEmpty) return platformName;
+    return device.advName.trim();
+  }
+
+  static bool _isAiyinName(String name) {
+    final upper = name.toUpperCase();
+    return upper.contains('AIYIN') ||
+        upper.contains('E40') ||
+        upper.endsWith('_BLE');
+  }
+
+  static String _baseName(String name) {
+    const suffix = '_BLE';
+    return name.toUpperCase().endsWith(suffix)
+        ? name.substring(0, name.length - suffix.length)
+        : name;
+  }
+
+  static String _bleName(String name) {
+    final normalized = name.trim();
+    return normalized.toUpperCase().endsWith('_BLE')
+        ? normalized
+        : '${normalized}_BLE';
   }
 }

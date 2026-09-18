@@ -31,8 +31,7 @@ class InventoryBoxScreen extends ConsumerStatefulWidget {
   final String boxId;
 
   @override
-  ConsumerState<InventoryBoxScreen> createState() =>
-      _InventoryBoxScreenState();
+  ConsumerState<InventoryBoxScreen> createState() => _InventoryBoxScreenState();
 }
 
 class _InventoryBoxScreenState extends ConsumerState<InventoryBoxScreen> {
@@ -70,7 +69,12 @@ class _InventoryBoxScreenState extends ConsumerState<InventoryBoxScreen> {
     try {
       await ref
           .read(inventoryRepositoryProvider)
-          .updateBox(box.id, code: result.code, name: result.name, location: result.location);
+          .updateBox(
+            box.id,
+            code: result.code,
+            name: result.name,
+            location: result.location,
+          );
       await _refresh();
     } catch (_) {
       _message('No pudimos guardar los cambios.', error: true);
@@ -106,9 +110,7 @@ class _InventoryBoxScreenState extends ConsumerState<InventoryBoxScreen> {
     if (_busy || item.quantity + delta < 0) return;
     setState(() => _busy = true);
     try {
-      await ref
-          .read(inventoryRepositoryProvider)
-          .adjustItem(item.id, delta);
+      await ref.read(inventoryRepositoryProvider).adjustItem(item.id, delta);
       await _refresh();
     } catch (_) {
       _message('No pudimos actualizar la existencia.', error: true);
@@ -182,12 +184,11 @@ class _InventoryBoxScreenState extends ConsumerState<InventoryBoxScreen> {
     required LabelTemplateKind kind,
     required String targetId,
     required String name,
+    required InventoryBox box,
+    InventoryItem? item,
   }) async {
     if (_busy) return;
-    final options = await showInventoryLabelSheet(
-      context,
-      subject: name,
-    );
+    final options = await showInventoryLabelSheet(context, subject: name);
     if (options == null || !mounted) return;
 
     setState(() => _busy = true);
@@ -205,6 +206,11 @@ class _InventoryBoxScreenState extends ConsumerState<InventoryBoxScreen> {
       final paired = ref
           .read(pairedPrintersProvider)
           .forMediaSize(print.mediaSize);
+      final document = enrichInventoryLabelData(
+        box: box,
+        item: item,
+        data: print.data,
+      );
       String status;
       String feedback;
       if (paired != null) {
@@ -213,7 +219,7 @@ class _InventoryBoxScreenState extends ConsumerState<InventoryBoxScreen> {
           designJson: print.templateVersion.designJson,
           mediaSize: print.mediaSize,
           assets: print.assets,
-          documents: [print.data],
+          documents: [document],
           copies: print.copies,
         );
         status = 'SentToSystem';
@@ -223,12 +229,14 @@ class _InventoryBoxScreenState extends ConsumerState<InventoryBoxScreen> {
           designJson: print.templateVersion.designJson,
           mediaSize: print.mediaSize,
           assets: print.assets,
-          documents: [print.data],
+          documents: [document],
           copies: print.copies,
           name: 'Etiqueta · $name',
         );
         status = handedOff ? 'SentToSystem' : 'Canceled';
-        feedback = handedOff ? printedViaSystemMessage(1) : printCanceledMessage;
+        feedback = handedOff
+            ? printedViaSystemMessage(1)
+            : printCanceledMessage;
       }
       await ref
           .read(inventoryRepositoryProvider)
@@ -250,7 +258,10 @@ class _InventoryBoxScreenState extends ConsumerState<InventoryBoxScreen> {
         );
       }
     } on NiimbotPrintException catch (error) {
-      await _recordLabelFailure(print, printFailureReason(error.code, error.message));
+      await _recordLabelFailure(
+        print,
+        printFailureReason(error.code, error.message),
+      );
       _message(
         error.message,
         error: true,
@@ -261,7 +272,10 @@ class _InventoryBoxScreenState extends ConsumerState<InventoryBoxScreen> {
         ),
       );
     } on AiyinPrintException catch (error) {
-      await _recordLabelFailure(print, printFailureReason(error.code, error.message));
+      await _recordLabelFailure(
+        print,
+        printFailureReason(error.code, error.message),
+      );
       _message(
         error.message,
         error: true,
@@ -275,7 +289,10 @@ class _InventoryBoxScreenState extends ConsumerState<InventoryBoxScreen> {
       // Antes caía en el catch genérico de abajo (mensaje fijo sin
       // distinguir "problema de plantilla" de "problema de impresora");
       // las otras dos pantallas de impresión sí lo distinguen.
-      await _recordLabelFailure(print, printFailureReason(error.code, error.message));
+      await _recordLabelFailure(
+        print,
+        printFailureReason(error.code, error.message),
+      );
       _message(error.message, error: true);
     } catch (e) {
       await _recordLabelFailure(print, unknownPrintFailureReason(e));
@@ -329,7 +346,9 @@ class _InventoryBoxScreenState extends ConsumerState<InventoryBoxScreen> {
               busy: _busy,
               unlocked: unlocked,
               canManageLabels: canManageLabels,
-              onBack: () => context.canPop() ? context.pop() : context.go('/seller/inventory'),
+              onBack: () => context.canPop()
+                  ? context.pop()
+                  : context.go('/seller/inventory'),
               onEdit: () => _editBox(value),
               onAdd: () => _addItem(value),
               onAdjust: (item, delta) => _adjust(value, item, delta),
@@ -340,11 +359,14 @@ class _InventoryBoxScreenState extends ConsumerState<InventoryBoxScreen> {
                 kind: LabelTemplateKind.inventoryBox,
                 targetId: value.id,
                 name: value.code,
+                box: value,
               ),
               onPrintItem: (item) => _printLabel(
                 kind: LabelTemplateKind.inventoryItem,
                 targetId: item.id,
                 name: item.name,
+                box: value,
+                item: item,
               ),
               onDesign: () => context.push(
                 '/seller/labels/editor?kind=InventoryBox&mediaSize=Square50x50',
@@ -423,7 +445,10 @@ class _BoxBody extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(18, 8, 18, 10),
           child: Row(
             children: [
-              PillIconButton(icon: Icons.adaptive.arrow_back, onPressed: onBack),
+              PillIconButton(
+                icon: Icons.adaptive.arrow_back,
+                onPressed: onBack,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -457,7 +482,10 @@ class _BoxBody extends StatelessWidget {
                 eyebrow: box.location ?? 'Sin ubicación',
                 headline: box.code,
                 sub: '${box.name} · actualizada ${timeAgo(box.updatedAt)}',
-                trailing: MiniLabelPreview(format: MiniLabelFormat.square50, code: box.code),
+                trailing: MiniLabelPreview(
+                  format: MiniLabelFormat.square50,
+                  code: box.code,
+                ),
                 chips: [
                   InventoryGhostChip(
                     icon: Symbols.nfc,
@@ -525,7 +553,10 @@ class _BoxBody extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 13,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(18),
@@ -546,7 +577,11 @@ class _BoxBody extends StatelessWidget {
                       )
                     : Column(
                         children: [
-                          for (var index = 0; index < _recent.length; index++) ...[
+                          for (
+                            var index = 0;
+                            index < _recent.length;
+                            index++
+                          ) ...[
                             InventoryMovementRow(
                               movement: _recent[index],
                               meta:

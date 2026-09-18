@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:archive/archive.dart';
 import 'package:image/image.dart' as img;
 
 /// Arma comandos TSPL (Zebra-compatible) a mano, sin ninguna caja negra de
@@ -12,6 +13,10 @@ class TsplCommandBuilder {
   /// [widthMm]/[heightMm]: tamaño físico de la etiqueta.
   /// [gapMm]: separación entre etiquetas en la bobina (0 si es continua).
   /// [density]: 0-15, entre más alto más oscuro/caliente el cabezal.
+  ///
+  /// Mode 3 is the compressed bitmap extension emitted by AiYin's own
+  /// Label Expert SDK. The uncompressed mode remains available for
+  /// diagnostics and printers without that extension.
   static Uint8List build({
     required Uint8List png,
     required int widthMm,
@@ -19,6 +24,7 @@ class TsplCommandBuilder {
     int gapMm = 2,
     int density = 15,
     int copies = 1,
+    bool compress = false,
   }) {
     img.Image? decoded;
     try {
@@ -31,20 +37,22 @@ class TsplCommandBuilder {
       decoded = null;
     }
     if (decoded == null) {
-      throw const FormatException('No se pudo decodificar la imagen de la etiqueta.');
+      throw const FormatException(
+        'No se pudo decodificar la imagen de la etiqueta.',
+      );
     }
     final grayscale = img.grayscale(decoded);
     final bytesPerRow = (grayscale.width + 7) ~/ 8;
     final bitmap = Uint8List(bytesPerRow * grayscale.height);
-    // Bit=1 debería significar "quemar/imprimir negro" en TSPL estándar,
-    // pero en esta impresora sale al revés (fondo negro, contenido
-    // blanco) — así que aquí marcamos bit=1 para los píxeles CLAROS
-    // (dejar sin quemar) y dejamos bit=0 en los oscuros (que aquí sí
-    // queman negro).
+    // Mode 0 on this E40 interprets the raster polarity opposite to the
+    // vendor's compressed mode 3. Preserve the validated mode 0 polarity,
+    // while using the standard dark-pixel polarity required by AiYin's
+    // compressed encoder.
     for (var y = 0; y < grayscale.height; y++) {
       for (var x = 0; x < grayscale.width; x++) {
         final luminance = grayscale.getPixel(x, y).r;
-        if (luminance >= 128) {
+        final shouldSetBit = compress ? luminance < 128 : luminance >= 128;
+        if (shouldSetBit) {
           final byteIndex = y * bytesPerRow + (x >> 3);
           final bitIndex = 7 - (x & 7);
           bitmap[byteIndex] |= 1 << bitIndex;
@@ -62,8 +70,20 @@ class TsplCommandBuilder {
     line('DIRECTION 0');
     line('REFERENCE 0,0');
     line('CLS');
-    out.add(ascii.encode('BITMAP 0,0,$bytesPerRow,${grayscale.height},0,'));
-    out.add(bitmap);
+    if (compress) {
+      // This matches psdk_fruit_tspl/Pbita: zlib with a 10-bit window,
+      // followed by mode 3 and the compressed byte count.
+      final compressedBitmap = ZLibEncoder().encode(bitmap, windowBits: 10);
+      out.add(
+        ascii.encode(
+          'BITMAP 0,0,$bytesPerRow,${grayscale.height},3,${compressedBitmap.length},',
+        ),
+      );
+      out.add(compressedBitmap);
+    } else {
+      out.add(ascii.encode('BITMAP 0,0,$bytesPerRow,${grayscale.height},0,'));
+      out.add(bitmap);
+    }
     out.add(ascii.encode('\r\n'));
     line('PRINT 1,$copies');
 

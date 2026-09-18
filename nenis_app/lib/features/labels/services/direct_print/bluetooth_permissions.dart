@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 /// Pide de forma proactiva los permisos de Bluetooth necesarios para
@@ -15,34 +16,47 @@ import 'package:permission_handler/permission_handler.dart';
 /// conceder Bluetooth.
 ///
 /// En Android 12+ (API 31+) esto pide `BLUETOOTH_SCAN`/`BLUETOOTH_CONNECT`
-/// sin ubicación (el manifest declara `neverForLocation` en `BLUETOOTH_SCAN`
-/// — ver third_party/bluetooth_print_plus/android/.../AndroidManifest.xml).
-/// En versiones anteriores, `permission_handler` resuelve automáticamente
-/// el permiso de ubicación heredado que el manifest sigue declarando para
-/// esos casos. En iOS, la librería no separa scan/connect: el diálogo real
-/// lo dispara Core Bluetooth la primera vez que se usa, gateado por
+/// sin ubicación. En versiones anteriores, el manifest conserva los
+/// permisos de compatibilidad de Bluetooth y ubicación.
+///
+/// En iOS no existen `bluetoothScan`/`bluetoothConnect`: el permiso único es
+/// `Permission.bluetooth`, respaldado por Core Bluetooth y por
 /// `NSBluetoothAlwaysUsageDescription` en Info.plist.
 class BluetoothPermissions {
   const BluetoothPermissions._();
 
   static Future<BluetoothPermissionResult> ensureGranted() async {
-    final statuses = await [
-      Permission.bluetoothScan,
-      Permission.bluetoothConnect,
-    ].request();
+    if (kIsWeb ||
+        (defaultTargetPlatform != TargetPlatform.android &&
+            defaultTargetPlatform != TargetPlatform.iOS)) {
+      return const BluetoothPermissionResult(granted: true);
+    }
+
+    final permissions = defaultTargetPlatform == TargetPlatform.android
+        ? [Permission.bluetoothScan, Permission.bluetoothConnect]
+        : [Permission.bluetooth];
+    final statuses = await permissions.request();
 
     final allGranted = statuses.values.every((status) => status.isGranted);
     if (allGranted) {
       return const BluetoothPermissionResult(granted: true);
     }
 
-    final permanentlyDenied = statuses.values.any((status) => status.isPermanentlyDenied);
-    return BluetoothPermissionResult(granted: false, permanentlyDenied: permanentlyDenied);
+    final permanentlyDenied = statuses.values.any(
+      (status) => status.isPermanentlyDenied,
+    );
+    return BluetoothPermissionResult(
+      granted: false,
+      permanentlyDenied: permanentlyDenied,
+    );
   }
 }
 
 class BluetoothPermissionResult {
-  const BluetoothPermissionResult({required this.granted, this.permanentlyDenied = false});
+  const BluetoothPermissionResult({
+    required this.granted,
+    this.permanentlyDenied = false,
+  });
 
   final bool granted;
   final bool permanentlyDenied;
@@ -51,7 +65,7 @@ class BluetoothPermissionResult {
   /// NiimbotPrintException/AiyinPrintException.
   String get message => permanentlyDenied
       ? 'Nenis necesita permiso de Bluetooth para conectar tu impresora. '
-          'Actívalo en Ajustes del teléfono > Apps > Nenis > Permisos.'
+            'Actívalo en Ajustes del teléfono > Apps > Nenis > Permisos.'
       : 'Nenis necesita permiso de Bluetooth para conectar tu impresora. '
-          'Vuelve a intentarlo y acepta el permiso que te pida el teléfono.';
+            'Vuelve a intentarlo y acepta el permiso que te pida el teléfono.';
 }

@@ -56,6 +56,7 @@ class LabelPrintService {
         await niimbot.printBatch(
           address: printer.address,
           name: printer.name,
+          bleRemoteId: printer.bleRemoteId,
           pngs: pngs,
           copies: copies,
         );
@@ -63,6 +64,7 @@ class LabelPrintService {
         await aiyin.printBatch(
           address: printer.address,
           name: printer.name,
+          bleRemoteId: printer.bleRemoteId,
           pngs: pngs,
           copies: copies,
         );
@@ -77,7 +79,9 @@ class LabelPrintService {
       designJson: job.templateVersion.designJson,
       mediaSize: job.mediaSize,
       assets: job.assets,
-      documents: job.items.map((item) => renderer.payloadData(item.payload)).toList(),
+      documents: job.items
+          .map((item) => renderer.payloadData(item.payload))
+          .toList(),
       copies: job.copies,
     );
   }
@@ -85,7 +89,9 @@ class LabelPrintService {
   void _debugLogPngContent(Uint8List png) {
     final decoded = img.decodeImage(png);
     if (decoded == null) {
-      debugPrint('[LabelPrintService] renderPng: no se pudo decodificar el PNG (${png.length} bytes)');
+      debugPrint(
+        '[LabelPrintService] renderPng: no se pudo decodificar el PNG (${png.length} bytes)',
+      );
       return;
     }
     var darkPixels = 0;

@@ -25,18 +25,26 @@ class PairedPrinter {
     required this.brand,
     required this.address,
     required this.name,
+    this.bleRemoteId,
   });
 
   final PrinterBrand brand;
 
-  /// MAC address (AIYIN, Bluetooth clásico) o remoteId de BLE (NIIMBOT).
+  /// Identificador legado: MAC de Bluetooth clásico en emparejamientos
+  /// antiguos o remoteId de BLE en los nuevos.
   final String address;
   final String name;
+
+  /// Identificador que entrega Core Bluetooth/FlutterBluePlus. En Android
+  /// normalmente es una MAC; en iOS es un UUID local de ese teléfono. No se
+  /// comparte entre teléfonos ni se puede sustituir por la MAC del Pixel.
+  final String? bleRemoteId;
 
   Map<String, dynamic> toJson() => {
     'brand': brand.name,
     'address': address,
     'name': name,
+    if (bleRemoteId != null) 'bleRemoteId': bleRemoteId,
   };
 
   factory PairedPrinter.fromJson(Map<String, dynamic> json) => PairedPrinter(
@@ -46,6 +54,7 @@ class PairedPrinter {
     ),
     address: (json['address'] ?? '') as String,
     name: (json['name'] ?? '') as String,
+    bleRemoteId: (json['bleRemoteId'] as String?)?.trim(),
   );
 }
 

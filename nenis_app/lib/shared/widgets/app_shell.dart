@@ -240,7 +240,12 @@ class _MoreNavSheet extends StatelessWidget {
                       active: isNavItemActive(currentRoute, item),
                       onTap: () {
                         Navigator.of(context).pop();
-                        context.go(item.route);
+                        // Estos módulos son accesos secundarios, no pestañas:
+                        // conserva la pantalla que abrió el menú para que el
+                        // botón físico de atrás pueda regresar a ella.
+                        if (currentRoute != item.route) {
+                          context.push(item.route);
+                        }
                       },
                     ),
                     const SizedBox(height: 10),
@@ -254,11 +259,7 @@ class _MoreNavSheet extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  Symbols.touch_app,
-                  size: 15,
-                  color: AppColors.neni,
-                ),
+                const Icon(Symbols.touch_app, size: 15, color: AppColors.neni),
                 const SizedBox(width: 6),
                 Text(
                   'Toca cualquier módulo para navegar al área de trabajo',
@@ -289,8 +290,8 @@ class _MoreNavModuleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = item.gradientColors ??
-        const [Color(0xFF9B7BE0), Color(0xFF7C3AED)];
+    final colors =
+        item.gradientColors ?? const [Color(0xFF9B7BE0), Color(0xFF7C3AED)];
 
     return Material(
       color: Colors.transparent,

@@ -96,7 +96,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     try {
       final box = await ref
           .read(inventoryRepositoryProvider)
-          .createBox(code: result.code, name: result.name, location: result.location);
+          .createBox(
+            code: result.code,
+            name: result.name,
+            location: result.location,
+          );
       ref.invalidate(inventoryBoxesProvider);
       if (!mounted) return;
       await context.push('/seller/inventory/box/${box.id}');
@@ -113,7 +117,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   List<InventoryBoxSummary> _visible(List<InventoryBoxSummary> boxes) {
     final query = _search.text.trim().toLowerCase();
     return boxes.where((box) {
-      final matchesQuery = query.isEmpty ||
+      final matchesQuery =
+          query.isEmpty ||
           box.code.toLowerCase().contains(query) ||
           box.name.toLowerCase().contains(query) ||
           (box.location?.toLowerCase().contains(query) ?? false);
@@ -124,6 +129,14 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
         _BoxFilter.noNfc => !box.isNfcBound,
       };
     }).toList();
+  }
+
+  void _goBack() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/home');
+    }
   }
 
   @override
@@ -138,82 +151,86 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     final unlocked =
         activePlan == null || activePlan == 'Pro' || activePlan == 'Elite';
     final canManageLabels = session?.canManageLabels ?? false;
+    final canPop = context.canPop();
 
-    return Scaffold(
-      backgroundColor: AppColors.surfaceCream,
-      body: NeniBackground(
-        child: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 8, 18, 10),
-                child: Row(
-                  children: [
-                    if (context.canPop())
+    return PopScope(
+      canPop: canPop,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && mounted) _goBack();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.surfaceCream,
+        body: NeniBackground(
+          child: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 10),
+                  child: Row(
+                    children: [
                       PillIconButton(
                         icon: Icons.adaptive.arrow_back,
-                        onPressed: () => context.pop(),
-                      )
-                    else
-                      const SizedBox.shrink(),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Mi bodega',
-                            style: AppTextStyles.h1.copyWith(fontSize: 23),
-                          ),
-                          Text(
-                            'Cajas, etiquetas y tarjetas NFC',
-                            style: AppTextStyles.subtitle,
-                          ),
-                        ],
+                        onPressed: _goBack,
                       ),
-                    ),
-                    PillIconButton(
-                      icon: Symbols.add_box,
-                      onPressed: _busy || !unlocked ? null : _createBox,
-                    ),
-                  ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Mi bodega',
+                              style: AppTextStyles.h1.copyWith(fontSize: 23),
+                            ),
+                            Text(
+                              'Cajas, etiquetas y tarjetas NFC',
+                              style: AppTextStyles.subtitle,
+                            ),
+                          ],
+                        ),
+                      ),
+                      PillIconButton(
+                        icon: Symbols.add_box,
+                        onPressed: _busy || !unlocked ? null : _createBox,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Expanded(
-                child: !unlocked
-                    ? const Center(child: LabelFeatureLockedView())
-                    : boxes.when(
-                        loading: () => const Center(
-                          child: CircularProgressIndicator(),
-                        ),
-                        error: (_, _) => Center(
-                          child: PillButton(
-                            label: 'Reintentar',
-                            onPressed: () =>
-                                ref.invalidate(inventoryBoxesProvider),
+                Expanded(
+                  child: !unlocked
+                      ? const Center(child: LabelFeatureLockedView())
+                      : boxes.when(
+                          loading: () =>
+                              const Center(child: CircularProgressIndicator()),
+                          error: (_, _) => Center(
+                            child: PillButton(
+                              label: 'Reintentar',
+                              onPressed: () =>
+                                  ref.invalidate(inventoryBoxesProvider),
+                            ),
+                          ),
+                          data: (items) => _ResumenBody(
+                            boxes: _visible(items),
+                            allCount: items.length,
+                            nfcCount: items.where((b) => b.isNfcBound).length,
+                            noNfcCount: items
+                                .where((b) => !b.isNfcBound)
+                                .length,
+                            filter: _filter,
+                            query: _search.text,
+                            onSearchChanged: (value) => setState(() {}),
+                            onFilterChanged: (filter) =>
+                                setState(() => _filter = filter),
+                            onBoxTap: (box) =>
+                                context.push('/seller/inventory/box/${box.id}'),
+                            onCreateBox: _createBox,
+                            busy: _busy,
+                            canDesignLabels: canManageLabels,
                           ),
                         ),
-                        data: (items) => _ResumenBody(
-                          boxes: _visible(items),
-                          allCount: items.length,
-                          nfcCount: items.where((b) => b.isNfcBound).length,
-                          noNfcCount:
-                              items.where((b) => !b.isNfcBound).length,
-                          filter: _filter,
-                          query: _search.text,
-                          onSearchChanged: (value) => setState(() {}),
-                          onFilterChanged: (filter) =>
-                              setState(() => _filter = filter),
-                          onBoxTap: (box) => context
-                              .push('/seller/inventory/box/${box.id}'),
-                          onCreateBox: _createBox,
-                          busy: _busy,
-                          canDesignLabels: canManageLabels,
-                        ),
-                      ),
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -256,12 +273,12 @@ class _ResumenBody extends StatelessWidget {
       0,
       (sum, box) => sum + box.articleTypesCount,
     );
-    final filteredByNfc =
-        filter == _BoxFilter.all
+    final filteredByNfc = filter == _BoxFilter.all
         ? boxes
         : boxes
-              .where((b) =>
-                  filter == _BoxFilter.nfc ? b.isNfcBound : !b.isNfcBound)
+              .where(
+                (b) => filter == _BoxFilter.nfc ? b.isNfcBound : !b.isNfcBound,
+              )
               .toList();
     final hasBoxes = filteredByNfc.isNotEmpty;
     final onlyNfcLabel = filter == _BoxFilter.noNfc ? 'Vincular NFC' : 'NFC';
@@ -278,7 +295,8 @@ class _ResumenBody extends StatelessWidget {
                   filteredByNfc.fold(0, (sum, b) => sum + b.totalUnits),
                 ),
                 headlineSuffix: 'piezas',
-                sub: '${_plural(articleTypes, 'artículo', 'artículos')} '
+                sub:
+                    '${_plural(articleTypes, 'artículo', 'artículos')} '
                     'repartidos en ${_plural(filteredByNfc.length, 'caja', 'cajas')}',
                 chips: [
                   InventoryGhostChip(
@@ -299,17 +317,17 @@ class _ResumenBody extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 14),
-              _SearchField(
-                query: query,
-                onChanged: onSearchChanged,
-              ),
+              _SearchField(query: query, onChanged: onSearchChanged),
               const SizedBox(height: 12),
               InventoryStatRow(
                 stats: [
                   (value: '$allCount', label: 'Cajas'),
-                  (value: _formatThousands(
-                    boxes.fold(0, (sum, b) => sum + b.articleTypesCount),
-                  ), label: 'Artículos'),
+                  (
+                    value: _formatThousands(
+                      boxes.fold(0, (sum, b) => sum + b.articleTypesCount),
+                    ),
+                    label: 'Artículos',
+                  ),
                   (value: '$noNfcCount', label: 'Sin NFC'),
                 ],
               ),
@@ -416,11 +434,7 @@ class _EmptyResumen extends StatelessWidget {
     return Center(
       child: Column(
         children: [
-          const Icon(
-            Symbols.inventory_2,
-            size: 54,
-            color: AppColors.lavender,
-          ),
+          const Icon(Symbols.inventory_2, size: 54, color: AppColors.lavender),
           const SizedBox(height: 13),
           Text('Todo tiene su cajita', style: AppTextStyles.h2),
           const SizedBox(height: 6),

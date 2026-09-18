@@ -59,13 +59,13 @@ dependencies:
   webview_flutter: ^4.14.1
   image_picker: ^1.2.3
   share_plus: ^13.2.0
+  archive: ^4.0.9
   barcode: ^2.2.9
   pdf: ^3.13.0
   printing: ^5.15.0
   nfc_manager: ^4.2.1
   nfc_manager_ndef: ^1.1.0
   niim_blue_flutter: ^1.0.1
-  bluetooth_print_plus: ^2.4.6
   image: ^4.9.1
   # Fijo en la serie 1.x a propósito: la 2.x reescribió la API interna con
   # RxDart (cambios de comportamiento documentados, p.ej. discoverServices
@@ -81,15 +81,6 @@ dependencies:
   # permission_handler_android ^13.0.0, que sí compila contra compileSdk 36.
   # Al subir compileSdk en el futuro, probar si ya se puede quitar este pin.
   permission_handler: 12.0.3
-
-# bluetooth_print_plus 2.4.6 tiene un NullPointerException nativo cuando el
-# EventSink de estado se desconecta mientras un connect() sigue en vuelo
-# (ver third_party/bluetooth_print_plus/android/.../BluetoothPrintPlusPlugin.java).
-# Vendorizamos el paquete con el fix hasta que haya una versión publicada
-# que lo incluya.
-dependency_overrides:
-  bluetooth_print_plus:
-    path: third_party/bluetooth_print_plus
 
 dev_dependencies:
   flutter_test:

@@ -12,11 +12,9 @@ import '../data/printer_pairing_repository.dart';
 import '../services/direct_print/aiyin_e40_print_service.dart';
 import '../services/direct_print/niimbot_b1_print_service.dart';
 
-/// Las tarjetas de NIIMBOT y AIYIN comparten el mismo plugin estático
-/// (bluetooth_print_plus) para el escaneo clásico: si ambas llaman
-/// startScan() casi al mismo tiempo, la segunda llamada corta la ventana
-/// de descubrimiento de la primera (stopScan() interno del plugin antes de
-/// reiniciar). Este lock evita que las dos tarjetas escaneen a la vez.
+/// FlutterBluePlus mantiene una sola sesión de escaneo BLE por proceso: si
+/// ambas tarjetas llaman startScan() a la vez, una búsqueda corta a la otra.
+/// Este lock evita que las dos tarjetas escaneen simultáneamente.
 class _BluetoothScanLock extends Notifier<bool> {
   @override
   bool build() => false;
@@ -24,7 +22,9 @@ class _BluetoothScanLock extends Notifier<bool> {
   void setBusy(bool value) => state = value;
 }
 
-final _bluetoothScanBusyProvider = NotifierProvider<_BluetoothScanLock, bool>(_BluetoothScanLock.new);
+final _bluetoothScanBusyProvider = NotifierProvider<_BluetoothScanLock, bool>(
+  _BluetoothScanLock.new,
+);
 
 /// Empareja, por teléfono, la impresora física de cada marca para poder
 /// imprimir directo por Bluetooth (sin la app del fabricante).
@@ -45,9 +45,14 @@ class PrinterPairingScreen extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(18, 8, 18, 4),
                 child: Row(
                   children: [
-                    BackIconButton(onPressed: () => Navigator.of(context).pop()),
+                    BackIconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
                     const SizedBox(width: 12),
-                    Text('Impresoras', style: AppTextStyles.h1.copyWith(fontSize: 22)),
+                    Text(
+                      'Impresoras',
+                      style: AppTextStyles.h1.copyWith(fontSize: 22),
+                    ),
                   ],
                 ),
               ),
@@ -59,7 +64,10 @@ class PrinterPairingScreen extends ConsumerWidget {
                       'Empareja aquí la impresora física que tienes en bodega. '
                       'Nenis imprime directo por Bluetooth, sin abrir la app '
                       'del fabricante.',
-                      style: AppTextStyles.subtitle.copyWith(fontSize: 12.5, height: 1.45),
+                      style: AppTextStyles.subtitle.copyWith(
+                        fontSize: 12.5,
+                        height: 1.45,
+                      ),
                     ),
                     const SizedBox(height: 20),
                     _PrinterCard(
@@ -121,19 +129,12 @@ class _PrinterCardState extends ConsumerState<_PrinterCard> {
     try {
       const niimbot = NiimbotB1PrintService();
       const aiyin = AiyinE40PrintService();
-      // Un dispositivo ya emparejado en Ajustes > Bluetooth deja de
-      // anunciarse en un escaneo nuevo, así que primero revisamos los ya
-      // vinculados (instantáneo) y solo escaneamos si no aparece ahí.
       _found = widget.brand == PrinterBrand.niimbotB1
-          ? await niimbot.listBonded()
-          : await aiyin.listBonded();
+          ? await niimbot.scan()
+          : await aiyin.scan();
       if (_found.isEmpty) {
-        _found = widget.brand == PrinterBrand.niimbotB1
-            ? await niimbot.scan()
-            : await aiyin.scan();
-      }
-      if (_found.isEmpty) {
-        _error = 'No encontramos ninguna impresora encendida cerca. '
+        _error =
+            'No encontramos ninguna impresora encendida cerca. '
             'Enciéndela, acércala al teléfono e inténtalo de nuevo.';
       }
     } on NiimbotPrintException catch (e) {
@@ -147,7 +148,8 @@ class _PrinterCardState extends ConsumerState<_PrinterCard> {
       // SDK nativo (a veces en inglés) directo a la vendedora. El detalle
       // real solo queda en el log de debug.
       debugPrint('[PrinterPairing] scan failed: $e');
-      _error = 'No pudimos buscar impresoras. Revisa que el Bluetooth del '
+      _error =
+          'No pudimos buscar impresoras. Revisa que el Bluetooth del '
           'teléfono esté encendido e inténtalo de nuevo.';
     } finally {
       ref.read(_bluetoothScanBusyProvider.notifier).setBusy(false);
@@ -157,16 +159,28 @@ class _PrinterCardState extends ConsumerState<_PrinterCard> {
 
   Future<void> _pair(({String name, String address}) device) async {
     final name = device.name.isEmpty ? widget.title : device.name;
-    await ref.read(pairedPrintersProvider.notifier).pair(
-      PairedPrinter(brand: widget.brand, address: device.address, name: name),
-    );
+    await ref
+        .read(pairedPrintersProvider.notifier)
+        .pair(
+          PairedPrinter(
+            brand: widget.brand,
+            address: device.address,
+            name: name,
+            // En esta pantalla address ya es el remoteId BLE descubierto por
+            // este teléfono. Guardarlo explícitamente permite conservar
+            // compatibilidad con los emparejamientos clásicos antiguos.
+            bleRemoteId: device.address,
+          ),
+        );
     if (!mounted) return;
     setState(() => _found = const []);
     // Antes no había ninguna señal de éxito aquí — la única pista era que
     // la lista de dispositivos encontrados desaparecía.
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$name emparejada. Ya puedes imprimir directo desde aquí.'),
+        content: Text(
+          '$name emparejada. Ya puedes imprimir directo desde aquí.',
+        ),
         backgroundColor: AppColors.lavender,
       ),
     );
@@ -220,15 +234,25 @@ class _PrinterCardState extends ConsumerState<_PrinterCard> {
                   color: AppColors.neni.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Symbols.print, color: AppColors.neniDeep, size: 20),
+                child: const Icon(
+                  Symbols.print,
+                  color: AppColors.neniDeep,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(widget.title, style: AppTextStyles.h2.copyWith(fontSize: 15)),
-                    Text(widget.subtitle, style: AppTextStyles.subtitle.copyWith(fontSize: 11.5)),
+                    Text(
+                      widget.title,
+                      style: AppTextStyles.h2.copyWith(fontSize: 15),
+                    ),
+                    Text(
+                      widget.subtitle,
+                      style: AppTextStyles.subtitle.copyWith(fontSize: 11.5),
+                    ),
                   ],
                 ),
               ),
@@ -244,12 +268,19 @@ class _PrinterCardState extends ConsumerState<_PrinterCard> {
               ),
               child: Row(
                 children: [
-                  const Icon(Symbols.bluetooth_connected, size: 18, color: AppColors.neniDeep),
+                  const Icon(
+                    Symbols.bluetooth_connected,
+                    size: 18,
+                    color: AppColors.neniDeep,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Emparejada: ${paired.name}',
-                      style: AppTextStyles.body.copyWith(fontSize: 12.5, fontWeight: FontWeight.w700),
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   TextButton(onPressed: _unpair, child: const Text('Quitar')),
@@ -261,13 +292,18 @@ class _PrinterCardState extends ConsumerState<_PrinterCard> {
             label: _scanning ? 'Buscando…' : 'Buscar impresoras',
             icon: Symbols.bluetooth_searching,
             // Deshabilitado también si la OTRA tarjeta está escaneando:
-            // ambas comparten el mismo plugin estático de escaneo clásico,
-            // y dos búsquedas a la vez se cortan entre sí.
+            // FlutterBluePlus serializa la sesión de radio global.
             onPressed: anyScanning ? null : _scan,
           ),
           if (_error != null) ...[
             const SizedBox(height: 8),
-            Text(_error!, style: AppTextStyles.subtitle.copyWith(fontSize: 11.5, color: Colors.red)),
+            Text(
+              _error!,
+              style: AppTextStyles.subtitle.copyWith(
+                fontSize: 11.5,
+                color: Colors.red,
+              ),
+            ),
           ],
           for (final device in _found) ...[
             const SizedBox(height: 8),
@@ -275,7 +311,10 @@ class _PrinterCardState extends ConsumerState<_PrinterCard> {
               onTap: () => _pair(device),
               borderRadius: BorderRadius.circular(12),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   border: Border.all(color: AppColors.lineSoft),
                   borderRadius: BorderRadius.circular(12),

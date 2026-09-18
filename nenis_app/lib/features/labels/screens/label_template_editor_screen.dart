@@ -386,8 +386,7 @@ class _LabelTemplateEditorScreenState
             child: const Text('Descartar'),
           ),
           TextButton(
-            onPressed: () =>
-                Navigator.of(dialogContext).pop(_LeaveChoice.save),
+            onPressed: () => Navigator.of(dialogContext).pop(_LeaveChoice.save),
             child: const Text('Guardar'),
           ),
         ],
@@ -404,11 +403,16 @@ class _LabelTemplateEditorScreenState
     context.canPop() ? context.pop() : context.go('/seller/labels');
   }
 
-  Future<void> _changeFormat(LabelTemplateEditor template, LabelMediaSize size) async {
+  Future<void> _changeFormat(
+    LabelTemplateEditor template,
+    LabelMediaSize size,
+  ) async {
     if (size == widget.mediaSize) return;
     if (!await _confirmLeaveIfDirty(template)) return;
     if (!mounted) return;
-    context.go('/seller/labels/editor?kind=${widget.kind.api}&mediaSize=${size.api}');
+    context.go(
+      '/seller/labels/editor?kind=${widget.kind.api}&mediaSize=${size.api}',
+    );
   }
 
   @override
@@ -714,7 +718,9 @@ class _FormatSegmented extends StatelessWidget {
         for (final size in LabelMediaSize.values) ...[
           Expanded(
             child: _SegOption(
-              label: size == LabelMediaSize.shipping4x6 ? '4 × 6”' : '50 × 50 mm',
+              label: size == LabelMediaSize.shipping4x6
+                  ? '4 × 6”'
+                  : '50 × 50 mm',
               active: size == current,
               // Antes navegaba directo con context.go(...) sin pasar por
               // _confirmLeaveIfDirty: cambiar de formato con cambios sin
@@ -768,10 +774,8 @@ class _DottedBackground extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => CustomPaint(
-    painter: const _DotsPainter(),
-    child: child,
-  );
+  Widget build(BuildContext context) =>
+      CustomPaint(painter: const _DotsPainter(), child: child);
 }
 
 class _DotsPainter extends CustomPainter {
@@ -1405,6 +1409,7 @@ const _inventoryBoxBindings = <(String, String)>[
   ('box.code', 'Código de caja'),
   ('box.name', 'Nombre de caja'),
   ('box.location', 'Ubicación'),
+  ('box.totalUnits', 'Piezas en caja'),
   ('box.nfcUrl', 'Enlace NFC de la caja'),
 ];
 

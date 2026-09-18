@@ -17,6 +17,21 @@ Uint8List _checkerboardPng() {
   return img.encodePng(image);
 }
 
+Uint8List _mostlyWhitePng() {
+  final image = img.Image(width: 64, height: 64);
+  for (var y = 0; y < image.height; y++) {
+    for (var x = 0; x < image.width; x++) {
+      image.setPixelRgb(x, y, 255, 255, 255);
+    }
+  }
+  for (var y = 8; y < 20; y++) {
+    for (var x = 8; x < 56; x++) {
+      image.setPixelRgb(x, y, 0, 0, 0);
+    }
+  }
+  return img.encodePng(image);
+}
+
 void main() {
   group('TsplCommandBuilder.build', () {
     test('arma el header TSPL con las medidas y parámetros pedidos', () {
@@ -55,44 +70,61 @@ void main() {
         heightMm: 50,
         gapMm: 0,
       );
-      final expectedPrefix = ascii.encode('SIZE 50 mm,50 mm\r\nGAP 0 mm,0 mm\r\n');
+      final expectedPrefix = ascii.encode(
+        'SIZE 50 mm,50 mm\r\nGAP 0 mm,0 mm\r\n',
+      );
       expect(command.sublist(0, expectedPrefix.length), expectedPrefix);
     });
 
-    test(
-      'invierte el bit del bitmap: pixel claro → bit=1 (no quema), pixel '
-      'oscuro → bit=0 (sí quema) — esta impresora funciona al revés del '
-      'estándar TSPL (ver comentario en tspl_command_builder.dart). Un '
-      'cambio accidental aquí produciría etiquetas con los colores '
-      'invertidos sin ningún error visible en la app.',
-      () {
-        final command = TsplCommandBuilder.build(
-          png: _checkerboardPng(),
-          widthMm: 50,
-          heightMm: 50,
-        );
+    test('arma BITMAP modo 3 comprimido compatible con AiYin', () {
+      final compressed = TsplCommandBuilder.build(
+        png: _mostlyWhitePng(),
+        widthMm: 102,
+        heightMm: 152,
+        compress: true,
+      );
+      final raw = TsplCommandBuilder.build(
+        png: _mostlyWhitePng(),
+        widthMm: 102,
+        heightMm: 152,
+      );
 
-        // bytesPerRow = ceil(2px / 8) = 1 byte por fila, 2 filas → 2 bytes.
-        final header = ascii.encode(
-          'SIZE 50 mm,50 mm\r\n'
-          'GAP 2 mm,0 mm\r\n'
-          'DENSITY 15\r\n'
-          'SPEED 4\r\n'
-          'DIRECTION 0\r\n'
-          'REFERENCE 0,0\r\n'
-          'CLS\r\n',
-        );
-        final bitmapMarker = ascii.encode('BITMAP 0,0,1,2,0,');
-        final prefix = [...header, ...bitmapMarker];
-        expect(command.sublist(0, prefix.length), prefix);
+      final marker = ascii.encode('BITMAP 0,0,8,64,3,');
+      expect(compressed.sublist(0, compressed.length), containsAll(marker));
+      expect(compressed.length, lessThan(raw.length));
+    });
 
-        final bitmapBytes = command.sublist(prefix.length, prefix.length + 2);
-        // Fila 0: negro(bit7, no marcado), blanco(bit6, marcado) → 0x40.
-        expect(bitmapBytes[0], 0x40);
-        // Fila 1: blanco(bit7, marcado), negro(bit6, no marcado) → 0x80.
-        expect(bitmapBytes[1], 0x80);
-      },
-    );
+    test('invierte el bit del bitmap: pixel claro → bit=1 (no quema), pixel '
+        'oscuro → bit=0 (sí quema) — esta impresora funciona al revés del '
+        'estándar TSPL (ver comentario en tspl_command_builder.dart). Un '
+        'cambio accidental aquí produciría etiquetas con los colores '
+        'invertidos sin ningún error visible en la app.', () {
+      final command = TsplCommandBuilder.build(
+        png: _checkerboardPng(),
+        widthMm: 50,
+        heightMm: 50,
+      );
+
+      // bytesPerRow = ceil(2px / 8) = 1 byte por fila, 2 filas → 2 bytes.
+      final header = ascii.encode(
+        'SIZE 50 mm,50 mm\r\n'
+        'GAP 2 mm,0 mm\r\n'
+        'DENSITY 15\r\n'
+        'SPEED 4\r\n'
+        'DIRECTION 0\r\n'
+        'REFERENCE 0,0\r\n'
+        'CLS\r\n',
+      );
+      final bitmapMarker = ascii.encode('BITMAP 0,0,1,2,0,');
+      final prefix = [...header, ...bitmapMarker];
+      expect(command.sublist(0, prefix.length), prefix);
+
+      final bitmapBytes = command.sublist(prefix.length, prefix.length + 2);
+      // Fila 0: negro(bit7, no marcado), blanco(bit6, marcado) → 0x40.
+      expect(bitmapBytes[0], 0x40);
+      // Fila 1: blanco(bit7, marcado), negro(bit6, no marcado) → 0x80.
+      expect(bitmapBytes[1], 0x80);
+    });
 
     test('rechaza bytes que no son una imagen válida', () {
       expect(

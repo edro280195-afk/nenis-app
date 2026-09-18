@@ -1,13 +1,11 @@
 import 'dart:async';
 
-import 'package:bluetooth_print_plus/bluetooth_print_plus.dart' as classic;
 import 'package:flutter/foundation.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:niim_blue_flutter/niim_blue_flutter.dart';
 
 import 'bluetooth_permissions.dart';
 import 'bluetooth_retry.dart';
-import 'bonded_bluetooth_devices.dart';
-import 'raw_classic_bluetooth_socket.dart';
 
 class NiimbotPrintException implements Exception {
   const NiimbotPrintException(this.message, {required this.code});
@@ -16,188 +14,94 @@ class NiimbotPrintException implements Exception {
 
   /// Código corto y estable para diagnóstico remoto (se manda al backend
   /// como parte de `failureReason`); la vendedora nunca ve este valor, solo
-  /// [message]. Antes toda falla de impresión NIIMBOT llegaba al backend
-  /// como el mismo texto genérico fijo, sin poder distinguir causa.
+  /// [message].
   final String code;
 
   @override
   String toString() => message;
 }
 
-/// Cliente NIIMBOT sobre Bluetooth clásico (RFCOMM/SPP). La B1 de bodega
-/// está emparejada como dispositivo clásico en Android (no anuncia por
-/// BLE), así que en vez del cliente BLE de niim_blue_flutter reusamos su
-/// lógica de protocolo pura (paquetes, checksums, tareas de impresión).
+/// Impresión directa a la NIIMBOT B1 por BLE.
 ///
-/// El transporte es un socket RFCOMM/SPP crudo propio (no
-/// bluetooth_print_plus): el SDK de esa librería exige un handshake de
-/// verificación en ESC/TSPL/CPCL/ZPL antes de reportar "conectado", y el
-/// protocolo propio de NIIMBOT no es ninguno de esos, así que ese
-/// handshake nunca pasa.
-class _NiimbotClassicClient extends NiimbotAbstractClient {
-  String? _address;
-  StreamSubscription<Uint8List>? _dataSub;
-  bool _connected = false;
-
-  void setDevice(String address) {
-    _address = address;
-  }
-
-  @override
-  Future<ConnectionInfo> connect() async {
-    final address = _address;
-    if (address == null) {
-      throw const NiimbotPrintException(
-        'No se seleccionó una impresora NIIMBOT.',
-        code: 'no_printer_selected',
-      );
-    }
-
-    // Un solo intento se enfrentaba solo contra cualquier interferencia
-    // momentánea (impresora ocupada, un poco lejos); con 2-3 intentos con
-    // backoff, la mayoría de esos casos se resuelve sin que la vendedora
-    // tenga que volver a tocar "Imprimir" a mano.
-    await withBluetoothRetry((attempt) async {
-      try {
-        await RawClassicBluetoothSocket.connect(address);
-      } catch (e) {
-        throw NiimbotPrintException(
-          'La NIIMBOT B1 no respondió. Enciéndela y acércala al teléfono. ($e)',
-          code: 'connect_failed',
-        );
-      }
-    });
-    _connected = true;
-    _dataSub = RawClassicBluetoothSocket.onData.listen(processRawPacket);
-
-    try {
-      await withBluetoothRetry((attempt) async {
-        await initialNegotiate();
-        await fetchPrinterInfo();
-      });
-    } catch (e) {
-      // Antes este fallo se tragaba en silencio y la conexión se daba por
-      // buena igual (_connected ya estaba en true): el problema solo se
-      // revelaba minutos después, de forma confusa, si createPrintTask
-      // devolvía null por no tener el modelo. Ahora, si tras varios
-      // intentos la impresora nunca respondió el handshake de inicio de
-      // sesión, cerramos la conexión y avisamos con un mensaje específico
-      // en el momento en que realmente ocurre el problema.
-      await disconnect();
-      throw NiimbotPrintException(
-        'La NIIMBOT B1 conectó pero no respondió al iniciar sesión. '
-        'Apágala, enciéndela de nuevo y vuelve a intentarlo. ($e)',
-        code: 'negotiation_failed',
-      );
-    }
-
-    final connectionInfo = ConnectionInfo(
-      deviceName: address,
-      result: info.connectResult ?? ConnectResult.disconnect,
-    );
-    emit(ClientEvents.connected, connectionInfo);
-    return connectionInfo;
-  }
-
-  @override
-  Future<void> disconnect() async {
-    await _dataSub?.cancel();
-    _dataSub = null;
-    _connected = false;
-    await RawClassicBluetoothSocket.disconnect();
-    emit(ClientEvents.disconnected, null);
-  }
-
-  @override
-  bool isConnected() => _connected;
-
-  @override
-  Future<void> sendRaw(Uint8List data, {bool force = false}) async {
-    final ok = await RawClassicBluetoothSocket.write(data);
-    if (!ok) {
-      // El canal nativo devuelve false en error de E/S; antes nadie
-      // revisaba este resultado y el flujo seguía como si el byte se
-      // hubiera enviado, arriesgando una etiqueta corrupta o un cuelgue
-      // hasta el timeout de waitForFinished.
-      throw const NiimbotPrintException(
-        'Se perdió la conexión con la NIIMBOT B1 a mitad de la impresión.',
-        code: 'write_failed',
-      );
-    }
-    if (!force) {
-      await Future.delayed(Duration(milliseconds: packetIntervalMs));
-    }
-  }
-}
-
-/// Impresión directa a la NIIMBOT B1 por Bluetooth clásico, sin pasar por
-/// la app oficial de NIIMBOT. La B1 tiene un cabezal de 400 puntos (50mm ×
-/// 8 puntos/mm), así que cada etiqueta cuadrada se manda como bitmap
-/// 400×400.
+/// La implementación anterior usaba RFCOMM/SPP y la lista de dispositivos
+/// clásicos vinculados de Android. Eso hacía que el Motorola dependiera de
+/// un vínculo hecho en otro teléfono y dejaba a iOS sin una ruta de
+/// transporte compatible. La B1 usa ahora el cliente BLE de
+/// `niim_blue_flutter`, igual en Android y en iOS.
 class NiimbotB1PrintService {
   const NiimbotB1PrintService();
 
   static const labelPixels = 400;
 
-  /// Pide el permiso de Bluetooth de forma proactiva antes de listar
-  /// vinculados, escanear o conectar.
+  static const _scanTimeout = Duration(seconds: 6);
+
   Future<void> _ensurePermissions() async {
     final result = await BluetoothPermissions.ensureGranted();
     if (!result.granted) {
       throw NiimbotPrintException(
         result.message,
-        code: result.permanentlyDenied ? 'permission_denied_permanently' : 'permission_denied',
+        code: result.permanentlyDenied
+            ? 'permission_denied_permanently'
+            : 'permission_denied',
       );
     }
   }
 
-  /// Dispositivos NIIMBOT ya vinculados en Ajustes > Bluetooth del
-  /// sistema. Una vez emparejada, la B1 deja de anunciarse por aire, así
-  /// que este camino es más confiable que un escaneo nuevo.
-  Future<List<({String name, String address})>> listBonded() async {
-    await _ensurePermissions();
-    final prefixes = getAllModelPrefixes();
-    final bonded = await BondedBluetoothDevices.list();
-    return bonded
-        .where((d) => prefixes.any((prefix) => d.name.startsWith(prefix)))
-        .toList();
-  }
-
-  /// Busca impresoras NIIMBOT nuevas (aún no emparejadas) visibles por
-  /// Bluetooth clásico, filtrando por el nombre anunciado.
+  /// Busca por BLE, sin depender de "Ajustes > Bluetooth" ni de los vínculos
+  /// que existan en otro teléfono. No se filtra por servicio en la radio:
+  /// algunas revisiones de firmware anuncian el servicio NIIMBOT solo en el
+  /// primer paquete; filtramos por modelo después de recibir el anuncio.
   Future<List<({String name, String address})>> scan({
-    Duration timeout = const Duration(seconds: 8),
+    Duration timeout = _scanTimeout,
   }) async {
     await _ensurePermissions();
-    final result = await classic.BluetoothPrintPlus.startScan(timeout: timeout);
-    final devices = (result as List).cast<classic.BluetoothDevice>();
-    final prefixes = getAllModelPrefixes();
+    final devices = await _scanBleDevices(timeout: timeout);
     return devices
-        .where((d) => prefixes.any((prefix) => d.name.startsWith(prefix)))
-        .map((d) => (name: d.name, address: d.address))
+        .map(
+          (device) => (name: _deviceName(device), address: device.remoteId.str),
+        )
         .toList();
   }
 
-  /// Imprime un lote de etiquetas (una PNG por etiqueta) en una sola
-  /// conexión, reusándola entre todas — antes cada etiqueta de un mismo
-  /// trabajo reconectaba y renegociaba desde cero, multiplicando los
-  /// puntos de fallo por cada una. `createPrintTask` es una fábrica sin
-  /// estado propio (ver niim_blue_flutter B1PrintTask): crear una tarea
-  /// nueva por etiqueta sobre el mismo cliente conectado es el uso previsto
-  /// de la API, no un abuso de su ciclo de vida.
+  /// Imprime un lote de etiquetas en una sola conexión BLE.
+  ///
+  /// [bleRemoteId] es el identificador guardado durante el emparejamiento.
+  /// [address] se conserva como fallback para emparejamientos antiguos que
+  /// todavía solo tenían una dirección clásica guardada.
   Future<void> printBatch({
     required String address,
     required String name,
+    String? bleRemoteId,
     required List<Uint8List> pngs,
     int copies = 1,
   }) async {
     await _ensurePermissions();
-    final client = _NiimbotClassicClient()..setDevice(address);
+    NiimbotBluetoothClient? client;
     try {
-      await client.connect();
+      client = await withBluetoothRetry<NiimbotBluetoothClient>((
+        attempt,
+      ) async {
+        final next = NiimbotBluetoothClient();
+        try {
+          final savedId = attempt == 0
+              ? _firstNonBlank(bleRemoteId) ?? _firstNonBlank(address)
+              : null;
+          final device = savedId == null
+              ? await _findDevice(name: name)
+              : BluetoothDevice.fromId(savedId);
+          next.setDevice(device);
+          await next.connect();
+          return next;
+        } catch (_) {
+          await next.dispose();
+          rethrow;
+        }
+      });
+
       debugPrint(
         '[NiimbotB1] connect result=${client.info.connectResult} '
-        'modelId=${client.info.modelId} protocolVersion=${client.info.protocolVersion}',
+        'modelId=${client.info.modelId} '
+        'protocolVersion=${client.info.protocolVersion}',
       );
 
       for (var i = 0; i < pngs.length; i++) {
@@ -215,29 +119,33 @@ class NiimbotB1PrintService {
         code: 'unknown',
       );
     } finally {
-      await client.disconnect();
+      await client?.dispose();
     }
   }
 
   Future<void> printLabel({
     required String address,
     required String name,
+    String? bleRemoteId,
     required Uint8List png,
     int copies = 1,
   }) {
-    return printBatch(address: address, name: name, pngs: [png], copies: copies);
+    return printBatch(
+      address: address,
+      name: name,
+      bleRemoteId: bleRemoteId,
+      pngs: [png],
+      copies: copies,
+    );
   }
 
   Future<void> _printOne(
-    _NiimbotClassicClient client,
+    NiimbotAbstractClient client,
     Uint8List png,
     int copies, {
     required int index,
     required int total,
   }) async {
-    // density al máximo (5 en la B1): con la etiqueta saliendo en blanco
-    // el sospechoso más probable es que el cabezal no está calentando
-    // lo suficiente para este material, no un problema de datos.
     final task = client.createPrintTask(
       const PrintOptions(totalPages: 1, density: 5),
     );
@@ -266,5 +174,60 @@ class NiimbotB1PrintService {
     debugPrint('[NiimbotB1] (${index + 1}/$total) waitForFinished');
     await task.waitForFinished();
     await task.printEnd();
+  }
+
+  Future<List<BluetoothDevice>> _scanBleDevices({
+    required Duration timeout,
+  }) async {
+    final prefixes = getAllModelPrefixes();
+    final found = <String, BluetoothDevice>{};
+    final subscription = FlutterBluePlus.scanResults.listen((results) {
+      for (final result in results) {
+        final name = _deviceName(result.device);
+        if (prefixes.any((prefix) => name.startsWith(prefix))) {
+          found[result.device.remoteId.str] = result.device;
+        }
+      }
+    });
+
+    try {
+      await FlutterBluePlus.startScan(timeout: timeout);
+      await Future<void>.delayed(timeout);
+    } finally {
+      await subscription.cancel();
+      if (FlutterBluePlus.isScanningNow) {
+        await FlutterBluePlus.stopScan();
+      }
+    }
+    return found.values.toList();
+  }
+
+  Future<BluetoothDevice> _findDevice({required String name}) async {
+    final devices = await _scanBleDevices(timeout: _scanTimeout);
+    final expected = name.trim().toLowerCase();
+    final match = devices.where((device) {
+      final candidate = _deviceName(device).toLowerCase();
+      return expected.isEmpty ||
+          candidate == expected ||
+          candidate.startsWith(expected) ||
+          expected.startsWith(candidate);
+    }).firstOrNull;
+    if (match != null) return match;
+
+    throw const NiimbotPrintException(
+      'No encontramos la NIIMBOT B1 por BLE. Enciéndela y acércala al teléfono.',
+      code: 'device_not_found',
+    );
+  }
+
+  static String _deviceName(BluetoothDevice device) {
+    final platformName = device.platformName.trim();
+    if (platformName.isNotEmpty) return platformName;
+    return device.advName.trim();
+  }
+
+  static String? _firstNonBlank(String? value) {
+    final trimmed = value?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }
 }
