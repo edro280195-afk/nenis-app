@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 
+import 'core/auth/auth_controller.dart';
 import 'core/deeplinks/deep_link_service.dart';
 import 'core/notifications/push_service.dart';
 import 'core/router/app_router.dart';
@@ -47,6 +50,15 @@ class _NenisAppState extends ConsumerState<NenisApp> {
   Widget build(BuildContext context) {
     final brand = ref.watch(activeBrandProvider);
     final router = ref.watch(routerProvider);
+    // Registra el token de push cada vez que aparece una sesión: al iniciar
+    // sesión y también al abrir la app con la sesión ya guardada (antes solo
+    // se registraba en el login, así que el token nunca se refrescaba).
+    ref.listen(authControllerProvider, (previous, next) {
+      final hadSession = previous?.value != null;
+      if (!hadSession && next.value != null) {
+        unawaited(ref.read(pushServiceProvider).registerCurrentToken());
+      }
+    });
     return MaterialApp.router(
       title: "Neni's App",
       debugShowCheckedModeBanner: false,

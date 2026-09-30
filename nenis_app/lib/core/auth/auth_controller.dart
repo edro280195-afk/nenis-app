@@ -458,9 +458,8 @@ class AuthController extends AsyncNotifier<Session?> {
           .write(normalized)
           .timeout(const Duration(seconds: 5), onTimeout: () {}),
     );
-    // Best-effort: registra el token de push de este dispositivo para la
-    // cuenta recién autenticada. Nunca debe tumbar el login.
-    unawaited(ref.read(pushServiceProvider).registerCurrentToken());
+    // El registro del token de push ya no vive aquí: NenisApp lo hace cada vez
+    // que aparece una sesión (login o arranque con sesión guardada).
   }
 
   void _clearPending() {

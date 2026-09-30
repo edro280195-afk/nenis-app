@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../devices/screens/push_test_action.dart';
 import '../../../core/auth/auth_controller.dart';
 import '../../../core/auth/session.dart';
 import '../../../core/theme/app_colors.dart';
@@ -145,18 +146,18 @@ class SellerAccountScreen extends ConsumerWidget {
                 onTap: () => context.push('/seller/inventory'),
               ),
               const SizedBox(height: 10),
+              // "Equipo de reparto" y "Preferencias" están ocultos a propósito:
+              // sus interruptores todavía no se guardan en el servidor ni
+              // cambian el comportamiento real (las propias pantallas lo
+              // avisaban). Mostrar controles que no hacen nada es motivo de
+              // rechazo en Play Store. Las rutas siguen registradas
+              // (/seller/settings/team y /seller/settings/preferences); se
+              // vuelven a mostrar cuando persistan de verdad.
               _SellerMenuTile(
-                icon: Symbols.groups,
-                title: 'Equipo de reparto',
-                subtitle: 'Permisos del chofer y mensajes de ruta.',
-                onTap: () => context.push('/seller/settings/team'),
-              ),
-              const SizedBox(height: 10),
-              _SellerMenuTile(
-                icon: Symbols.tune,
-                title: 'Preferencias',
-                subtitle: 'Alertas, mensajes y operación diaria.',
-                onTap: () => context.push('/seller/settings/preferences'),
+                icon: Symbols.notifications_active,
+                title: 'Probar notificaciones',
+                subtitle: 'Comprueba que tu teléfono recibe avisos.',
+                onTap: () => runPushSelfTest(context, ref),
               ),
               const SizedBox(height: 10),
               _SellerMenuTile(

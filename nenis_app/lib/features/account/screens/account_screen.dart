@@ -12,6 +12,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/store_avatar.dart';
+import '../../devices/screens/push_test_action.dart';
 import '../data/account_models.dart';
 import '../data/account_repository.dart';
 import '../widgets/account_deletion_button.dart';
@@ -84,6 +85,12 @@ class BuyerAccountScreen extends ConsumerWidget {
                       title: 'Notificaciones',
                       subtitle: 'Avisos de pedidos, entregas y mensajes',
                       onTap: () => context.push('/notifications'),
+                    ),
+                    _AccountMenuCard(
+                      icon: Symbols.notifications_active,
+                      title: 'Probar notificaciones',
+                      subtitle: 'Comprueba que tu teléfono recibe avisos',
+                      onTap: () => runPushSelfTest(context, ref),
                     ),
                     _AccountMenuCard(
                       icon: Symbols.school,
