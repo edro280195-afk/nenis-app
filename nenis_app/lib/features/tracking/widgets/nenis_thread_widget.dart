@@ -47,13 +47,9 @@ class _NenisThreadWidgetState extends State<NenisThreadWidget>
       vsync: this,
       duration: widget.animationDuration,
     );
-    _progressAnim = Tween<double>(
-      begin: 0,
-      end: widget.progress,
-    ).animate(CurvedAnimation(
-      parent: _progressCtrl,
-      curve: Curves.easeInOutCubic,
-    ));
+    _progressAnim = Tween<double>(begin: 0, end: widget.progress).animate(
+      CurvedAnimation(parent: _progressCtrl, curve: Curves.easeInOutCubic),
+    );
     _progressCtrl.forward();
 
     _shimmerCtrl = AnimationController(
@@ -66,13 +62,16 @@ class _NenisThreadWidgetState extends State<NenisThreadWidget>
   void didUpdateWidget(NenisThreadWidget old) {
     super.didUpdateWidget(old);
     if (old.progress != widget.progress) {
-      _progressAnim = Tween<double>(
-        begin: _progressAnim.value,
-        end: widget.progress,
-      ).animate(CurvedAnimation(
-        parent: _progressCtrl,
-        curve: Curves.easeInOutCubic,
-      ));
+      _progressAnim =
+          Tween<double>(
+            begin: _progressAnim.value,
+            end: widget.progress,
+          ).animate(
+            CurvedAnimation(
+              parent: _progressCtrl,
+              curve: Curves.easeInOutCubic,
+            ),
+          );
       _progressCtrl
         ..reset()
         ..forward();
@@ -90,17 +89,37 @@ class _NenisThreadWidgetState extends State<NenisThreadWidget>
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final rawW = widget.width.isFinite ? widget.width : constraints.maxWidth;
-        final rawH = widget.height.isFinite ? widget.height : constraints.maxHeight;
+        final rawW = widget.width.isFinite
+            ? widget.width
+            : constraints.maxWidth;
+        final rawH = widget.height.isFinite
+            ? widget.height
+            : constraints.maxHeight;
 
-        final safeW = (rawW.isNaN || !rawW.isFinite || rawW <= 0) ? 300.0 : rawW;
-        final safeH = (rawH.isNaN || !rawH.isFinite || rawH <= 0) ? 120.0 : rawH;
+        final safeW = (rawW.isNaN || !rawW.isFinite || rawW <= 0)
+            ? 300.0
+            : rawW;
+        final safeH = (rawH.isNaN || !rawH.isFinite || rawH <= 0)
+            ? 120.0
+            : rawH;
 
-        final startLeft = (NenisThreadPainter.startNorm.dx * safeW - 14).clamp(0.0, safeW - 28);
-        final startTop = (NenisThreadPainter.startNorm.dy * safeH - 14).clamp(0.0, safeH - 28);
+        final startLeft = (NenisThreadPainter.startNorm.dx * safeW - 14).clamp(
+          0.0,
+          safeW - 28,
+        );
+        final startTop = (NenisThreadPainter.startNorm.dy * safeH - 14).clamp(
+          0.0,
+          safeH - 28,
+        );
 
-        final endLeft = (NenisThreadPainter.endNorm.dx * safeW - 14).clamp(0.0, safeW - 28);
-        final endTop = (NenisThreadPainter.endNorm.dy * safeH - 14).clamp(0.0, safeH - 28);
+        final endLeft = (NenisThreadPainter.endNorm.dx * safeW - 14).clamp(
+          0.0,
+          safeW - 28,
+        );
+        final endTop = (NenisThreadPainter.endNorm.dy * safeH - 14).clamp(
+          0.0,
+          safeH - 28,
+        );
 
         return SizedBox(
           width: safeW,
@@ -114,8 +133,12 @@ class _NenisThreadWidgetState extends State<NenisThreadWidget>
                 builder: (_, _) => CustomPaint(
                   size: Size(safeW, safeH),
                   painter: NenisThreadPainter(
-                    progress: _progressAnim.value.isNaN ? 0.0 : _progressAnim.value,
-                    shimmerPhase: _shimmerCtrl.value.isNaN ? 0.0 : _shimmerCtrl.value,
+                    progress: _progressAnim.value.isNaN
+                        ? 0.0
+                        : _progressAnim.value,
+                    shimmerPhase: _shimmerCtrl.value.isNaN
+                        ? 0.0
+                        : _shimmerCtrl.value,
                   ),
                 ),
               ),
@@ -131,7 +154,10 @@ class _NenisThreadWidgetState extends State<NenisThreadWidget>
               Positioned(
                 left: endLeft,
                 top: endTop,
-                child: _HomePinDot(key: widget.endKey, isActive: widget.progress >= 0.99),
+                child: _HomePinDot(
+                  key: widget.endKey,
+                  isActive: widget.progress >= 0.99,
+                ),
               ),
             ],
           ),
@@ -164,7 +190,11 @@ class _StorePinDot extends StatelessWidget {
           ),
         ],
       ),
-      child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 14),
+      child: const Icon(
+        Icons.storefront_rounded,
+        color: Colors.white,
+        size: 14,
+      ),
     );
   }
 }
@@ -223,8 +253,9 @@ class _HomePinDotState extends State<_HomePinDot>
                 height: 28 * (1 + _ripple.value * 0.6),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: const Color(0xFFE95D92)
-                      .withValues(alpha: 0.25 * (1 - _ripple.value)),
+                  color: const Color(
+                    0xFFE95D92,
+                  ).withValues(alpha: 0.25 * (1 - _ripple.value)),
                 ),
               ),
             ),

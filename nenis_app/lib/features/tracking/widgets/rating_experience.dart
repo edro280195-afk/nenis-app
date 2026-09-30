@@ -84,15 +84,18 @@ class _RatingExperienceState extends ConsumerState<RatingExperience>
         curve: const Cubic(0.22, 1.0, 0.36, 1.0),
       ),
     );
-    _scrimAnim = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _scrimCtrl, curve: Curves.easeOut),
-    );
-    _medalScaleAnim = Tween<double>(begin: 0.65, end: 1.0).animate(
-      CurvedAnimation(parent: _medalCtrl, curve: Curves.elasticOut),
-    );
-    _medalRotateAnim = Tween<double>(begin: -6 * math.pi / 180, end: 0).animate(
-      CurvedAnimation(parent: _medalCtrl, curve: Curves.easeOut),
-    );
+    _scrimAnim = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _scrimCtrl, curve: Curves.easeOut));
+    _medalScaleAnim = Tween<double>(
+      begin: 0.65,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _medalCtrl, curve: Curves.elasticOut));
+    _medalRotateAnim = Tween<double>(
+      begin: -6 * math.pi / 180,
+      end: 0,
+    ).animate(CurvedAnimation(parent: _medalCtrl, curve: Curves.easeOut));
 
     // Prellenar si ya existe una evaluación
     if (widget.existingRating != null) {
@@ -177,8 +180,9 @@ class _RatingExperienceState extends ConsumerState<RatingExperience>
                 sigmaY: 5 * _scrimAnim.value,
               ),
               child: Container(
-                color: const Color(0xFF2A2027)
-                    .withValues(alpha: 0.45 * _scrimAnim.value),
+                color: const Color(
+                  0xFF2A2027,
+                ).withValues(alpha: 0.45 * _scrimAnim.value),
               ),
             ),
           ),
@@ -324,11 +328,7 @@ class _FormView extends StatelessWidget {
           const SizedBox(height: 22),
 
           // Estrellas
-          _StarRow(
-            stars: stars,
-            starKeys: starKeys,
-            onTap: onStarTap,
-          ),
+          _StarRow(stars: stars, starKeys: starKeys, onTap: onStarTap),
           const SizedBox(height: 20),
 
           // Stickers / motivos
@@ -338,11 +338,13 @@ class _FormView extends StatelessWidget {
               runSpacing: 10,
               alignment: WrapAlignment.center,
               children: kFeedbackReasons
-                  .map((r) => _FeedbackSticker(
-                        label: r,
-                        selected: selectedReasons.contains(r),
-                        onTap: () => onReasonToggle(r),
-                      ))
+                  .map(
+                    (r) => _FeedbackSticker(
+                      label: r,
+                      selected: selectedReasons.contains(r),
+                      onTap: () => onReasonToggle(r),
+                    ),
+                  )
                   .toList(),
             ),
             const SizedBox(height: 18),
@@ -520,22 +522,30 @@ class _AnimatedStarState extends State<_AnimatedStar>
   void _setupAnimations() {
     _scale = TweenSequence<double>([
       TweenSequenceItem(
-          tween: Tween(begin: 0.7, end: 1.28)
-              .chain(CurveTween(curve: Curves.easeIn)),
-          weight: 55),
+        tween: Tween(
+          begin: 0.7,
+          end: 1.28,
+        ).chain(CurveTween(curve: Curves.easeIn)),
+        weight: 55,
+      ),
       TweenSequenceItem(
-          tween: Tween(begin: 1.28, end: 1.0)
-              .chain(CurveTween(curve: Curves.easeOut)),
-          weight: 45),
+        tween: Tween(
+          begin: 1.28,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 45,
+      ),
     ]).animate(_ctrl);
 
     _rotate = TweenSequence<double>([
       TweenSequenceItem(
-          tween: Tween(begin: -7 * math.pi / 180, end: 4 * math.pi / 180),
-          weight: 55),
+        tween: Tween(begin: -7 * math.pi / 180, end: 4 * math.pi / 180),
+        weight: 55,
+      ),
       TweenSequenceItem(
-          tween: Tween(begin: 4 * math.pi / 180, end: 0.0),
-          weight: 45),
+        tween: Tween(begin: 4 * math.pi / 180, end: 0.0),
+        weight: 45,
+      ),
     ]).animate(_ctrl);
   }
 
@@ -602,9 +612,10 @@ class _FeedbackStickerState extends State<_FeedbackSticker>
       vsync: this,
       duration: const Duration(milliseconds: 250),
     );
-    _scale = Tween<double>(begin: 1.0, end: 1.06).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeOut),
-    );
+    _scale = Tween<double>(
+      begin: 1.0,
+      end: 1.06,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
   }
 
   @override
@@ -627,10 +638,8 @@ class _FeedbackStickerState extends State<_FeedbackSticker>
       onTap: widget.onTap,
       child: AnimatedBuilder(
         animation: _scale,
-        builder: (_, child) => Transform.scale(
-          scale: _scale.value,
-          child: child,
-        ),
+        builder: (_, child) =>
+            Transform.scale(scale: _scale.value, child: child),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
@@ -660,8 +669,7 @@ class _FeedbackStickerState extends State<_FeedbackSticker>
             style: TextStyle(
               fontFamily: 'Outfit',
               fontSize: 13.5,
-              fontWeight:
-                  widget.selected ? FontWeight.w700 : FontWeight.w500,
+              fontWeight: widget.selected ? FontWeight.w700 : FontWeight.w500,
               color: widget.selected
                   ? const Color(0xFFE84E83)
                   : const Color(0xFF8A6F82),
@@ -699,7 +707,11 @@ class _BusinessMedal extends StatelessWidget {
           ),
         ],
       ),
-      child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 32),
+      child: const Icon(
+        Icons.storefront_rounded,
+        color: Colors.white,
+        size: 32,
+      ),
     );
   }
 }
@@ -727,12 +739,14 @@ class _SuccessViewState extends State<_SuccessView>
       vsync: this,
       duration: const Duration(milliseconds: 600),
     )..forward();
-    _scale = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut),
-    );
-    _fade = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeOut),
-    );
+    _scale = Tween<double>(
+      begin: 0.5,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut));
+    _fade = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
   }
 
   @override

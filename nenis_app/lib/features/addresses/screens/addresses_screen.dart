@@ -101,22 +101,25 @@ class _Header extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Mis direcciones',
-                style: AppTextStyles.h1.copyWith(fontSize: 24),
-              ),
-              Text(
-                'Las direcciones que tus tiendas tienen guardadas.',
-                style: AppTextStyles.subtitle.copyWith(
-                  fontSize: 12.5,
-                  color: AppColors.ink2,
+          // Expanded: sin él, el subtítulo desbordaba 11 px por la derecha.
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Mis direcciones',
+                  style: AppTextStyles.h1.copyWith(fontSize: 24),
                 ),
-              ),
-            ],
+                Text(
+                  'Las direcciones que tus tiendas tienen guardadas.',
+                  style: AppTextStyles.subtitle.copyWith(
+                    fontSize: 12.5,
+                    color: AppColors.ink2,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -165,6 +168,7 @@ class _AddressRow extends StatelessWidget {
                   label: 'Editar',
                   icon: Symbols.edit,
                   expand: false,
+                  compact: true,
                   onPressed: () =>
                       context.push('/addresses/${address.clientId}'),
                 ),

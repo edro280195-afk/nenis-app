@@ -37,14 +37,14 @@ class BuyerReward {
   String get costLabel => '$pointsCost pts';
 
   factory BuyerReward.fromJson(Map<String, dynamic> j) => BuyerReward(
-        id: (j['id'] as num).toInt(),
-        name: (j['name'] ?? '') as String,
-        description: j['description'] as String?,
-        pointsCost: (j['pointsCost'] as num?)?.toInt() ?? 0,
-        type: (j['type'] ?? 'FixedDiscount') as String,
-        value: (j['value'] as num?)?.toDouble() ?? 0,
-        icon: j['icon'] as String?,
-      );
+    id: (j['id'] as num).toInt(),
+    name: (j['name'] ?? '') as String,
+    description: j['description'] as String?,
+    pointsCost: (j['pointsCost'] as num?)?.toInt() ?? 0,
+    type: (j['type'] ?? 'FixedDiscount') as String,
+    value: (j['value'] as num?)?.toDouble() ?? 0,
+    icon: j['icon'] as String?,
+  );
 }
 
 /// Catálogo de premios activos de una tienda de la compradora, junto con los
@@ -73,7 +73,8 @@ class RewardsByBusiness {
 
   bool get hasRewards => rewards.isNotEmpty;
 
-  factory RewardsByBusiness.fromJson(Map<String, dynamic> j) => RewardsByBusiness(
+  factory RewardsByBusiness.fromJson(Map<String, dynamic> j) =>
+      RewardsByBusiness(
         businessId: (j['businessId'] as num).toInt(),
         businessName: (j['businessName'] ?? '') as String,
         brandPrimaryColor: (j['brandPrimaryColor'] ?? '#FB6F9C') as String,

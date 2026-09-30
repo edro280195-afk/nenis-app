@@ -134,8 +134,9 @@ class _OrderLinkScreenState extends ConsumerState<OrderLinkScreen> {
 
   Future<void> _doClaim() async {
     final messenger = ScaffoldMessenger.of(context);
-    final result =
-        await ref.read(claimRepositoryProvider).claimByOrderToken(widget.token);
+    final result = await ref
+        .read(claimRepositoryProvider)
+        .claimByOrderToken(widget.token);
     if (!mounted) return;
 
     if (result.status == ClaimByTokenStatus.linked) {

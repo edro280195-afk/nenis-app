@@ -76,11 +76,15 @@ final dioProvider = Provider<Dio>((ref) {
             .getOrCreate();
         options.headers['X-Device-Id'] = deviceId;
         final isPublic = _publicPrefixes.any((p) => options.path.startsWith(p));
+        final session = ref.read(authControllerProvider).asData?.value;
         if (!isPublic) {
-          _applyAuthHeaders(
-            options,
-            ref.read(authControllerProvider).asData?.value,
-          );
+          _applyAuthHeaders(options, session);
+        } else if (session != null && options.path.startsWith('/api/pedido/')) {
+          // El pedido sigue siendo público por token, pero si la clienta tiene
+          // sesión se manda para que el backend reconozca que es la dueña: con
+          // el enlace vencido puede seguir viendo su pedido. Solo el Bearer,
+          // sin X-Business-Id, para no cambiar la resolución de tienda pública.
+          options.headers['Authorization'] = 'Bearer ${session.token}';
         }
         handler.next(options);
       },

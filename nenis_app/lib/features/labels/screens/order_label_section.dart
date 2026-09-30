@@ -108,6 +108,10 @@ class _OrderLabelSectionState extends ConsumerState<OrderLabelSection> {
           .read(pairedPrintersProvider)
           .forMediaSize(job.mediaSize);
       if (paired != null) {
+        _showMessage(
+          connectingToPrinterMessage(paired.name),
+          color: AppColors.ink2,
+        );
         await service.printDirectJob(paired, job);
         await repository.updateJobStatus(
           jobId: job.id,
@@ -115,10 +119,11 @@ class _OrderLabelSectionState extends ConsumerState<OrderLabelSection> {
           output: 'BluetoothDirect',
         );
         _showMessage(
-          '${job.totalLabels} ${job.totalLabels == 1 ? 'etiqueta enviada' : 'etiquetas enviadas'} a ${paired.name}',
+          printedDirectMessage(job.totalLabels, paired.name),
           color: AppColors.lavender,
         );
       } else {
+        _showMessage(preparingSystemPrintMessage, color: AppColors.ink2);
         final accepted = await service.handOffToSystem(job);
         await repository.updateJobStatus(
           jobId: job.id,
@@ -136,34 +141,47 @@ class _OrderLabelSectionState extends ConsumerState<OrderLabelSection> {
       }
     } on LabelPrintException catch (error) {
       if (job != null) {
-        await _recordFailure(repository, job.id, printFailureReason(error.code, error.message));
+        await _recordFailure(
+          repository,
+          job.id,
+          printFailureReason(error.code, error.message),
+        );
       }
       if (!mounted) return;
       _showMessage(error.message, color: AppColors.liveRed);
       if (error.isFeatureLocked) context.push('/seller/plan');
     } on LabelPrintRenderException catch (error) {
       if (job != null) {
-        await _recordFailure(repository, job.id, printFailureReason(error.code, error.message));
+        await _recordFailure(
+          repository,
+          job.id,
+          printFailureReason(error.code, error.message),
+        );
       }
       _showMessage(error.message, color: AppColors.liveRed);
     } on NiimbotPrintException catch (error) {
       if (job != null) {
-        await _recordFailure(repository, job.id, printFailureReason(error.code, error.message));
+        await _recordFailure(
+          repository,
+          job.id,
+          printFailureReason(error.code, error.message),
+        );
       }
       _showMessage(error.message, color: AppColors.liveRed);
     } on AiyinPrintException catch (error) {
       if (job != null) {
-        await _recordFailure(repository, job.id, printFailureReason(error.code, error.message));
+        await _recordFailure(
+          repository,
+          job.id,
+          printFailureReason(error.code, error.message),
+        );
       }
       _showMessage(error.message, color: AppColors.liveRed);
     } catch (e) {
       if (job != null) {
         await _recordFailure(repository, job.id, unknownPrintFailureReason(e));
       }
-      _showMessage(
-        'No pudimos abrir el selector de impresión.',
-        color: AppColors.liveRed,
-      );
+      _showMessage(printUnknownFailureMessage, color: AppColors.liveRed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -362,7 +380,10 @@ class _PackageCountSheetState extends State<_PackageCountSheet> {
               const SizedBox(height: 6),
               Text(
                 _error!,
-                style: AppTextStyles.subtitle.copyWith(fontSize: 11.5, color: AppColors.liveRed),
+                style: AppTextStyles.subtitle.copyWith(
+                  fontSize: 11.5,
+                  color: AppColors.liveRed,
+                ),
               ),
             ],
             const SizedBox(height: 18),
@@ -456,7 +477,8 @@ class _PackagesContent extends StatelessWidget {
                 Expanded(
                   child: _MiniActionButton(
                     icon: Symbols.print,
-                    label: 'Imprimir ${packages.length} ${packages.length == 1 ? 'etiqueta' : 'etiquetas'}',
+                    label:
+                        'Imprimir ${packages.length} ${packages.length == 1 ? 'etiqueta' : 'etiquetas'}',
                     gradient: true,
                     busy: busy,
                     onTap: onPrint,

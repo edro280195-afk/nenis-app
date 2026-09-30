@@ -67,12 +67,11 @@ class OrdersQuery {
     int? businessId,
     bool clearBusinessId = false,
     int? page,
-  }) =>
-      OrdersQuery(
-        filter: filter ?? this.filter,
-        businessId: clearBusinessId ? null : (businessId ?? this.businessId),
-        page: page ?? this.page,
-      );
+  }) => OrdersQuery(
+    filter: filter ?? this.filter,
+    businessId: clearBusinessId ? null : (businessId ?? this.businessId),
+    page: page ?? this.page,
+  );
 }
 
 /// Controller de la pantalla "Mis pedidos". Mantiene la query actual
@@ -128,5 +127,5 @@ class OrdersController extends AsyncNotifier<BuyerOrdersPage> {
 
 final ordersControllerProvider =
     AsyncNotifierProvider.autoDispose<OrdersController, BuyerOrdersPage>(
-  OrdersController.new,
-);
+      OrdersController.new,
+    );

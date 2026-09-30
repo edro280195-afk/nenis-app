@@ -87,26 +87,25 @@ class BuyerRaffle {
   bool get isCancelled => status == 'Cancelled';
 
   factory BuyerRaffle.fromJson(Map<String, dynamic> j) => BuyerRaffle(
-        raffleId: (j['raffleId'] ?? '') as String,
-        businessId: (j['businessId'] as num).toInt(),
-        businessName: (j['businessName'] ?? '') as String,
-        brandPrimaryColor: (j['brandPrimaryColor'] ?? '#FB6F9C') as String,
-        clientId: (j['clientId'] as num).toInt(),
-        name: (j['name'] ?? '') as String,
-        imageUrl: j['imageUrl'] as String?,
-        prizeType: (j['prizeType'] ?? 'product') as String,
-        prizeValue: (j['prizeValue'] as num?)?.toDouble(),
-        prizeDescription: j['prizeDescription'] as String?,
-        raffleDate:
-            DateTime.tryParse((j['raffleDate'] ?? '') as String) ??
-                DateTime.now(),
-        status: (j['status'] ?? 'Active') as String,
-        tandaName: j['tandaName'] as String?,
-        myEntryCount: (j['myEntryCount'] as num?)?.toInt() ?? 0,
-        isMineEntered: (j['isMineEntered'] as bool?) ?? false,
-        amIWinner: (j['amIWinner'] as bool?) ?? false,
-        announcedAt: j['announcedAt'] != null
-            ? DateTime.tryParse(j['announcedAt'] as String)
-            : null,
-      );
+    raffleId: (j['raffleId'] ?? '') as String,
+    businessId: (j['businessId'] as num).toInt(),
+    businessName: (j['businessName'] ?? '') as String,
+    brandPrimaryColor: (j['brandPrimaryColor'] ?? '#FB6F9C') as String,
+    clientId: (j['clientId'] as num).toInt(),
+    name: (j['name'] ?? '') as String,
+    imageUrl: j['imageUrl'] as String?,
+    prizeType: (j['prizeType'] ?? 'product') as String,
+    prizeValue: (j['prizeValue'] as num?)?.toDouble(),
+    prizeDescription: j['prizeDescription'] as String?,
+    raffleDate:
+        DateTime.tryParse((j['raffleDate'] ?? '') as String) ?? DateTime.now(),
+    status: (j['status'] ?? 'Active') as String,
+    tandaName: j['tandaName'] as String?,
+    myEntryCount: (j['myEntryCount'] as num?)?.toInt() ?? 0,
+    isMineEntered: (j['isMineEntered'] as bool?) ?? false,
+    amIWinner: (j['amIWinner'] as bool?) ?? false,
+    announcedAt: j['announcedAt'] != null
+        ? DateTime.tryParse(j['announcedAt'] as String)
+        : null,
+  );
 }

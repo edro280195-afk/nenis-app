@@ -1463,12 +1463,12 @@ class _RouteMapCard extends ConsumerWidget {
       loading: () => const _MapConfigState(
         icon: Symbols.map,
         title: 'Preparando mapa',
-        message: 'Estamos revisando la configuracion de Google Maps.',
+        message: 'Estamos revisando la configuración de Google Maps.',
       ),
       error: (_, _) => const _MapConfigState(
         icon: Symbols.location_off,
         title: 'Mapa no disponible',
-        message: 'No pudimos validar la configuracion de Google Maps.',
+        message: 'No pudimos validar la configuración de Google Maps.',
       ),
       data: (configured) {
         if (!configured) {

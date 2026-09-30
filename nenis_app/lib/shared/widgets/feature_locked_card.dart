@@ -39,15 +39,25 @@ class FeatureLockedCard extends StatelessWidget {
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [AppColors.neniDeep, AppColors.neni]),
+              gradient: const LinearGradient(
+                colors: [AppColors.neniDeep, AppColors.neni],
+              ),
               shape: BoxShape.circle,
             ),
             child: const Icon(Symbols.lock, color: Colors.white, size: 30),
           ),
           const SizedBox(height: 14),
-          Text(title, textAlign: TextAlign.center, style: AppTextStyles.h2.copyWith(fontSize: 16)),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.h2.copyWith(fontSize: 16),
+          ),
           const SizedBox(height: 6),
-          Text(body, textAlign: TextAlign.center, style: AppTextStyles.subtitle.copyWith(fontSize: 12.5)),
+          Text(
+            body,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+          ),
           const SizedBox(height: 16),
           PillButton(
             label: 'Ver plan $requiredPlan',

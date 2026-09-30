@@ -21,7 +21,8 @@ class PremiumToast extends StatefulWidget {
   State<PremiumToast> createState() => _PremiumToastState();
 }
 
-class _PremiumToastState extends State<PremiumToast> with SingleTickerProviderStateMixin {
+class _PremiumToastState extends State<PremiumToast>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<Offset> _offsetAnimation;
   late Animation<double> _fadeAnimation;
@@ -37,18 +38,12 @@ class _PremiumToastState extends State<PremiumToast> with SingleTickerProviderSt
     _offsetAnimation = Tween<Offset>(
       begin: const Offset(0, -1.2),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutBack,
-    ));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
 
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOut,
-    ));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
     _controller.forward();
 
@@ -71,14 +66,14 @@ class _PremiumToastState extends State<PremiumToast> with SingleTickerProviderSt
     final themeColor = widget.type == PremiumToastType.success
         ? AppColors.statusDeliveredFg
         : widget.type == PremiumToastType.error
-            ? AppColors.liveRed
-            : AppColors.neniDeep;
+        ? AppColors.liveRed
+        : AppColors.neniDeep;
 
     final icon = widget.type == PremiumToastType.success
         ? Icons.check_circle_outline_rounded
         : widget.type == PremiumToastType.error
-            ? Icons.error_outline_rounded
-            : Icons.info_outline_rounded;
+        ? Icons.error_outline_rounded
+        : Icons.info_outline_rounded;
 
     return SlideTransition(
       position: _offsetAnimation,
@@ -94,7 +89,10 @@ class _PremiumToastState extends State<PremiumToast> with SingleTickerProviderSt
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.surface.withValues(alpha: 0.85),
                       borderRadius: BorderRadius.circular(20),
@@ -143,10 +141,13 @@ class _PremiumToastState extends State<PremiumToast> with SingleTickerProviderSt
 }
 
 extension PremiumToastExtension on BuildContext {
-  void showPremiumToast(String message, {PremiumToastType type = PremiumToastType.info}) {
+  void showPremiumToast(
+    String message, {
+    PremiumToastType type = PremiumToastType.info,
+  }) {
     final overlayState = Overlay.maybeOf(this);
     if (overlayState == null) return;
-    
+
     late OverlayEntry overlayEntry;
 
     overlayEntry = OverlayEntry(

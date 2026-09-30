@@ -129,7 +129,11 @@ class _LiveContent extends StatelessWidget {
                 child: SizedBox(
                   width: 40,
                   height: 40,
-                  child: Icon(Icons.adaptive.arrow_back, size: 20, color: AppColors.ink),
+                  child: Icon(
+                    Icons.adaptive.arrow_back,
+                    size: 20,
+                    color: AppColors.ink,
+                  ),
                 ),
               ),
             ),
@@ -199,10 +203,17 @@ class _NotLiveNow extends StatelessWidget {
                 color: Color(0xFFEFE5EE),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Symbols.sensors, color: AppColors.ink2, size: 44),
+              child: const Icon(
+                Symbols.sensors,
+                color: AppColors.ink2,
+                size: 44,
+              ),
             ),
             const SizedBox(height: 20),
-            Text('${store.name} no está en vivo ahora', style: AppTextStyles.h1.copyWith(fontSize: 20)),
+            Text(
+              '${store.name} no está en vivo ahora',
+              style: AppTextStyles.h1.copyWith(fontSize: 20),
+            ),
             const SizedBox(height: 8),
             Text(
               'Te avisamos apenas empiece — asegúrate de seguir esta tienda.',
@@ -240,7 +251,10 @@ class _WaitingForProduct extends StatelessWidget {
         children: [
           FadeInPulse(color: brand),
           const SizedBox(height: 16),
-          Text('En vivo ahora mismo', style: AppTextStyles.h2.copyWith(fontSize: 17)),
+          Text(
+            'En vivo ahora mismo',
+            style: AppTextStyles.h2.copyWith(fontSize: 17),
+          ),
           const SizedBox(height: 6),
           Text(
             'En cuanto muestre un producto, aparece aquí para que lo apartes.',
@@ -261,10 +275,12 @@ class FadeInPulse extends StatefulWidget {
   State<FadeInPulse> createState() => _FadeInPulseState();
 }
 
-class _FadeInPulseState extends State<FadeInPulse> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 900))
-        ..repeat(reverse: true);
+class _FadeInPulseState extends State<FadeInPulse>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat(reverse: true);
 
   @override
   void dispose() {
@@ -307,7 +323,10 @@ class _CurrentProductCard extends StatelessWidget {
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-          decoration: BoxDecoration(color: AppColors.liveRed, borderRadius: AppRadii.pillRadius),
+          decoration: BoxDecoration(
+            color: AppColors.liveRed,
+            borderRadius: AppRadii.pillRadius,
+          ),
           child: const Text(
             'MOSTRANDO AHORA',
             style: TextStyle(
@@ -338,7 +357,10 @@ class _CurrentProductCard extends StatelessWidget {
               Text(
                 name,
                 textAlign: TextAlign.center,
-                style: AppTextStyles.h1.copyWith(color: Colors.white, fontSize: 22),
+                style: AppTextStyles.h1.copyWith(
+                  color: Colors.white,
+                  fontSize: 22,
+                ),
               ),
               const SizedBox(height: 6),
               Text(
@@ -357,7 +379,8 @@ class _CurrentProductCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(999),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(999),
-                    onTap: () => context.push('/reserve/$businessId/$productId'),
+                    onTap: () =>
+                        context.push('/reserve/$businessId/$productId'),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       child: Row(
@@ -367,7 +390,10 @@ class _CurrentProductCard extends StatelessWidget {
                           const SizedBox(width: 8),
                           Text(
                             'Apartar',
-                            style: AppTextStyles.button.copyWith(color: brand, fontSize: 15),
+                            style: AppTextStyles.button.copyWith(
+                              color: brand,
+                              fontSize: 15,
+                            ),
                           ),
                         ],
                       ),

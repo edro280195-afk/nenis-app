@@ -69,7 +69,6 @@ String buildSellerOrderMessage(SellerOrder order) {
   return lines.join('\n');
 }
 
-
 String? _formatSpanishDate(DateTime? date) {
   if (date == null) return null;
   final local = date.toLocal();

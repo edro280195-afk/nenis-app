@@ -8,14 +8,16 @@ import 'package:flutter/services.dart';
 /// de verificación de bluetooth_print_plus.
 class RawClassicBluetoothSocket {
   static const _methodChannel = MethodChannel('nenis_app/raw_bluetooth_socket');
-  static const _dataChannel = EventChannel('nenis_app/raw_bluetooth_socket/data');
+  static const _dataChannel = EventChannel(
+    'nenis_app/raw_bluetooth_socket/data',
+  );
 
   static Stream<Uint8List>? _dataStream;
 
   static Stream<Uint8List> get onData {
-    return _dataStream ??= _dataChannel
-        .receiveBroadcastStream()
-        .map((event) => event as Uint8List);
+    return _dataStream ??= _dataChannel.receiveBroadcastStream().map(
+      (event) => event as Uint8List,
+    );
   }
 
   static Future<void> connect(String address) {
@@ -28,7 +30,9 @@ class RawClassicBluetoothSocket {
         .invokeMethod('connect', {'address': address})
         .timeout(
           const Duration(seconds: 10),
-          onTimeout: () => throw TimeoutException('Tiempo de espera agotado conectando por Bluetooth clásico.'),
+          onTimeout: () => throw TimeoutException(
+            'Tiempo de espera agotado conectando por Bluetooth clásico.',
+          ),
         );
   }
 

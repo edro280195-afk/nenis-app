@@ -35,11 +35,11 @@ class NotificationsRepository {
       await _dio.post('/api/me/notifications/$id/read');
     } on DioException catch (_) {
       throw NotificationsException(
-        'No pudimos marcar la notificacion como leida.',
+        'No pudimos marcar la notificación como leída.',
       );
     } catch (_) {
       throw NotificationsException(
-        'No pudimos marcar la notificacion como leida.',
+        'No pudimos marcar la notificación como leída.',
       );
     }
   }

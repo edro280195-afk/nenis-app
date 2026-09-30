@@ -104,13 +104,13 @@ String? validateAddressCoordinatesInput(String latitude, String longitude) {
   }
 
   final lat = double.tryParse(latText);
-  if (lat == null) return 'La latitud debe ser un numero valido.';
+  if (lat == null) return 'La latitud debe ser un número válido.';
   if (lat < -90 || lat > 90) {
     return 'La latitud debe estar entre -90 y 90.';
   }
 
   final lng = double.tryParse(lngText);
-  if (lng == null) return 'La longitud debe ser un numero valido.';
+  if (lng == null) return 'La longitud debe ser un número válido.';
   if (lng < -180 || lng > 180) {
     return 'La longitud debe estar entre -180 y 180.';
   }

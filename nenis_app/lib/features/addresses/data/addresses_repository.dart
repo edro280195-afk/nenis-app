@@ -30,7 +30,10 @@ class AddressesRepository {
     }
   }
 
-  Future<BuyerAddress> updateAddress(int clientId, UpdateAddressRequest request) async {
+  Future<BuyerAddress> updateAddress(
+    int clientId,
+    UpdateAddressRequest request,
+  ) async {
     try {
       final res = await _dio.put(
         '/api/me/addresses/$clientId',
@@ -56,7 +59,8 @@ final addressesRepositoryProvider = Provider<AddressesRepository>((ref) {
   return AddressesRepository(ref.read(dioProvider));
 });
 
-final addressesFeedProvider =
-    FutureProvider.autoDispose<List<BuyerAddress>>((ref) {
+final addressesFeedProvider = FutureProvider.autoDispose<List<BuyerAddress>>((
+  ref,
+) {
   return ref.read(addressesRepositoryProvider).getMyAddresses();
 });

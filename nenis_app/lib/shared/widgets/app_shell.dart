@@ -42,50 +42,83 @@ class AppShell extends ConsumerWidget {
                 .isLocked ??
             false);
 
-    final content = showPaywall ? const SubscriptionPaywallScreen() : child;
+    // El Navigator interno del shell avisa "no puedo manejar atrás" y pisaba
+    // el aviso del PopScope de abajo, así que Android cerraba la app sin
+    // consultar a Flutter. Se absorben solo los avisos negativos; los
+    // positivos (hay una pantalla apilada) siguen su camino.
+    final content = NotificationListener<NavigationNotification>(
+      onNotification: (notification) => !notification.canHandlePop,
+      child: showPaywall ? const SubscriptionPaywallScreen() : child,
+    );
+
+    // Botón atrás de Android: desde cualquier pantalla del shell (pestañas,
+    // Rutas, Clientas…) se regresa a Inicio, y solo desde Inicio se cierra la
+    // app. Si hay otra pantalla debajo en la pila (se llegó con push), el
+    // atrás normal la respeta.
+    final canLeaveApp =
+        currentRoute == '/home' || GoRouter.of(context).canPop();
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final useRail = constraints.maxWidth >= 720;
-        return Scaffold(
-          backgroundColor: AppColors.surfaceCream,
-          body: useRail && !showPaywall
-              ? Row(
-                  children: [
-                    _AdaptiveNavRail(
-                      items: items,
-                      overflowItems: overflowItems,
-                      currentRoute: currentRoute,
-                    ),
-                    const VerticalDivider(width: 1, color: AppColors.line),
-                    Expanded(child: content),
-                  ],
-                )
-              : content,
-          bottomNavigationBar: showPaywall || useRail
-              ? null
-              : GlassBottomNav(
-                  items: items,
-                  currentRoute: currentRoute,
-                  onChanged: (route) {
-                    final item = items.firstWhere(
-                      (item) => item.route == route,
-                    );
-                    if (isMoreNavItem(item)) {
-                      _showMoreSheet(
-                        context,
-                        overflowItems,
-                        currentRoute,
-                        isSeller: isSeller,
+        return PopScope(
+          canPop: canLeaveApp,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) context.go('/home');
+          },
+          child: Scaffold(
+            backgroundColor: AppColors.surfaceCream,
+            body: useRail && !showPaywall
+                ? Row(
+                    children: [
+                      _AdaptiveNavRail(
+                        items: items,
+                        overflowItems: overflowItems,
+                        currentRoute: currentRoute,
+                      ),
+                      const VerticalDivider(width: 1, color: AppColors.line),
+                      Expanded(child: content),
+                    ],
+                  )
+                : content,
+            bottomNavigationBar: showPaywall || useRail
+                ? null
+                : GlassBottomNav(
+                    items: items,
+                    currentRoute: currentRoute,
+                    onChanged: (route) {
+                      final item = items.firstWhere(
+                        (item) => item.route == route,
                       );
-                    }
-                  },
-                ),
+                      if (isMoreNavItem(item)) {
+                        _showMoreSheet(
+                          context,
+                          overflowItems,
+                          currentRoute,
+                          isSeller: isSeller,
+                        );
+                      }
+                    },
+                  ),
+          ),
         );
       },
     );
   }
 }
+
+/// Rutas que viven dentro del `ShellRoute` de `app_router.dart`.
+const _shellPaths = {
+  '/home',
+  '/routes',
+  '/clients',
+  '/orders',
+  '/points',
+  '/tandas',
+  '/raffles',
+  '/account',
+  '/seller/labels',
+};
 
 void _showMoreSheet(
   BuildContext context,
@@ -148,7 +181,10 @@ class _MoreNavSheet extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
                       children: [
                         Text(
                           isSeller ? 'Más Espacios' : 'Más Experiencias',
@@ -157,7 +193,6 @@ class _MoreNavSheet extends StatelessWidget {
                             letterSpacing: -0.3,
                           ),
                         ),
-                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 9,
@@ -240,10 +275,13 @@ class _MoreNavSheet extends StatelessWidget {
                       active: isNavItemActive(currentRoute, item),
                       onTap: () {
                         Navigator.of(context).pop();
-                        // Estos módulos son accesos secundarios, no pestañas:
-                        // conserva la pantalla que abrió el menú para que el
-                        // botón físico de atrás pueda regresar a ella.
-                        if (currentRoute != item.route) {
+                        // Fuera del shell (p. ej. Bodega) se usa push para que
+                        // el botón atrás regrese aquí en vez de cerrar la app;
+                        // las pestañas del shell se navegan con go.
+                        if (currentRoute == item.route) return;
+                        if (_shellPaths.contains(item.route)) {
+                          context.go(item.route);
+                        } else {
                           context.push(item.route);
                         }
                       },
@@ -261,11 +299,14 @@ class _MoreNavSheet extends StatelessWidget {
               children: [
                 const Icon(Symbols.touch_app, size: 15, color: AppColors.neni),
                 const SizedBox(width: 6),
-                Text(
-                  'Toca cualquier módulo para navegar al área de trabajo',
-                  style: AppTextStyles.subtitle.copyWith(
-                    fontSize: 11,
-                    color: AppColors.ink2,
+                Flexible(
+                  child: Text(
+                    'Toca cualquier módulo para navegar al área de trabajo',
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.subtitle.copyWith(
+                      fontSize: 11,
+                      color: AppColors.ink2,
+                    ),
                   ),
                 ),
               ],
@@ -336,8 +377,10 @@ class _MoreNavModuleCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
                       children: [
                         Text(
                           item.label,
@@ -347,7 +390,7 @@ class _MoreNavModuleCard extends StatelessWidget {
                             letterSpacing: -0.2,
                           ),
                         ),
-                        if (item.badge != null)
+                        if (item.badge != null) ...[
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
@@ -366,6 +409,7 @@ class _MoreNavModuleCard extends StatelessWidget {
                               ),
                             ),
                           ),
+                        ],
                       ],
                     ),
                     if (item.subtitle != null) ...[

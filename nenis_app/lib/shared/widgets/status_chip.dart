@@ -54,11 +54,7 @@ extension OrderStatusDisplay on OrderStatus {
 }
 
 class StatusChip extends StatelessWidget {
-  const StatusChip({
-    super.key,
-    required this.status,
-    this.onWhite = false,
-  });
+  const StatusChip({super.key, required this.status, this.onWhite = false});
 
   final OrderStatus status;
   final bool onWhite;
@@ -70,19 +66,13 @@ class StatusChip extends StatelessWidget {
     return Container(
       height: 28,
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: AppRadii.pillRadius,
-      ),
+      decoration: BoxDecoration(color: bg, borderRadius: AppRadii.pillRadius),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(status.icon, size: 15, color: fg),
           const SizedBox(width: 5),
-          Text(
-            status.label,
-            style: AppTextStyles.chip.copyWith(color: fg),
-          ),
+          Text(status.label, style: AppTextStyles.chip.copyWith(color: fg)),
         ],
       ),
     );

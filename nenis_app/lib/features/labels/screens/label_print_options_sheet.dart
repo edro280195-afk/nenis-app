@@ -83,14 +83,50 @@ class _LabelPrintOptionsSheetState extends State<_LabelPrintOptionsSheet> {
                 ),
               ),
               const SizedBox(height: 18),
-              Text(
-                'Antes de imprimir',
-                style: AppTextStyles.h1.copyWith(fontSize: 22),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.neni.withValues(alpha: 0.12),
+                      borderRadius: AppRadii.avatarRadius,
+                    ),
+                    child: const Icon(
+                      Symbols.print,
+                      color: AppColors.neniDeep,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'ETIQUETAS',
+                          style: AppTextStyles.eyebrow(
+                            AppColors.neniDeep,
+                          ).copyWith(fontSize: 10.5, letterSpacing: 1.1),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          'Configura tu impresión',
+                          style: AppTextStyles.h1.copyWith(fontSize: 21),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 3),
+              const SizedBox(height: 8),
               Text(
-                '${widget.packageCount} ${widget.packageCount == 1 ? 'etiqueta' : 'etiquetas'} · imprime directo si ya emparejaste tu impresora',
-                style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+                '${widget.packageCount} ${widget.packageCount == 1 ? 'etiqueta' : 'etiquetas'} listas. Elige el formato y las copias; Nenis se encargará del envío.',
+                style: AppTextStyles.subtitle.copyWith(
+                  fontSize: 12,
+                  height: 1.45,
+                ),
               ),
               const SizedBox(height: 18),
               LabelPrintOptionsBody(
@@ -152,7 +188,7 @@ class LabelPrintOptionsBody extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const LabelFieldLabel(icon: Symbols.sell, label: 'Formato de etiqueta'),
+        const LabelFieldLabel(icon: Symbols.sell, label: 'Formato'),
         const SizedBox(height: 9),
         for (final size in LabelMediaSize.values) ...[
           LabelMediaChoice(
@@ -163,12 +199,13 @@ class LabelPrintOptionsBody extends StatelessWidget {
           ),
           const SizedBox(height: 9),
         ],
-        // Antes la vendedora solo se enteraba de si iba a imprimir directo
-        // o caer al selector del sistema DESPUÉS de tocar "Imprimir", vía
-        // el texto del SnackBar resultante.
+        // El destino se muestra antes de confirmar para que la vendedora
+        // sepa si usará una impresora Bluetooth configurada o el selector.
         Consumer(
           builder: (context, ref, _) {
-            final paired = ref.watch(pairedPrintersProvider).forMediaSize(mediaSize);
+            final paired = ref
+                .watch(pairedPrintersProvider)
+                .forMediaSize(mediaSize);
             return PairedPrinterIndicator(paired: paired);
           },
         ),
@@ -181,11 +218,17 @@ class LabelPrintOptionsBody extends StatelessWidget {
                 children: [
                   Text(
                     copiesLabel,
-                    style: AppTextStyles.body.copyWith(fontSize: 13, fontWeight: FontWeight.w700),
+                    style: AppTextStyles.body.copyWith(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   if (copiesHint != null) ...[
                     const SizedBox(height: 1),
-                    Text(copiesHint!, style: AppTextStyles.subtitle.copyWith(fontSize: 10.5)),
+                    Text(
+                      copiesHint!,
+                      style: AppTextStyles.subtitle.copyWith(fontSize: 10.5),
+                    ),
                   ],
                 ],
               ),
@@ -203,7 +246,10 @@ class LabelPrintOptionsBody extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Text(summaryLeft, style: AppTextStyles.subtitle.copyWith(fontSize: 12)),
+              Text(
+                summaryLeft,
+                style: AppTextStyles.subtitle.copyWith(fontSize: 12),
+              ),
               const Spacer(),
               Text(
                 '$total ${total == 1 ? 'etiqueta' : 'etiquetas'}',
@@ -218,10 +264,6 @@ class LabelPrintOptionsBody extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         PillButton(
-          // Antes decía "Continuar a impresoras" en un sheet y "Abrir
-          // impresión" en el otro, pero nunca aparece ninguna pantalla de
-          // selección después — la app decide sola entre Bluetooth directo
-          // (si hay impresora emparejada) y el selector del sistema.
           label: 'Confirmar e imprimir',
           icon: Symbols.print,
           onPressed: onSubmit,
@@ -231,10 +273,10 @@ class LabelPrintOptionsBody extends StatelessWidget {
   }
 }
 
-/// Indicador de qué impresora (si alguna) está emparejada para el formato
-/// elegido — antes ninguna de las pantallas de impresión mostraba esto de
-/// antemano, así que la vendedora solo se enteraba de si iba a imprimir
-/// directo o caer al selector del sistema después de tocar "Imprimir".
+/// Indicador de qué impresora (si alguna) está configurada para el formato
+/// elegido. La conexión se valida al configurarla y también al comenzar cada
+/// trabajo, para no confundir una configuración guardada con una impresora
+/// físicamente disponible.
 class PairedPrinterIndicator extends StatelessWidget {
   const PairedPrinterIndicator({super.key, required this.paired});
 
@@ -246,27 +288,33 @@ class PairedPrinterIndicator extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
-        color: connected ? AppColors.neni.withValues(alpha: 0.08) : AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: connected ? null : Border.all(color: AppColors.lineSoft),
+        color: connected
+            ? AppColors.statusDeliveredBg.withValues(alpha: 0.60)
+            : AppColors.surface,
+        borderRadius: AppRadii.softRadius,
+        border: Border.all(
+          color: connected
+              ? AppColors.statusDeliveredFg.withValues(alpha: 0.18)
+              : AppColors.lineSoft,
+        ),
       ),
       child: Row(
         children: [
           Icon(
-            connected ? Symbols.bluetooth_connected : Symbols.bluetooth_disabled,
+            connected ? Symbols.check_circle : Symbols.bluetooth_disabled,
             size: 16,
-            color: connected ? AppColors.neniDeep : AppColors.ink3,
+            color: connected ? AppColors.statusDeliveredFg : AppColors.ink3,
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               connected
-                  ? 'Imprimirá directo en ${paired!.name}'
-                  : 'Sin impresora emparejada: se abrirá el selector del sistema',
+                  ? 'Bluetooth directo · ${paired!.name}'
+                  : 'Selector del teléfono · puedes configurar una impresora después',
               style: AppTextStyles.subtitle.copyWith(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w600,
-                color: connected ? AppColors.neniDeep : AppColors.ink3,
+                color: connected ? AppColors.statusDeliveredFg : AppColors.ink3,
               ),
             ),
           ),
@@ -398,10 +446,7 @@ class LabelFormatPreview extends StatelessWidget {
         border: Border.all(color: AppColors.ink.withValues(alpha: 0.12)),
       ),
       child: ship
-          ? const _BarcodeBars(
-              widths: [3, 5, 3, 6, 3, 5, 3, 6],
-              barHeight: 14,
-            )
+          ? const _BarcodeBars(widths: [3, 5, 3, 6, 3, 5, 3, 6], barHeight: 14)
           : const LabelQrPlaceholder(size: 26),
     );
   }

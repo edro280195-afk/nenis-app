@@ -363,9 +363,9 @@ class SellerDuplicateSuggestion {
   }
 
   String get reasonLabel => switch (reason) {
-    'same-phone' => 'Mismo telefono',
+    'same-phone' => 'Mismo teléfono',
     'similar-name' => 'Nombre parecido',
-    'similar-address' => 'Direccion parecida',
+    'similar-address' => 'Dirección parecida',
     _ => 'Posible duplicada',
   };
 
@@ -385,5 +385,71 @@ class SellerDuplicateSuggestion {
       reason: (json['reason'] ?? '') as String,
       confidence: _d(json['confidence']),
     );
+  }
+}
+
+/// Tipo de premio de lealtad, tal como lo manda `GET /api/loyalty/rewards`.
+enum SellerRewardType {
+  fixedDiscount,
+  freeShipping,
+  gift;
+
+  static SellerRewardType fromApi(String? value) {
+    switch ((value ?? '').toLowerCase()) {
+      case 'freeshipping':
+        return SellerRewardType.freeShipping;
+      case 'gift':
+        return SellerRewardType.gift;
+      default:
+        return SellerRewardType.fixedDiscount;
+    }
+  }
+}
+
+/// Premio canjeable del catálogo de la tienda.
+class SellerLoyaltyReward {
+  const SellerLoyaltyReward({
+    required this.id,
+    required this.name,
+    required this.pointsCost,
+    required this.type,
+    required this.value,
+    this.description,
+    this.icon,
+  });
+
+  final int id;
+  final String name;
+  final String? description;
+  final int pointsCost;
+  final SellerRewardType type;
+
+  /// Monto del descuento cuando el premio es `fixedDiscount`.
+  final double value;
+  final String? icon;
+
+  factory SellerLoyaltyReward.fromJson(Map<String, dynamic> json) {
+    return SellerLoyaltyReward(
+      id: _i(json['id']),
+      name: (json['name'] ?? '') as String,
+      description: json['description'] as String?,
+      pointsCost: _i(json['pointsCost']),
+      type: SellerRewardType.fromApi(json['type'] as String?),
+      value: (json['value'] as num?)?.toDouble() ?? 0,
+      icon: json['icon'] as String?,
+    );
+  }
+
+  /// Descuento que este premio aplicaría sobre un pedido con ese envío. Es el
+  /// mismo cálculo que hace el backend en `POST /api/loyalty/redeem`.
+  double discountFor({required double shippingCost}) {
+    switch (type) {
+      case SellerRewardType.fixedDiscount:
+        return value;
+      case SellerRewardType.freeShipping:
+        return shippingCost;
+      case SellerRewardType.gift:
+        return 0;
+    }
   }
 }

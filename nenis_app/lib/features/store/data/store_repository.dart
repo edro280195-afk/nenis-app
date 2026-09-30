@@ -48,8 +48,9 @@ class StoreBusinessId extends Notifier<int?> {
   void clear() => state = null;
 }
 
-final storeBusinessIdProvider =
-    NotifierProvider<StoreBusinessId, int?>(StoreBusinessId.new);
+final storeBusinessIdProvider = NotifierProvider<StoreBusinessId, int?>(
+  StoreBusinessId.new,
+);
 
 /// Tab actualmente seleccionado en la pantalla de tienda. Es un
 /// Notifier simple (no del controller) porque el cambio de tab NO
@@ -60,8 +61,9 @@ class StoreSelectedTab extends Notifier<StoreTab> {
   void set(StoreTab tab) => state = tab;
 }
 
-final storeSelectedTabProvider =
-    NotifierProvider<StoreSelectedTab, StoreTab>(StoreSelectedTab.new);
+final storeSelectedTabProvider = NotifierProvider<StoreSelectedTab, StoreTab>(
+  StoreSelectedTab.new,
+);
 
 /// Controller de la pantalla "Tienda de vendedora". Carga el detalle
 /// de la tienda según el `storeBusinessIdProvider` y lo expone.
@@ -87,5 +89,5 @@ class StoreController extends AsyncNotifier<BuyerStoreDetail?> {
 
 final storeControllerProvider =
     AsyncNotifierProvider<StoreController, BuyerStoreDetail?>(
-  StoreController.new,
-);
+      StoreController.new,
+    );

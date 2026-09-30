@@ -17,14 +17,21 @@ class StorePostsRepository {
 
   final Dio _dio;
 
-  Future<List<StorePostFeedItem>> getPosts(int businessId, {int page = 1, int pageSize = 20}) async {
+  Future<List<StorePostFeedItem>> getPosts(
+    int businessId, {
+    int page = 1,
+    int pageSize = 20,
+  }) async {
     try {
       final res = await _dio.get(
         '/api/me/store/$businessId/posts',
         queryParameters: {'page': page, 'pageSize': pageSize},
       );
       return ((res.data as List?) ?? const [])
-          .map((e) => StorePostFeedItem.fromJson((e as Map).cast<String, dynamic>()))
+          .map(
+            (e) =>
+                StorePostFeedItem.fromJson((e as Map).cast<String, dynamic>()),
+          )
           .toList();
     } catch (_) {
       throw StorePostsException('No pudimos cargar las novedades.');
@@ -48,5 +55,5 @@ class StorePostsController extends AsyncNotifier<List<StorePostFeedItem>> {
 
 final storePostsControllerProvider =
     AsyncNotifierProvider<StorePostsController, List<StorePostFeedItem>>(
-  StorePostsController.new,
-);
+      StorePostsController.new,
+    );

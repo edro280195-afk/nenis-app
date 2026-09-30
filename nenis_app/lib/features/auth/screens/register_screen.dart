@@ -15,11 +15,11 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/phone_number.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/background.dart';
-import '../../../shared/widgets/nenis_logo.dart';
 import '../../../shared/widgets/password_field.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../../subscription/data/subscription_models.dart';
 import '../../subscription/data/subscription_repository.dart';
+import '../widgets/auth_editorial_hero.dart';
 import '../widgets/auth_feedback.dart';
 import '../widgets/auth_motion.dart';
 import '../widgets/legal_acceptance.dart';
@@ -478,48 +478,31 @@ class _RegistrationHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = isSeller ? AppColors.lavender : AppColors.neniDeep;
-    final icon = isSeller ? Symbols.storefront : Symbols.shopping_bag;
-    final title = isSeller ? 'Abre tu tienda en Nenis' : 'Compra con confianza';
+    final title = isSeller ? 'Haz crecer lo que vendes' : 'Consiente tu estilo';
     final subtitle = isSeller
-        ? 'Vende tus productos, recibe pedidos y haz crecer tu comunidad.'
-        : 'Tu teléfono será tu llave para tus pedidos, puntos y tiendas favoritas.';
+        ? 'Crea tu espacio, recibe pedidos y conecta con más clientas locales.'
+        : 'Crea tu cuenta para descubrir boutiques, pedidos y favoritas cerca de ti.';
 
     return Column(
       children: [
-        const NenisLogo(markSize: 48, wordmarkSize: 24),
-        const SizedBox(height: 16),
-        AnimatedContainer(
-          duration: reduceMotion
-              ? Duration.zero
-              : const Duration(milliseconds: 260),
-          width: 68,
-          height: 68,
-          decoration: BoxDecoration(
-            color: accent.withValues(alpha: 0.12),
-            shape: BoxShape.circle,
-            border: Border.all(color: accent.withValues(alpha: 0.18)),
-          ),
-          child: Icon(icon, color: accent, size: 32, fill: 1),
-        ),
-        const SizedBox(height: 14),
         AnimatedSwitcher(
           duration: reduceMotion
               ? Duration.zero
               : const Duration(milliseconds: 220),
-          child: Text(
-            title,
+          child: AuthEditorialHero(
             key: ValueKey(title),
-            textAlign: TextAlign.center,
-            style: AppTextStyles.h1.copyWith(fontSize: 25),
+            role: isSeller ? AuthHeroRole.seller : AuthHeroRole.client,
+            compact: true,
+            title: title,
+            subtitle: subtitle,
           ),
         ),
-        const SizedBox(height: 7),
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 430),
-          child: Text(
-            subtitle,
-            textAlign: TextAlign.center,
-            style: AppTextStyles.subtitle.copyWith(height: 1.45),
+        const SizedBox(height: 10),
+        Text(
+          'Nuevo Laredo · Paso 1 de 2',
+          style: AppTextStyles.chip.copyWith(
+            color: accent,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ],
@@ -544,9 +527,12 @@ class _RegistrationProgress extends StatelessWidget {
         ),
         Expanded(
           child: Container(
-            height: 2,
+            height: 3,
             margin: const EdgeInsets.symmetric(horizontal: 10),
-            color: AppColors.line,
+            decoration: BoxDecoration(
+              color: AppColors.neni.withValues(alpha: 0.22),
+              borderRadius: BorderRadius.circular(99),
+            ),
           ),
         ),
         _ProgressStep(
@@ -947,40 +933,52 @@ class _AccountTypeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(5),
-      decoration: BoxDecoration(
-        color: AppColors.segTrack,
-        borderRadius: AppRadii.fieldRadius,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _AccountTypeOption(
-              key: const Key('register-role-client'),
-              label: 'Clienta',
-              icon: Symbols.shopping_bag,
-              accent: AppColors.neniDeep,
-              selected: value == AccountType.client,
-              onTap: onChanged == null
-                  ? null
-                  : () => onChanged!(AccountType.client),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          '¿Cómo quieres usar Neni’s?',
+          style: AppTextStyles.h2.copyWith(fontSize: 18),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Elige tu camino. Ambos forman parte de la misma comunidad.',
+          style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _AccountTypeOption(
+                key: const Key('register-role-client'),
+                label: 'Soy clienta',
+                description: 'Descubre y compra',
+                icon: Symbols.shopping_bag,
+                accent: AppColors.neniDeep,
+                selected: value == AccountType.client,
+                onTap: onChanged == null
+                    ? null
+                    : () => onChanged!(AccountType.client),
+              ),
             ),
-          ),
-          Expanded(
-            child: _AccountTypeOption(
-              key: const Key('register-role-seller'),
-              label: 'Vendedora',
-              icon: Symbols.storefront,
-              accent: AppColors.lavender,
-              selected: value == AccountType.seller,
-              onTap: onChanged == null
-                  ? null
-                  : () => onChanged!(AccountType.seller),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _AccountTypeOption(
+                key: const Key('register-role-seller'),
+                label: 'Vendo en Neni’s',
+                description: 'Haz crecer tu tienda',
+                icon: Symbols.storefront,
+                accent: AppColors.lavender,
+                selected: value == AccountType.seller,
+                onTap: onChanged == null
+                    ? null
+                    : () => onChanged!(AccountType.seller),
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -989,6 +987,7 @@ class _AccountTypeOption extends StatelessWidget {
   const _AccountTypeOption({
     super.key,
     required this.label,
+    required this.description,
     required this.icon,
     required this.accent,
     required this.selected,
@@ -997,6 +996,7 @@ class _AccountTypeOption extends StatelessWidget {
 
   final String label;
   final IconData icon;
+  final String description;
   final Color accent;
   final bool selected;
   final VoidCallback? onTap;
@@ -1007,43 +1007,56 @@ class _AccountTypeOption extends StatelessWidget {
       borderRadius: AppRadii.fieldRadius,
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
+        duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        constraints: const BoxConstraints(minHeight: 112),
+        padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
         decoration: BoxDecoration(
-          color: selected ? AppColors.surface : Colors.transparent,
-          borderRadius: AppRadii.fieldRadius,
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.07),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ]
-              : null,
+          color: selected ? accent.withValues(alpha: 0.10) : AppColors.surface,
+          borderRadius: const BorderRadius.all(Radius.circular(20)),
+          border: Border.all(
+            color: selected ? accent.withValues(alpha: 0.46) : AppColors.line,
+            width: selected ? 1.5 : 1,
+          ),
+          boxShadow: selected ? AppShadows.small : null,
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              icon,
-              size: 18,
-              color: selected ? accent : AppColors.ink3,
-              fill: selected ? 1 : 0,
-            ),
-            const SizedBox(width: 7),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.body.copyWith(
-                  color: selected ? AppColors.ink : AppColors.ink2,
-                  fontSize: 13.5,
-                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                ),
+            Container(
+              width: 38,
+              height: 38,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: selected
+                    ? accent.withValues(alpha: 0.14)
+                    : AppColors.segTrack,
+                borderRadius: const BorderRadius.all(Radius.circular(13)),
               ),
+              child: Icon(
+                icon,
+                size: 20,
+                color: selected ? accent : AppColors.ink2,
+                fill: selected ? 1 : 0,
+              ),
+            ),
+            const SizedBox(height: 9),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.body.copyWith(
+                color: selected ? AppColors.ink : AppColors.ink2,
+                fontSize: 13.5,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              description,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.subtitle.copyWith(fontSize: 10.5),
             ),
           ],
         ),

@@ -7,6 +7,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/text_scale.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -15,8 +16,10 @@ import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/google_address_field.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/slow_load_hint.dart';
+import '../../orders/data/seller_orders_repository.dart';
 import '../data/seller_clients_models.dart';
 import '../data/seller_clients_repository.dart';
+import 'redeem_reward_sheet.dart';
 
 class SellerClientsScreen extends ConsumerStatefulWidget {
   const SellerClientsScreen({super.key});
@@ -545,56 +548,74 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final title = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        RichText(
+          text: TextSpan(
+            style: AppTextStyles.h1.copyWith(fontSize: 27),
             children: [
-              RichText(
-                text: TextSpan(
-                  style: AppTextStyles.h1.copyWith(fontSize: 27),
-                  children: [
-                    const TextSpan(text: 'Clientas '),
-                    TextSpan(
-                      text: 'VIP',
-                      style: AppTextStyles.h1.copyWith(
-                        fontSize: 27,
-                        color: AppColors.neniDeep,
-                        fontStyle: FontStyle.italic,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+              const TextSpan(text: 'Clientas '),
+              TextSpan(
+                text: 'VIP',
+                style: AppTextStyles.h1.copyWith(
+                  fontSize: 27,
+                  color: AppColors.neniDeep,
+                  fontStyle: FontStyle.italic,
+                  fontWeight: FontWeight.w600,
                 ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                total == 0
-                    ? 'Directorio conectado a sellgeneral-api.'
-                    : '$total perfiles, orden: $sortLabel.',
-                style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
               ),
             ],
           ),
         ),
+        const SizedBox(height: 3),
+        Text(
+          total == 0
+              ? 'Directorio conectado a sellgeneral-api.'
+              : '$total perfiles, orden: $sortLabel.',
+          style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+        ),
+      ],
+    );
+    final actions = <Widget>[
+      _IconTile(
+        tooltip: locating ? 'Ubicando...' : 'Ubicar direcciones',
+        icon: locating ? Symbols.progress_activity : Symbols.add_location_alt,
+        onTap: locating ? null : onLocate,
+      ),
+      _IconTile(
+        tooltip: 'Fusionar duplicadas',
+        icon: Icons.merge_type_rounded,
+        onTap: onDuplicates,
+      ),
+      _IconTile(tooltip: 'Ordenar', icon: Symbols.tune, onTap: onSort),
+      _IconTile(tooltip: 'Actualizar', icon: Symbols.sync, onTap: onRefresh),
+    ];
+
+    // Con pantalla angosta o letra grande, los 4 botones le quitan casi todo
+    // el ancho al título: se pasan a una segunda línea.
+    final compact =
+        MediaQuery.sizeOf(context).width < 380 ||
+        MediaQuery.textScalerOf(context).scale(1.0) > 1.2;
+    if (compact) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          title,
+          const SizedBox(height: 10),
+          Wrap(spacing: 8, runSpacing: 8, children: actions),
+        ],
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: title),
         const SizedBox(width: 10),
-        _IconTile(
-          tooltip: locating ? 'Ubicando...' : 'Ubicar direcciones',
-          icon: locating ? Symbols.progress_activity : Symbols.add_location_alt,
-          onTap: locating ? null : onLocate,
-        ),
-        const SizedBox(width: 8),
-        _IconTile(
-          tooltip: 'Fusionar duplicadas',
-          icon: Icons.merge_type_rounded,
-          onTap: onDuplicates,
-        ),
-        const SizedBox(width: 8),
-        _IconTile(tooltip: 'Ordenar', icon: Symbols.tune, onTap: onSort),
-        const SizedBox(width: 8),
-        _IconTile(tooltip: 'Actualizar', icon: Symbols.sync, onTap: onRefresh),
+        for (var i = 0; i < actions.length; i++) ...[
+          if (i > 0) const SizedBox(width: 8),
+          actions[i],
+        ],
       ],
     );
   }
@@ -651,7 +672,10 @@ class _StatsGrid extends StatelessWidget {
             crossAxisCount: columns,
             crossAxisSpacing: 9,
             mainAxisSpacing: 9,
-            childAspectRatio: columns == 4 ? 1.65 : 2.35,
+            childAspectRatio: scaledAspectRatio(
+              context,
+              columns == 4 ? 1.65 : 2.35,
+            ),
           ),
           itemBuilder: (context, index) => _KpiTile(data: items[index]),
         );
@@ -1085,7 +1109,7 @@ class _DuplicateSuggestionsSheet extends ConsumerWidget {
                     icon: Icons.check_circle_outline_rounded,
                     title: 'Sin duplicadas por revisar',
                     message:
-                        'No encontramos pares con telefono igual o nombres parecidos.',
+                        'No encontramos pares con teléfono igual o nombres parecidos.',
                   )
                 else
                   for (final suggestion in suggestions) ...[
@@ -1468,7 +1492,7 @@ class _ActionGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       crossAxisSpacing: 8,
       mainAxisSpacing: 8,
-      childAspectRatio: 1.35,
+      childAspectRatio: scaledAspectRatio(context, 1.35),
       children: [
         _ActionTile(
           label: 'Pedido',
@@ -1646,6 +1670,26 @@ class _LoyaltyCard extends ConsumerWidget {
                         );
                       }).toList(),
                     ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  final redeemed = await showRedeemRewardSheet(
+                    context,
+                    clientId: clientId,
+                    clientName: points.clientName,
+                    currentPoints: points.currentPoints,
+                  );
+                  if (!redeemed) return;
+                  ref.invalidate(sellerClientLoyaltyProvider(clientId));
+                  ref.invalidate(sellerClientLoyaltyHistoryProvider(clientId));
+                  ref.invalidate(sellerOrdersControllerProvider);
+                },
+                icon: const Icon(Symbols.redeem, size: 18),
+                label: const Text('Canjear premio'),
+              ),
             ),
           ],
         ),
@@ -2082,9 +2126,7 @@ class _AliasDialogState extends State<_AliasDialog> {
       content: TextField(
         controller: _ctrl,
         autofocus: true,
-        decoration: const InputDecoration(
-          labelText: 'Apodo o variación',
-        ),
+        decoration: const InputDecoration(labelText: 'Apodo o variación'),
         onSubmitted: (value) => Navigator.pop(context, value),
       ),
       actions: [

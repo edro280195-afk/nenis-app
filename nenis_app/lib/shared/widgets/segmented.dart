@@ -43,9 +43,7 @@ class SegmentedControl extends StatelessWidget {
                 height: 42,
                 decoration: BoxDecoration(
                   color: isOn ? AppColors.surface : Colors.transparent,
-                  borderRadius: BorderRadius.circular(
-                    AppRadii.segmentedItem,
-                  ),
+                  borderRadius: BorderRadius.circular(AppRadii.segmentedItem),
                   boxShadow: isOn ? AppShadows.small : null,
                 ),
                 child: Row(
@@ -59,11 +57,20 @@ class SegmentedControl extends StatelessWidget {
                       ),
                       const SizedBox(width: 6),
                     ],
-                    Text(
-                      items[i].label,
-                      style: AppTextStyles.body.copyWith(
-                        fontSize: 13.5,
-                        color: isOn ? AppColors.ink : AppColors.ink2,
+                    // FittedBox: con letra grande o varias pestañas la
+                    // etiqueta se encoge al ancho del segmento en vez de
+                    // desbordarse sobre las vecinas.
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          items[i].label,
+                          maxLines: 1,
+                          style: AppTextStyles.body.copyWith(
+                            fontSize: 13.5,
+                            color: isOn ? AppColors.ink : AppColors.ink2,
+                          ),
+                        ),
                       ),
                     ),
                   ],

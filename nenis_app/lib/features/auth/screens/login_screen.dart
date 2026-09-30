@@ -11,9 +11,9 @@ import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/background.dart';
-import '../../../shared/widgets/nenis_logo.dart';
 import '../../../shared/widgets/password_field.dart';
 import '../../../shared/widgets/shake_widget.dart';
+import '../widgets/auth_editorial_hero.dart';
 import '../widgets/auth_feedback.dart';
 import '../widgets/legal_acceptance.dart';
 
@@ -253,41 +253,17 @@ class _LoginIntro extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isClient = role == LoginRole.client;
-    return Column(
-      crossAxisAlignment: compact
-          ? CrossAxisAlignment.center
-          : CrossAxisAlignment.start,
-      children: [
-        NenisLogo(markSize: compact ? 38 : 60, wordmarkSize: compact ? 20 : 28),
-        SizedBox(height: compact ? 18 : 30),
-        Icon(
-          isClient ? Symbols.shopping_bag : Symbols.storefront,
-          color: isClient ? AppColors.neniDeep : AppColors.lavender,
-          size: compact ? 44 : 72,
-          fill: 1,
-        ),
-        const SizedBox(height: 14),
-        Text(
-          isClient ? 'Compra en tus Lives' : 'Gestiona tu Tienda',
-          textAlign: TextAlign.center,
-          style: AppTextStyles.display.copyWith(fontSize: compact ? 22 : 32),
-        ),
-        const SizedBox(height: 6),
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
-          child: Text(
-            isClient
-                ? 'Rastrea pedidos, junta puntos y entra a las tiendas que te gustan.'
-                : 'Controla inventario, recibe pedidos y administra tu tienda.',
-            textAlign: TextAlign.center,
-            style: AppTextStyles.subtitle.copyWith(
-              fontSize: compact ? 13 : 14.5,
-              color: AppColors.ink2,
-              height: 1.4,
-            ),
-          ),
-        ),
-      ],
+    return AnimatedSwitcher(
+      duration: MediaQuery.of(context).disableAnimations
+          ? Duration.zero
+          : const Duration(milliseconds: 260),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      child: AuthEditorialHero(
+        key: ValueKey(role),
+        role: isClient ? AuthHeroRole.client : AuthHeroRole.seller,
+        compact: compact,
+      ),
     );
   }
 }
@@ -533,7 +509,7 @@ class _ClientLoginForm extends StatelessWidget {
           key: const Key('client-phone-field'),
           controller: phone,
           label: 'Teléfono',
-          prefix: '🇲🇽 +52',
+          prefix: '+52',
           hint: '868 145 22 90',
           keyboardType: TextInputType.phone,
           textInputAction: TextInputAction.next,
@@ -617,7 +593,7 @@ class _SellerLoginForm extends StatelessWidget {
           key: const Key('seller-phone-field'),
           controller: phone,
           label: 'Teléfono',
-          prefix: '🇲🇽 +52',
+          prefix: '+52',
           hint: '868 145 22 90',
           keyboardType: TextInputType.phone,
           textInputAction: TextInputAction.next,
@@ -744,7 +720,7 @@ class _PrimaryAction extends StatelessWidget {
               ),
             )
           : Icon(icon),
-      label: Text(label),
+      label: Text(loading ? 'Comprobando tus datos…' : label),
       style: FilledButton.styleFrom(
         backgroundColor: color,
         minimumSize: const Size.fromHeight(50),

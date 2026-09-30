@@ -54,7 +54,8 @@ class _OrderToolsSectionState extends ConsumerState<OrderToolsSection> {
     super.didUpdateWidget(oldWidget);
     // Si el pedido se refresca y no estamos editando, sincronizamos el campo.
     if (!_editingInstructions &&
-        widget.order.deliveryInstructions != oldWidget.order.deliveryInstructions) {
+        widget.order.deliveryInstructions !=
+            oldWidget.order.deliveryInstructions) {
       _instructionsController.text = widget.order.deliveryInstructions ?? '';
     }
   }
@@ -131,8 +132,9 @@ class _OrderToolsSectionState extends ConsumerState<OrderToolsSection> {
         SnackBar(
           content: Text(message),
           behavior: SnackBarBehavior.floating,
-          backgroundColor:
-              tone == _Tone.success ? AppColors.statusDeliveredFg : AppColors.neniDeep,
+          backgroundColor: tone == _Tone.success
+              ? AppColors.statusDeliveredFg
+              : AppColors.neniDeep,
         ),
       );
   }
@@ -265,9 +267,11 @@ class _DriverContactCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasCourier = (order.courierName != null && order.courierName!.isNotEmpty);
-    final initial =
-        hasCourier ? order.courierName!.trim().characters.first.toUpperCase() : '';
+    final hasCourier =
+        (order.courierName != null && order.courierName!.isNotEmpty);
+    final initial = hasCourier
+        ? order.courierName!.trim().characters.first.toUpperCase()
+        : '';
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -303,7 +307,11 @@ class _DriverContactCard extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   )
-                : const Icon(Symbols.local_shipping, color: AppColors.neniDeep, size: 22),
+                : const Icon(
+                    Symbols.local_shipping,
+                    color: AppColors.neniDeep,
+                    size: 22,
+                  ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -521,7 +529,11 @@ class _PointsCard extends StatelessWidget {
               ),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Symbols.stars, color: Color(0xFF7450A8), size: 22),
+            child: const Icon(
+              Symbols.stars,
+              color: Color(0xFF7450A8),
+              size: 22,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -599,7 +611,11 @@ class _PaymentCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 3),
                 child: Row(
                   children: [
-                    Icon(_methodIcon(p.method), size: 16, color: AppColors.ink2),
+                    Icon(
+                      _methodIcon(p.method),
+                      size: 16,
+                      color: AppColors.ink2,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       p.method,
@@ -681,7 +697,8 @@ class _CardPaymentPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasMp = (order.mercadoPagoPublicKey != null &&
+    final hasMp =
+        (order.mercadoPagoPublicKey != null &&
         order.mercadoPagoPublicKey!.isNotEmpty);
     return Container(
       padding: const EdgeInsets.all(14),
@@ -733,8 +750,12 @@ class _EvidenceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final delivered = order.status == TrackingStatus.delivered;
-    final photos = delivered ? order.evidenceUrls : order.nonDeliveryEvidenceUrls;
-    if (photos.isEmpty && order.signatureSvg == null && order.failureReason == null) {
+    final photos = delivered
+        ? order.evidenceUrls
+        : order.nonDeliveryEvidenceUrls;
+    if (photos.isEmpty &&
+        order.signatureSvg == null &&
+        order.failureReason == null) {
       return const SizedBox.shrink();
     }
     return _ToolCard(
@@ -798,7 +819,10 @@ class _EvidenceCard extends StatelessWidget {
                       fit: BoxFit.contain,
                       child: Text(
                         order.signatureSvg!,
-                        style: const TextStyle(fontSize: 1, color: Colors.transparent),
+                        style: const TextStyle(
+                          fontSize: 1,
+                          color: Colors.transparent,
+                        ),
                       ),
                     ),
                   ),
@@ -908,7 +932,8 @@ class _ToolCard extends StatelessWidget {
                   ),
                 ),
               ),
-              ?trailing,            ],
+              ?trailing,
+            ],
           ),
           const SizedBox(height: 12),
           child,

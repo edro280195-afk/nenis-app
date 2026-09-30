@@ -18,17 +18,17 @@ const _kThreadWidth = 3.7;
 /// [progress]: 0.0 = sin recorrido, 1.0 = recorrido completo.
 /// [shimmerPhase]: 0.0–1.0 para el efecto de shimmer sobre la parte activa.
 class NenisThreadPainter extends CustomPainter {
-  const NenisThreadPainter({
-    required this.progress,
-    this.shimmerPhase = 0.0,
-  });
+  const NenisThreadPainter({required this.progress, this.shimmerPhase = 0.0});
 
   final double progress;
   final double shimmerPhase;
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (!size.width.isFinite || !size.height.isFinite || size.width <= 0 || size.height <= 0) {
+    if (!size.width.isFinite ||
+        !size.height.isFinite ||
+        size.width <= 0 ||
+        size.height <= 0) {
       return;
     }
     final path = _buildPath(size);
@@ -97,35 +97,39 @@ class NenisThreadPainter extends CustomPainter {
     double x(double nx) => nx * size.width;
     double y(double ny) => ny * size.height;
 
-    final path = Path()
-      ..moveTo(x(0.137), y(0.796));
+    final path = Path()..moveTo(x(0.137), y(0.796));
 
     // C86 129, 104 172, 139 139
-    path.cubicTo(
-      x(0.231), y(0.658),
-      x(0.280), y(0.878),
-      x(0.374), y(0.709),
-    );
+    path.cubicTo(x(0.231), y(0.658), x(0.280), y(0.878), x(0.374), y(0.709));
 
     // S175 77, 215 101 → C(reflected), 175 77, 215 101
     path.cubicTo(
-      x(0.468), y(0.541), // reflected ctrl
-      x(0.470), y(0.393),
-      x(0.578), y(0.515),
+      x(0.468),
+      y(0.541), // reflected ctrl
+      x(0.470),
+      y(0.393),
+      x(0.578),
+      y(0.515),
     );
 
     // S262 125, 298 75 → C(reflected), 262 125, 298 75
     path.cubicTo(
-      x(0.685), y(0.638), // reflected ctrl
-      x(0.704), y(0.638),
-      x(0.801), y(0.383),
+      x(0.685),
+      y(0.638), // reflected ctrl
+      x(0.704),
+      y(0.638),
+      x(0.801),
+      y(0.383),
     );
 
     // S321 52, 337 41 → C(reflected), 321 52, 337 41
     path.cubicTo(
-      x(0.898), y(0.128), // reflected ctrl
-      x(0.863), y(0.265),
-      x(0.906), y(0.209),
+      x(0.898),
+      y(0.128), // reflected ctrl
+      x(0.863),
+      y(0.265),
+      x(0.906),
+      y(0.209),
     );
 
     return path;

@@ -104,6 +104,11 @@ class GlassBottomNav extends StatelessWidget {
                       child: Text(
                         item.label,
                         maxLines: 1,
+                        // La barra tiene altura fija: con letra al 150% las
+                        // etiquetas se pegaban entre sí. Se limita a 1.15x.
+                        textScaler: MediaQuery.textScalerOf(
+                          context,
+                        ).clamp(maxScaleFactor: 1.15),
                         style: AppTextStyles.nav.copyWith(color: fg),
                       ),
                     ),
@@ -176,7 +181,8 @@ List<NavItem> buildSellerOverflowItems({bool includeRoutes = true}) => [
       icon: Symbols.directions_car,
       label: 'Reparto y Rutas',
       route: '/routes',
-      subtitle: 'Organiza entregas, chóferes, mapa GPS y confirmación de paradas.',
+      subtitle:
+          'Organiza entregas, chóferes, mapa GPS y confirmación de paradas.',
       badge: 'RUTAS HOY',
       gradientColors: [Color(0xFF3B82F6), Color(0xFF2E6BD6)],
     ),
@@ -200,7 +206,8 @@ List<NavItem> buildSellerOverflowItems({bool includeRoutes = true}) => [
     icon: Symbols.person,
     label: 'Mi Cuenta y Negocio',
     route: '/account',
-    subtitle: 'Configura tu tienda, equipo de trabajo, cobros, plan y preferencias.',
+    subtitle:
+        'Configura tu tienda, equipo de trabajo, cobros, plan y preferencias.',
     badge: 'AJUSTES',
     gradientColors: [Color(0xFF9B7BE0), Color(0xFF7C3AED)],
   ),

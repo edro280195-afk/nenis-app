@@ -107,11 +107,8 @@ Future<InventoryBox?> showInventoryNfcSheet(
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     barrierColor: AppColors.ink.withValues(alpha: 0.65),
-    builder: (_) => _NfcBindSheet(
-      ref: ref,
-      box: box,
-      pendingCount: pendingCount,
-    ),
+    builder: (_) =>
+        _NfcBindSheet(ref: ref, box: box, pendingCount: pendingCount),
   );
 }
 
@@ -193,12 +190,15 @@ class _BoxFormSheet extends StatefulWidget {
 }
 
 class _BoxFormSheetState extends State<_BoxFormSheet> {
-  late final TextEditingController _code =
-      TextEditingController(text: widget.initialCode ?? '');
-  late final TextEditingController _name =
-      TextEditingController(text: widget.initialName ?? '');
-  late final TextEditingController _location =
-      TextEditingController(text: widget.initialLocation ?? '');
+  late final TextEditingController _code = TextEditingController(
+    text: widget.initialCode ?? '',
+  );
+  late final TextEditingController _name = TextEditingController(
+    text: widget.initialName ?? '',
+  );
+  late final TextEditingController _location = TextEditingController(
+    text: widget.initialLocation ?? '',
+  );
 
   @override
   void dispose() {
@@ -455,11 +455,13 @@ class _CountSheetState extends State<_CountSheet> {
     final differences = _differences;
     final diffText = switch (differences.length) {
       0 => 'sin diferencias',
-      1 => '${differences.first.$1.name}: '
-          '${differences.first.$2 > 0 ? '+' : ''}${differences.first.$2}',
-      _ => '${differences.first.$1.name}: '
-          '${differences.first.$2 > 0 ? '+' : ''}${differences.first.$2} '
-          '(+${differences.length - 1} más)',
+      1 =>
+        '${differences.first.$1.name}: '
+            '${differences.first.$2 > 0 ? '+' : ''}${differences.first.$2}',
+      _ =>
+        '${differences.first.$1.name}: '
+            '${differences.first.$2 > 0 ? '+' : ''}${differences.first.$2} '
+            '(+${differences.length - 1} más)',
     };
     return _Sheet(
       title: 'Conteo físico · ${widget.box.code}',
@@ -497,8 +499,9 @@ class _CountSheetState extends State<_CountSheet> {
                             const SizedBox(height: 1),
                             Text(
                               'Sistema: ${item.quantity}',
-                              style: AppTextStyles.subtitle
-                                  .copyWith(fontSize: 10),
+                              style: AppTextStyles.subtitle.copyWith(
+                                fontSize: 10,
+                              ),
                             ),
                           ],
                         ),
@@ -603,7 +606,8 @@ class _LabelSheetState extends State<_LabelSheet> {
     final total = _copies;
     return _Sheet(
       title: 'Imprimir etiqueta',
-      subtitle: '${widget.subject} · imprime directo si ya emparejaste tu impresora',
+      subtitle:
+          '${widget.subject} · imprime directo si ya emparejaste tu impresora',
       child: LabelPrintOptionsBody(
         mediaSize: _mediaSize,
         onMediaSizeChanged: (size) => setState(() => _mediaSize = size),
@@ -613,10 +617,8 @@ class _LabelSheetState extends State<_LabelSheet> {
         mediaDetailOverride: _detailFor,
         summaryLeft: '1 caja × $_copies ${_copies == 1 ? 'copia' : 'copias'}',
         total: total,
-        onSubmit: () => Navigator.pop(context, (
-          mediaSize: _mediaSize,
-          copies: _copies,
-        )),
+        onSubmit: () =>
+            Navigator.pop(context, (mediaSize: _mediaSize, copies: _copies)),
       ),
     );
   }
@@ -711,9 +713,7 @@ class _NfcBindSheetState extends ConsumerState<_NfcBindSheet>
                 padding: const EdgeInsets.fromLTRB(22, 12, 22, 24),
                 decoration: const BoxDecoration(
                   color: AppColors.surfaceCream,
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(30),
-                  ),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
                 ),
                 child: SingleChildScrollView(
                   child: Column(
@@ -751,9 +751,7 @@ class _NfcBindSheetState extends ConsumerState<_NfcBindSheet>
                             height: 96,
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color: AppColors.lavender.withValues(
-                                alpha: 0.15,
-                              ),
+                              color: AppColors.lavender.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(28),
                               border: Border.all(
                                 color: AppColors.lavender.withValues(
@@ -790,10 +788,7 @@ class _NfcBindSheetState extends ConsumerState<_NfcBindSheet>
                         const SizedBox(height: 6),
                         const Text(
                           'Buscando tarjeta…',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: AppColors.ink2,
-                          ),
+                          style: TextStyle(fontSize: 10, color: AppColors.ink2),
                         ),
                       ],
                       if (_stage == _NfcStage.done) ...[
@@ -848,12 +843,12 @@ class _NfcSteps extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _StepRow(number: 1, text: 'Acerca la tarjeta a la parte trasera de tu teléfono'),
-        const SizedBox(height: 8),
         _StepRow(
-          number: 2,
-          text: 'Mantén el teléfono quieto hasta que vibre',
+          number: 1,
+          text: 'Acerca la tarjeta a la parte trasera de tu teléfono',
         ),
+        const SizedBox(height: 8),
+        _StepRow(number: 2, text: 'Mantén el teléfono quieto hasta que vibre'),
       ],
     );
   }
@@ -1005,9 +1000,7 @@ class _NfcBackdrop extends StatelessWidget {
             top: 340,
             width: 130,
             height: 110,
-            child: _BackdropBlob(
-              color: AppColors.gold.withValues(alpha: 0.4),
-            ),
+            child: _BackdropBlob(color: AppColors.gold.withValues(alpha: 0.4)),
           ),
         ],
       ),
@@ -1025,7 +1018,10 @@ class _BackdropBlob extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [color.withValues(alpha: 0.35), color.withValues(alpha: 0.05)],
+          colors: [
+            color.withValues(alpha: 0.35),
+            color.withValues(alpha: 0.05),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),

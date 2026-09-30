@@ -67,9 +67,7 @@ String dayTime(DateTime dateTime) {
 /// Da formato legible a un UID NFC ("04A2B1C7" -> "04:A2:B1:C7").
 String formatNfcUid(String? uid) {
   if (uid == null || uid.isEmpty) return 'Sin UID';
-  final clean = uid
-      .replaceAll(RegExp(r'[^0-9A-Fa-f]'), '')
-      .toUpperCase();
+  final clean = uid.replaceAll(RegExp(r'[^0-9A-Fa-f]'), '').toUpperCase();
   final parts = <String>[];
   for (var index = 0; index < clean.length; index += 2) {
     final end = index + 2;
@@ -337,9 +335,7 @@ class InventoryFilterChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? AppColors.ink : AppColors.surface,
           borderRadius: AppRadii.pillRadius,
-          border: Border.all(
-            color: selected ? AppColors.ink : AppColors.line,
-          ),
+          border: Border.all(color: selected ? AppColors.ink : AppColors.line),
         ),
         child: Text(
           label,
@@ -901,8 +897,8 @@ class InventoryMovementRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final view = inventoryMovementView(movement);
-    final line = meta ??
-        '${movement.performedBy} · ${dayTime(movement.occurredAt)}';
+    final line =
+        meta ?? '${movement.performedBy} · ${dayTime(movement.occurredAt)}';
     return Padding(
       padding: padding,
       child: Row(
@@ -998,9 +994,7 @@ class InventoryNfcCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.lavender.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: AppColors.lavender.withValues(alpha: 0.25),
-        ),
+        border: Border.all(color: AppColors.lavender.withValues(alpha: 0.25)),
       ),
       child: Row(
         children: [
@@ -1047,10 +1041,7 @@ class InventoryNfcCard extends StatelessWidget {
             ),
             child: Text(
               actionLabel,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
             ),
           ),
         ],

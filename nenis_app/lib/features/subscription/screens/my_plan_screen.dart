@@ -51,27 +51,40 @@ class _MyPlanScreenState extends ConsumerState<MyPlanScreen> {
                       shadowColor: Colors.black26,
                       child: InkWell(
                         customBorder: const CircleBorder(),
-                        onTap: () =>
-                            context.canPop() ? context.pop() : context.go('/account'),
+                        onTap: () => context.canPop()
+                            ? context.pop()
+                            : context.go('/account'),
                         child: SizedBox(
                           width: 40,
                           height: 40,
-                          child: Icon(Icons.adaptive.arrow_back, size: 20, color: AppColors.ink),
+                          child: Icon(
+                            Icons.adaptive.arrow_back,
+                            size: 20,
+                            color: AppColors.ink,
+                          ),
                         ),
                       ),
                     ),
                     const SizedBox(width: 12),
-                    Text('Mi plan', style: AppTextStyles.h1.copyWith(fontSize: 24)),
+                    Text(
+                      'Mi plan',
+                      style: AppTextStyles.h1.copyWith(fontSize: 24),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 18),
                 status.when(
                   loading: () => const _StatusSkeleton(),
-                  error: (_, _) => _ErrorCard(onRetry: () => ref.invalidate(subscriptionStatusProvider)),
+                  error: (_, _) => _ErrorCard(
+                    onRetry: () => ref.invalidate(subscriptionStatusProvider),
+                  ),
                   data: (s) => _StatusBanner(status: s),
                 ),
                 const SizedBox(height: 22),
-                Text('Elige tu periodicidad', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+                Text(
+                  'Elige tu periodicidad',
+                  style: AppTextStyles.h2.copyWith(fontSize: 16),
+                ),
                 const SizedBox(height: 10),
                 SegmentedControl(
                   items: const [
@@ -80,12 +93,16 @@ class _MyPlanScreenState extends ConsumerState<MyPlanScreen> {
                     SegmentedItem(label: 'Anual'),
                   ],
                   selectedIndex: _periodIndex,
-                  onChanged: _busy ? (_) {} : (i) => setState(() => _periodIndex = i),
+                  onChanged: _busy
+                      ? (_) {}
+                      : (i) => setState(() => _periodIndex = i),
                 ),
                 const SizedBox(height: 18),
                 pricing.when(
                   loading: () => const _PlansSkeleton(),
-                  error: (_, _) => _ErrorCard(onRetry: () => ref.invalidate(subscriptionPricingProvider)),
+                  error: (_, _) => _ErrorCard(
+                    onRetry: () => ref.invalidate(subscriptionPricingProvider),
+                  ),
                   data: (p) => status.maybeWhen(
                     data: (s) => Column(
                       children: [
@@ -108,7 +125,10 @@ class _MyPlanScreenState extends ConsumerState<MyPlanScreen> {
                 ),
                 status.maybeWhen(
                   data: (s) => s.hasActivePreapproval
-                      ? _ManageSubscriptionSection(busy: _busy, onCancel: _cancel)
+                      ? _ManageSubscriptionSection(
+                          busy: _busy,
+                          onCancel: _cancel,
+                        )
                       : const SizedBox.shrink(),
                   orElse: () => const SizedBox.shrink(),
                 ),
@@ -128,22 +148,28 @@ class _MyPlanScreenState extends ConsumerState<MyPlanScreen> {
     if (!s.hasActivePreapproval) {
       // Sin preapproval activo (prueba o vencida): pasa por el checkout de
       // tarjeta en el panel web.
-      context.push('/seller/plan/checkout?plan=${plan.planTier}&periodicity=$periodicity');
+      context.push(
+        '/seller/plan/checkout?plan=${plan.planTier}&periodicity=$periodicity',
+      );
       return;
     }
 
     setState(() => _busy = true);
     try {
-      await ref.read(subscriptionRepositoryProvider).updatePlan(
-            planTier: plan.planTier,
-            periodicity: periodicity,
-          );
+      await ref
+          .read(subscriptionRepositoryProvider)
+          .updatePlan(planTier: plan.planTier, periodicity: periodicity);
       invalidateSubscriptionStateFromWidget(ref);
       if (mounted) {
-        context.showPremiumToast('Tu plan se actualizó.', type: PremiumToastType.success);
+        context.showPremiumToast(
+          'Tu plan se actualizó.',
+          type: PremiumToastType.success,
+        );
       }
     } on SubscriptionException catch (e) {
-      if (mounted) context.showPremiumToast(e.message, type: PremiumToastType.error);
+      if (mounted) {
+        context.showPremiumToast(e.message, type: PremiumToastType.error);
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -160,10 +186,16 @@ class _MyPlanScreenState extends ConsumerState<MyPlanScreen> {
           'Sigue activa hasta el fin de tu periodo actual; después tu tienda se bloquea hasta que elijas un plan de nuevo.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No, conservarla')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('No, conservarla'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Sí, cancelar', style: TextStyle(color: AppColors.liveRed)),
+            child: const Text(
+              'Sí, cancelar',
+              style: TextStyle(color: AppColors.liveRed),
+            ),
           ),
         ],
       ),
@@ -175,10 +207,15 @@ class _MyPlanScreenState extends ConsumerState<MyPlanScreen> {
       await ref.read(subscriptionRepositoryProvider).cancel();
       invalidateSubscriptionStateFromWidget(ref);
       if (mounted) {
-        context.showPremiumToast('Tu suscripción se canceló.', type: PremiumToastType.info);
+        context.showPremiumToast(
+          'Tu suscripción se canceló.',
+          type: PremiumToastType.info,
+        );
       }
     } on SubscriptionException catch (e) {
-      if (mounted) context.showPremiumToast(e.message, type: PremiumToastType.error);
+      if (mounted) {
+        context.showPremiumToast(e.message, type: PremiumToastType.error);
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -208,9 +245,18 @@ class _StatusBanner extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700, fontSize: 14.5)),
+                Text(
+                  title,
+                  style: AppTextStyles.body.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14.5,
+                  ),
+                ),
                 const SizedBox(height: 3),
-                Text(body, style: AppTextStyles.subtitle.copyWith(fontSize: 12.5)),
+                Text(
+                  body,
+                  style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+                ),
               ],
             ),
           ),
@@ -240,7 +286,11 @@ class _StatusBanner extends StatelessWidget {
         final pending = status.pendingPlanTier != null
             ? ' · cambia a ${status.pendingPlanTier} el ${status.pendingPlanEffectiveAt != null ? DateFormat('d MMM', 'es_MX').format(status.pendingPlanEffectiveAt!) : next}'
             : '';
-        return ('Plan ${status.planTier} activo', 'Próximo cobro: $next$pending', AppColors.statusDeliveredFg);
+        return (
+          'Plan ${status.planTier} activo',
+          'Próximo cobro: $next$pending',
+          AppColors.statusDeliveredFg,
+        );
       default:
         return (
           'Tu plan está bloqueado',
@@ -276,8 +326,8 @@ class _PlanCard extends StatelessWidget {
     final discount = periodicity == 'quarterly'
         ? plan.quarterlyDiscountPct
         : periodicity == 'annual'
-            ? plan.annualDiscountPct
-            : 0;
+        ? plan.annualDiscountPct
+        : 0;
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -295,14 +345,30 @@ class _PlanCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text(plan.planTier, style: AppTextStyles.h2.copyWith(fontSize: 18)),
+              Text(
+                plan.planTier,
+                style: AppTextStyles.h2.copyWith(fontSize: 18),
+              ),
               if (plan.planTier == 'Pro') ...[
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(color: AppColors.gold, borderRadius: AppRadii.pillRadius),
-                  child: const Text('Lo que más eligen',
-                      style: TextStyle(fontFamily: 'Poppins', fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.gold,
+                    borderRadius: AppRadii.pillRadius,
+                  ),
+                  child: const Text(
+                    'Lo que más eligen',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ],
             ],
@@ -312,15 +378,24 @@ class _PlanCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text('\$${amount.toStringAsFixed(0)}',
-                  style: AppTextStyles.h1.copyWith(fontSize: 26)),
+              Text(
+                '\$${amount.toStringAsFixed(0)}',
+                style: AppTextStyles.h1.copyWith(fontSize: 26),
+              ),
               const SizedBox(width: 4),
-              Text('${plan.currency} / ${_periodLabel(periodicity)}',
-                  style: AppTextStyles.subtitle.copyWith(fontSize: 12)),
+              Text(
+                '${plan.currency} / ${_periodLabel(periodicity)}',
+                style: AppTextStyles.subtitle.copyWith(fontSize: 12),
+              ),
               if (discount > 0) ...[
                 const SizedBox(width: 8),
-                Text('-$discount%',
-                    style: AppTextStyles.chip.copyWith(color: AppColors.statusDeliveredFg, fontWeight: FontWeight.w700)),
+                Text(
+                  '-$discount%',
+                  style: AppTextStyles.chip.copyWith(
+                    color: AppColors.statusDeliveredFg,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ],
             ],
           ),
@@ -330,9 +405,18 @@ class _PlanCard extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 6),
               child: Row(
                 children: [
-                  const Icon(Symbols.check_circle, size: 16, color: AppColors.statusDeliveredFg),
+                  const Icon(
+                    Symbols.check_circle,
+                    size: 16,
+                    color: AppColors.statusDeliveredFg,
+                  ),
                   const SizedBox(width: 8),
-                  Expanded(child: Text(f, style: AppTextStyles.body.copyWith(fontSize: 12.5))),
+                  Expanded(
+                    child: Text(
+                      f,
+                      style: AppTextStyles.body.copyWith(fontSize: 12.5),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -342,10 +426,12 @@ class _PlanCard extends StatelessWidget {
             label: isCurrent
                 ? 'Tu plan actual'
                 : hasActivePreapproval
-                    ? 'Cambiar a ${plan.planTier}'
-                    : 'Elegir ${plan.planTier}',
+                ? 'Cambiar a ${plan.planTier}'
+                : 'Elegir ${plan.planTier}',
             icon: isCurrent ? Symbols.check : Symbols.arrow_forward,
-            variant: isCurrent ? PillButtonVariant.ghost : PillButtonVariant.brand,
+            variant: isCurrent
+                ? PillButtonVariant.ghost
+                : PillButtonVariant.brand,
             onPressed: isCurrent || busy ? null : onChoose,
           ),
         ],
@@ -354,35 +440,38 @@ class _PlanCard extends StatelessWidget {
   }
 
   String _periodLabel(String p) => switch (p) {
-        'quarterly' => 'trimestre',
-        'annual' => 'año',
-        _ => 'mes',
-      };
+    'quarterly' => 'trimestre',
+    'annual' => 'año',
+    _ => 'mes',
+  };
 
   List<String> _featuresFor(String tier) => switch (tier) {
-        'Pro' => const [
-            'Todo lo de Básico',
-            'Avisos de en vivo y GPS en tiempo real',
-            'Finanzas, tandas y sorteos',
-            'Punto de venta (POS)',
-          ],
-        'Elite' => const [
-            'Todo lo de Pro',
-            'C.A.M.I., tu asistente con IA',
-            'Optimización de rutas con tráfico',
-            'Exportes y soporte prioritario',
-          ],
-        _ => const [
-            'Captura manual de pedidos',
-            'Directorio de clientas',
-            'Link público de rastreo',
-            '1 repartidor',
-          ],
-      };
+    'Pro' => const [
+      'Todo lo de Básico',
+      'Avisos de en vivo y GPS en tiempo real',
+      'Finanzas, tandas y sorteos',
+      'Punto de venta (POS)',
+    ],
+    'Elite' => const [
+      'Todo lo de Pro',
+      'C.A.M.I., tu asistente con IA',
+      'Optimización de rutas con tráfico',
+      'Exportes y soporte prioritario',
+    ],
+    _ => const [
+      'Captura manual de pedidos',
+      'Directorio de clientas',
+      'Link público de rastreo',
+      '1 repartidor',
+    ],
+  };
 }
 
 class _ManageSubscriptionSection extends StatelessWidget {
-  const _ManageSubscriptionSection({required this.busy, required this.onCancel});
+  const _ManageSubscriptionSection({
+    required this.busy,
+    required this.onCancel,
+  });
   final bool busy;
   final VoidCallback onCancel;
 
@@ -393,7 +482,10 @@ class _ManageSubscriptionSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Administrar suscripción', style: AppTextStyles.h2.copyWith(fontSize: 15)),
+          Text(
+            'Administrar suscripción',
+            style: AppTextStyles.h2.copyWith(fontSize: 15),
+          ),
           const SizedBox(height: 10),
           PillButton(
             label: 'Cancelar suscripción',
@@ -411,24 +503,30 @@ class _StatusSkeleton extends StatelessWidget {
   const _StatusSkeleton();
   @override
   Widget build(BuildContext context) => Container(
-        height: 68,
-        decoration: BoxDecoration(color: AppColors.segTrack, borderRadius: AppRadii.softRadius),
-      );
+    height: 68,
+    decoration: BoxDecoration(
+      color: AppColors.segTrack,
+      borderRadius: AppRadii.softRadius,
+    ),
+  );
 }
 
 class _PlansSkeleton extends StatelessWidget {
   const _PlansSkeleton();
   @override
   Widget build(BuildContext context) => Column(
-        children: List.generate(
-          3,
-          (_) => Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            height: 220,
-            decoration: BoxDecoration(color: AppColors.segTrack, borderRadius: AppRadii.cardRadius),
-          ),
+    children: List.generate(
+      3,
+      (_) => Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        height: 220,
+        decoration: BoxDecoration(
+          color: AppColors.segTrack,
+          borderRadius: AppRadii.cardRadius,
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class _ErrorCard extends StatelessWidget {
@@ -436,15 +534,19 @@ class _ErrorCard extends StatelessWidget {
   final VoidCallback onRetry;
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: AppColors.surface, borderRadius: AppRadii.softRadius, boxShadow: AppShadows.small),
-        child: Row(
-          children: [
-            const Icon(Symbols.cloud_off, color: AppColors.ink3),
-            const SizedBox(width: 10),
-            const Expanded(child: Text('No pudimos cargar esto.')),
-            TextButton(onPressed: onRetry, child: const Text('Reintentar')),
-          ],
-        ),
-      );
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: AppRadii.softRadius,
+      boxShadow: AppShadows.small,
+    ),
+    child: Row(
+      children: [
+        const Icon(Symbols.cloud_off, color: AppColors.ink3),
+        const SizedBox(width: 10),
+        const Expanded(child: Text('No pudimos cargar esto.')),
+        TextButton(onPressed: onRetry, child: const Text('Reintentar')),
+      ],
+    ),
+  );
 }

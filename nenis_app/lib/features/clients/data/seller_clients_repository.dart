@@ -157,6 +157,43 @@ class SellerClientsRepository {
     }
   }
 
+  /// Catálogo de premios activos de la tienda (`GET /api/loyalty/rewards`).
+  Future<List<SellerLoyaltyReward>> getRewards() async {
+    try {
+      final response = await _dio.get('/api/loyalty/rewards');
+      return ((response.data as List?) ?? const [])
+          .map(
+            (value) =>
+                SellerLoyaltyReward.fromJson(value as Map<String, dynamic>),
+          )
+          .toList();
+    } catch (error) {
+      throw SellerClientsException(
+        _friendly(error, 'No pudimos cargar los premios.'),
+      );
+    }
+  }
+
+  /// Aplica un premio como descuento a un pedido abierto de la clienta y le
+  /// resta los puntos (`POST /api/loyalty/redeem`). El backend valida saldo,
+  /// estatus del pedido y que el descuento no supere lo que falta por cobrar.
+  Future<void> redeemReward({
+    required int clientId,
+    required int orderId,
+    required int rewardId,
+  }) async {
+    try {
+      await _dio.post(
+        '/api/loyalty/redeem',
+        data: {'clientId': clientId, 'orderId': orderId, 'rewardId': rewardId},
+      );
+    } catch (error) {
+      throw SellerClientsException(
+        _friendly(error, 'No pudimos canjear el premio.'),
+      );
+    }
+  }
+
   Future<SellerClientInsight> getClientInsight(int clientId) async {
     try {
       final response = await _dio.get('/api/cami/client-insight/$clientId');
@@ -253,6 +290,11 @@ final sellerClientAliasesProvider = FutureProvider.autoDispose
 final sellerClientLoyaltyProvider = FutureProvider.autoDispose
     .family<SellerClientLoyaltySummary, int>((ref, id) {
       return ref.read(sellerClientsRepositoryProvider).getLoyaltySummary(id);
+    });
+
+final sellerLoyaltyRewardsProvider =
+    FutureProvider.autoDispose<List<SellerLoyaltyReward>>((ref) {
+      return ref.read(sellerClientsRepositoryProvider).getRewards();
     });
 
 final sellerClientLoyaltyHistoryProvider = FutureProvider.autoDispose

@@ -20,7 +20,9 @@ class SubscriptionRepository {
   Future<SubscriptionAccountState> getStatus() async {
     try {
       final res = await _dio.get('/api/business/subscription/status');
-      return SubscriptionAccountState.fromJson(res.data as Map<String, dynamic>);
+      return SubscriptionAccountState.fromJson(
+        res.data as Map<String, dynamic>,
+      );
     } on DioException catch (e) {
       throw SubscriptionException(_message(e, 'No pudimos cargar tu plan.'));
     }
@@ -31,7 +33,9 @@ class SubscriptionRepository {
       final res = await _dio.get('/api/business/subscription/pricing');
       return SubscriptionPricing.fromJson(res.data as Map<String, dynamic>);
     } on DioException catch (e) {
-      throw SubscriptionException(_message(e, 'No pudimos cargar los precios.'));
+      throw SubscriptionException(
+        _message(e, 'No pudimos cargar los precios.'),
+      );
     }
   }
 
@@ -77,13 +81,13 @@ final subscriptionRepositoryProvider = Provider<SubscriptionRepository>((ref) {
 
 final subscriptionStatusProvider =
     FutureProvider.autoDispose<SubscriptionAccountState>((ref) {
-  return ref.read(subscriptionRepositoryProvider).getStatus();
-});
+      return ref.read(subscriptionRepositoryProvider).getStatus();
+    });
 
 final subscriptionPricingProvider =
     FutureProvider.autoDispose<SubscriptionPricing>((ref) {
-  return ref.read(subscriptionRepositoryProvider).getPricing();
-});
+      return ref.read(subscriptionRepositoryProvider).getPricing();
+    });
 
 /// Refresca todo lo que depende del estado de la suscripción (usado tras
 /// cambiar de plan/cancelar, y por el interceptor 402 de `dio_provider.dart`).

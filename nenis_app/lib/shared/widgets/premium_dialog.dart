@@ -14,13 +14,13 @@ Future<T?> showPremiumDialog<T>({
     transitionDuration: const Duration(milliseconds: 320),
     pageBuilder: (context, animation, secondaryAnimation) => child,
     transitionBuilder: (context, animation, secondaryAnimation, child) {
-      final curve = CurvedAnimation(parent: animation, curve: Curves.easeOutBack);
+      final curve = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutBack,
+      );
       return ScaleTransition(
         scale: Tween<double>(begin: 0.9, end: 1.0).animate(curve),
-        child: FadeTransition(
-          opacity: animation,
-          child: child,
-        ),
+        child: FadeTransition(opacity: animation, child: child),
       );
     },
   );

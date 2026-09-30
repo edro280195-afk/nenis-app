@@ -14,10 +14,10 @@ class ReserveRequest {
   final int quantity;
 
   Map<String, dynamic> toJson() => {
-        'businessId': businessId,
-        'productId': productId,
-        'quantity': quantity,
-      };
+    'businessId': businessId,
+    'productId': productId,
+    'quantity': quantity,
+  };
 }
 
 /// Resultado exitoso de un apartado. Es el mismo `BuyerOrder` que

@@ -19,11 +19,12 @@ void main() {
       ),
     );
 
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
 
-    expect(find.text('Entrar a mis compras'), findsOneWidget);
-    expect(find.text('Vendedora'), findsOneWidget);
+    expect(find.text('Compra bonito.\nCompra local.'), findsOneWidget);
+    expect(find.text('Entrar con mi teléfono'), findsOneWidget);
+    expect(find.text('Crear mi cuenta'), findsOneWidget);
+    expect(find.text("NENI'S"), findsOneWidget);
   });
 }
 

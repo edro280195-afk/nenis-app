@@ -57,6 +57,7 @@ const _authRoutes = {
   '/splash',
   '/welcome',
   '/login',
+  '/login-password',
   '/login-otp',
   '/register',
   '/forgot-password',
@@ -70,6 +71,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   // Un pedido que llega por deep link también dispara re-evaluación de rutas.
   ref.listen(pendingDeepLinkProvider, (_, _) => refresh.value++);
   ref.listen(pendingInventoryDeepLinkProvider, (_, _) => refresh.value++);
+  ref.listen(pendingStoreDeepLinkProvider, (_, _) => refresh.value++);
 
   return GoRouter(
     initialLocation: '/splash',
@@ -172,6 +174,14 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Recién confirmada por WhatsApp y sin negocio propio -> a reclamar perfil.
       if (loc == '/confirm' && !session.hasMembership) return '/claim';
+
+      // Enlace "compartir tienda" pendiente: ya con sesión (y sin estorbar el
+      // tour ni el reclamo de perfil) se la lleva a la tienda para seguirla.
+      final pendingStore = ref.read(pendingStoreDeepLinkProvider);
+      if (pendingStore != null && !isTourRoute && !loc.startsWith('/claim')) {
+        final target = '/store/$pendingStore';
+        if (loc != target) return target;
+      }
       // Autenticada: no se queda en pantallas de acceso.
       if (_authRoutes.contains(loc)) return '/home';
       return null;
@@ -190,6 +200,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/login',
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: const AuthWelcomeScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/login-password',
         pageBuilder: (context, state) =>
             _pageTransition(key: state.pageKey, child: const LoginScreen()),
       ),
@@ -322,6 +339,13 @@ final routerProvider = Provider<GoRouter>((ref) {
               child: const AccountScreen(),
             ),
           ),
+          GoRoute(
+            path: '/seller/labels',
+            pageBuilder: (context, state) => _pageTransition(
+              key: state.pageKey,
+              child: const LabelBatchPrintScreen(),
+            ),
+          ),
         ],
       ),
       GoRoute(
@@ -402,13 +426,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        path: '/seller/labels',
-        pageBuilder: (context, state) => _pageTransition(
-          key: state.pageKey,
-          child: const LabelBatchPrintScreen(),
-        ),
-      ),
-      GoRoute(
         path: '/seller/labels/editor',
         pageBuilder: (context, state) => _pageTransition(
           key: state.pageKey,
@@ -440,9 +457,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/seller/inventory/box/:id',
         pageBuilder: (context, state) => _pageTransition(
           key: state.pageKey,
-          child: InventoryBoxScreen(
-            boxId: state.pathParameters['id']!,
-          ),
+          child: InventoryBoxScreen(boxId: state.pathParameters['id']!),
         ),
       ),
       GoRoute(

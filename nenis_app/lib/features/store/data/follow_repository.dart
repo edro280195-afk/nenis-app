@@ -41,7 +41,9 @@ class FollowRepository {
     try {
       await _dio.delete('/api/me/follow/$businessId');
     } on DioException catch (e) {
-      throw FollowException(_message(e, 'No pudimos dejar de seguir esta tienda.'));
+      throw FollowException(
+        _message(e, 'No pudimos dejar de seguir esta tienda.'),
+      );
     } catch (_) {
       throw FollowException('No pudimos dejar de seguir esta tienda.');
     }
@@ -59,7 +61,9 @@ class FollowRepository {
       );
       return FollowState.fromJson(res.data as Map<String, dynamic>);
     } on DioException catch (e) {
-      throw FollowException(_message(e, 'No pudimos guardar tus preferencias.'));
+      throw FollowException(
+        _message(e, 'No pudimos guardar tus preferencias.'),
+      );
     }
   }
 
@@ -97,11 +101,13 @@ class FollowController extends Notifier<bool> {
     final wasFollowing = current.isFollowing;
 
     state = true;
-    storeNotifier.applyLocalUpdate((c) => c.copyWith(
-          isFollowing: !wasFollowing,
-          followerCount: c.followerCount + (wasFollowing ? -1 : 1),
-          isVip: wasFollowing ? false : c.isVip,
-        ));
+    storeNotifier.applyLocalUpdate(
+      (c) => c.copyWith(
+        isFollowing: !wasFollowing,
+        followerCount: c.followerCount + (wasFollowing ? -1 : 1),
+        isVip: wasFollowing ? false : c.isVip,
+      ),
+    );
     try {
       final repo = ref.read(followRepositoryProvider);
       if (wasFollowing) {

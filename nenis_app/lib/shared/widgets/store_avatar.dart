@@ -86,17 +86,17 @@ class StoreAvatarLg extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StoreAvatar(
-      label: label,
-      size: 72,
-      radius: 24,
-      fontSize: 24,
-    );
+    return StoreAvatar(label: label, size: 72, radius: 24, fontSize: 24);
   }
 }
 
 class StoreAvatarSm extends StatelessWidget {
-  const StoreAvatarSm({super.key, required this.label, this.gradientStart, this.gradientEnd});
+  const StoreAvatarSm({
+    super.key,
+    required this.label,
+    this.gradientStart,
+    this.gradientEnd,
+  });
   final String label;
   final Color? gradientStart;
   final Color? gradientEnd;

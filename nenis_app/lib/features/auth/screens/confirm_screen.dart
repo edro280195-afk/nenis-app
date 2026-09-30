@@ -15,6 +15,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/otp_cell.dart';
 import '../../../shared/widgets/pill_button.dart';
+import '../widgets/auth_editorial_hero.dart';
 import '../widgets/auth_feedback.dart';
 
 /// Confirmación del teléfono con el código de 6 dígitos enviado por SMS.
@@ -208,55 +209,28 @@ class _ConfirmScreenState extends ConsumerState<ConfirmScreen> {
                   ),
                 ),
                 const SizedBox(height: 18),
-                Center(
-                  child: Container(
-                    width: 78,
-                    height: 78,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(26),
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFD6F8DE), Color(0xFFB8F0C6)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                    child: const Icon(
-                      Symbols.chat,
-                      color: Color(0xFF128C4B),
-                      size: 40,
-                      fill: 1,
-                    ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 22),
+                  child: AuthEditorialHero(
+                    role: AuthHeroRole.client,
+                    compact: true,
+                    title: 'Tu código llega por SMS',
+                    subtitle:
+                        'Escribe el código de 6 dígitos que enviamos por SMS a $_maskedPhone.',
                   ),
                 ),
-                const SizedBox(height: 18),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 30),
-                  child: Column(
-                    children: [
-                      Text(
-                        'Confirma tu número',
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.h1,
+                const SizedBox(height: 8),
+                Center(
+                  child: GestureDetector(
+                    onTap: () => context.go('/login'),
+                    child: Text(
+                      'Cambiar número',
+                      style: AppTextStyles.subtitle.copyWith(
+                        color: AppColors.neniDeep,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Escribe el código de 6 dígitos que te enviamos por SMS a $_maskedPhone',
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.subtitle,
-                      ),
-                      const SizedBox(height: 6),
-                      GestureDetector(
-                        onTap: () => context.go('/login'),
-                        child: Text(
-                          'Cambiar número',
-                          style: AppTextStyles.subtitle.copyWith(
-                            color: AppColors.neniDeep,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 26),
@@ -378,13 +352,27 @@ class _ConfirmLoadingButton extends StatelessWidget {
         ),
       ),
       child: const Center(
-        child: SizedBox(
-          width: 24,
-          height: 24,
-          child: CircularProgressIndicator(
-            strokeWidth: 2.5,
-            color: AppColors.surface,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: AppColors.surface,
+              ),
+            ),
+            SizedBox(width: 10),
+            Text(
+              'Verificando tu teléfono…',
+              style: TextStyle(
+                color: AppColors.surface,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -331,7 +331,13 @@ class _RewardsByStore extends StatelessWidget {
           ),
         ),
         SizedBox(
-          height: 172,
+          // Con el nombre del premio en 2 líneas el contenido mide ~180 px:
+          // 172 desbordaba 2 px. La altura crece además con la letra grande.
+          height:
+              196 +
+              70 *
+                  (MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 2.0) -
+                      1),
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 22),
@@ -451,7 +457,10 @@ class _RedeemButton extends StatelessWidget {
         onPressed: () {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('El canje se aplica al pagar en tu pedido.'),
+              content: Text(
+                'Tu tienda aplica el premio al cobrar: avísale que quieres '
+                'canjearlo en tu próximo pedido.',
+              ),
               duration: Duration(seconds: 3),
             ),
           );
@@ -566,12 +575,7 @@ class _PointsLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        _skeletonList(),
-        const SlowLoadHint(),
-      ],
-    );
+    return Stack(children: [_skeletonList(), const SlowLoadHint()]);
   }
 
   Widget _skeletonList() {

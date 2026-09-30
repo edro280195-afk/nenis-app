@@ -387,7 +387,7 @@ class AuthController extends AsyncNotifier<Session?> {
   Future<void> completeOnboarding(String role) async {
     final current = state.asData?.value;
     if (current == null) {
-      throw AuthException('Tu sesion ya no esta disponible.');
+      throw AuthException('Tu sesión ya no está disponible.');
     }
 
     final onboarding = await ref

@@ -58,8 +58,7 @@ class ClaimedClientSummary {
     }
   }
 
-  ({Color start, Color end}) get avatarColors =>
-      avatarColorsFor(businessId);
+  ({Color start, Color end}) get avatarColors => avatarColorsFor(businessId);
 
   factory ClaimedClientSummary.fromJson(Map<String, dynamic> j) =>
       ClaimedClientSummary(
@@ -70,6 +69,6 @@ class ClaimedClientSummary {
         linkedBy: (j['linkedBy'] ?? '') as String,
         claimedAt:
             DateTime.tryParse((j['claimedAt'] ?? '') as String) ??
-                DateTime.now(),
+            DateTime.now(),
       );
 }

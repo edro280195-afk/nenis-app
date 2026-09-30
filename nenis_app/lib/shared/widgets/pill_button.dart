@@ -17,6 +17,7 @@ class PillButton extends StatelessWidget {
     this.variant = PillButtonVariant.primary,
     this.icon,
     this.expand = true,
+    this.compact = false,
   });
 
   final String label;
@@ -24,6 +25,9 @@ class PillButton extends StatelessWidget {
   final PillButtonVariant variant;
   final IconData? icon;
   final bool expand;
+
+  /// Versión baja (44 px) y de letra menor, para filas con poco ancho.
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -59,14 +63,14 @@ class PillButton extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         if (icon != null) ...[
-          Icon(icon, size: 22, color: fg),
-          const SizedBox(width: 10),
+          Icon(icon, size: compact ? 18 : 22, color: fg),
+          SizedBox(width: compact ? 6 : 10),
         ],
         Text(
           label,
           style: AppTextStyles.button
               .copyWith(color: fg)
-              .copyWith(fontSize: 16),
+              .copyWith(fontSize: compact ? 14 : 16),
         ),
       ],
     );
@@ -82,7 +86,7 @@ class PillButton extends StatelessWidget {
             borderRadius: AppRadii.pillRadius,
             child: Ink(
               width: expand ? double.infinity : null,
-              height: 56,
+              height: compact ? 44 : 56,
               decoration: BoxDecoration(
                 color: bg,
                 borderRadius: AppRadii.pillRadius,
@@ -100,7 +104,18 @@ class PillButton extends StatelessWidget {
                       )
                     : null,
               ),
-              child: Center(child: child),
+              // Con expand:false el botón se ajusta al contenido; sin relleno
+              // el texto tocaba los extremos redondeados ("Editar", "Siguiendo").
+              child: Center(
+                child: expand
+                    ? child
+                    : Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: compact ? 14 : 22,
+                        ),
+                        child: child,
+                      ),
+              ),
             ),
           ),
         ),

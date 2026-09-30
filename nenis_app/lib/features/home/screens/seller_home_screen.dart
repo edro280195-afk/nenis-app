@@ -9,6 +9,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../core/auth/auth_controller.dart';
 import '../../../core/auth/session.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/text_scale.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
@@ -682,7 +683,7 @@ class _KpiGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
-      childAspectRatio: 1.55,
+      childAspectRatio: scaledAspectRatio(context, 1.55),
       children: [
         _KpiCard(
           title: 'Ventas Hoy',

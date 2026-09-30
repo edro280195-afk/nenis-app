@@ -81,10 +81,7 @@ class LiveHubClient {
       // valor cuando existe; omitirlo deja que el parámetro opcional del
       // Hub caiga en su default `null` (mismo efecto, sin meter un null en
       // la lista).
-      final ok = await _connection.invoke(
-        'JoinAdminLive',
-        args: [?businessId],
-      );
+      final ok = await _connection.invoke('JoinAdminLive', args: [?businessId]);
       return ok == true;
     } catch (_) {
       return false;

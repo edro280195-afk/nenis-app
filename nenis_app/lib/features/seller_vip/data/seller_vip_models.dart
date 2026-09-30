@@ -15,7 +15,8 @@ class SellerFollowerAdmin {
   final bool isVip;
   final DateTime? vipSince;
 
-  SellerFollowerAdmin copyWith({bool? isVip, DateTime? vipSince}) => SellerFollowerAdmin(
+  SellerFollowerAdmin copyWith({bool? isVip, DateTime? vipSince}) =>
+      SellerFollowerAdmin(
         accountId: accountId,
         displayName: displayName,
         followedAt: followedAt,
@@ -23,11 +24,16 @@ class SellerFollowerAdmin {
         vipSince: vipSince ?? this.vipSince,
       );
 
-  factory SellerFollowerAdmin.fromJson(Map<String, dynamic> j) => SellerFollowerAdmin(
+  factory SellerFollowerAdmin.fromJson(Map<String, dynamic> j) =>
+      SellerFollowerAdmin(
         accountId: (j['accountId'] as num).toInt(),
         displayName: (j['displayName'] ?? 'Clienta') as String,
-        followedAt: DateTime.tryParse(j['followedAt']?.toString() ?? '') ?? DateTime.now(),
+        followedAt:
+            DateTime.tryParse(j['followedAt']?.toString() ?? '') ??
+            DateTime.now(),
         isVip: (j['isVip'] as bool?) ?? false,
-        vipSince: j['vipSince'] != null ? DateTime.tryParse(j['vipSince'].toString()) : null,
+        vipSince: j['vipSince'] != null
+            ? DateTime.tryParse(j['vipSince'].toString())
+            : null,
       );
 }

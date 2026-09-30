@@ -31,8 +31,9 @@ class ClaimRepository {
   /// transitorios y conviene reintentar).
   Future<ClaimByTokenResult> claimByOrderToken(String accessToken) async {
     try {
-      final res =
-          await _dio.post('/api/client-claims/by-order-token/$accessToken');
+      final res = await _dio.post(
+        '/api/client-claims/by-order-token/$accessToken',
+      );
       final data = (res.data as Map).cast<String, dynamic>();
       return ClaimByTokenResult(
         status: ClaimByTokenStatus.linked,
@@ -46,20 +47,26 @@ class ClaimRepository {
       switch (e.response?.statusCode) {
         case 409:
           return ClaimByTokenResult(
-              status: ClaimByTokenStatus.alreadyClaimedByOther,
-              message: message);
+            status: ClaimByTokenStatus.alreadyClaimedByOther,
+            message: message,
+          );
         case 404:
           return ClaimByTokenResult(
-              status: ClaimByTokenStatus.notFound, message: message);
+            status: ClaimByTokenStatus.notFound,
+            message: message,
+          );
         case 403:
           return ClaimByTokenResult(
-              status: map?['error'] == 'no_proof'
-                  ? ClaimByTokenStatus.noProof
-                  : ClaimByTokenStatus.forbidden,
-              message: message);
+            status: map?['error'] == 'no_proof'
+                ? ClaimByTokenStatus.noProof
+                : ClaimByTokenStatus.forbidden,
+            message: message,
+          );
         default:
           return ClaimByTokenResult(
-              status: ClaimByTokenStatus.error, message: message);
+            status: ClaimByTokenStatus.error,
+            message: message,
+          );
       }
     } catch (_) {
       return const ClaimByTokenResult(status: ClaimByTokenStatus.error);
@@ -73,5 +80,5 @@ final claimRepositoryProvider = Provider<ClaimRepository>((ref) {
 
 final claimCandidatesProvider =
     FutureProvider.autoDispose<List<ClaimCandidate>>((ref) async {
-  return ref.read(claimRepositoryProvider).candidates();
-});
+      return ref.read(claimRepositoryProvider).candidates();
+    });

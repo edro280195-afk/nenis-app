@@ -18,7 +18,8 @@ class LiveProductAnnouncement {
         productId: (j['productId'] as num).toInt(),
         name: (j['name'] ?? '') as String,
         price: (j['price'] as num?)?.toDouble() ?? 0,
-        announcedAt: DateTime.tryParse(j['announcedAt']?.toString() ?? '') ??
+        announcedAt:
+            DateTime.tryParse(j['announcedAt']?.toString() ?? '') ??
             DateTime.now(),
       );
 }
@@ -38,9 +39,9 @@ class SellerProduct {
   final int stock;
 
   factory SellerProduct.fromJson(Map<String, dynamic> j) => SellerProduct(
-        id: (j['id'] as num).toInt(),
-        name: (j['name'] ?? '') as String,
-        price: (j['price'] as num?)?.toDouble() ?? 0,
-        stock: (j['stock'] as num?)?.toInt() ?? 0,
-      );
+    id: (j['id'] as num).toInt(),
+    name: (j['name'] ?? '') as String,
+    price: (j['price'] as num?)?.toDouble() ?? 0,
+    stock: (j['stock'] as num?)?.toInt() ?? 0,
+  );
 }

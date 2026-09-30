@@ -97,22 +97,22 @@ class BuyerOrder {
   OrderStatus get chipStatus => orderChipFromBackend(status);
 
   factory BuyerOrder.fromJson(Map<String, dynamic> j) => BuyerOrder(
-        orderId: (j['orderId'] as num).toInt(),
-        orderNumber: (j['orderNumber'] as num?)?.toInt() ?? 0,
-        businessId: (j['businessId'] as num).toInt(),
-        businessName: (j['businessName'] ?? '') as String,
-        brandPrimaryColor: (j['brandPrimaryColor'] ?? '#FB6F9C') as String,
-        logoUrl: j['logoUrl'] as String?,
-        status: (j['status'] ?? 'Pending') as String,
-        itemsCount: (j['itemsCount'] as num?)?.toInt() ?? 0,
-        total: (j['total'] as num?)?.toDouble() ?? 0,
-        accessToken: j['accessToken'] as String?,
-        createdAt: DateTime.tryParse((j['createdAt'] ?? '') as String) ??
-            DateTime.now(),
-        scheduledDeliveryDate: j['scheduledDeliveryDate'] != null
-            ? DateTime.tryParse(j['scheduledDeliveryDate'] as String)
-            : null,
-      );
+    orderId: (j['orderId'] as num).toInt(),
+    orderNumber: (j['orderNumber'] as num?)?.toInt() ?? 0,
+    businessId: (j['businessId'] as num).toInt(),
+    businessName: (j['businessName'] ?? '') as String,
+    brandPrimaryColor: (j['brandPrimaryColor'] ?? '#FB6F9C') as String,
+    logoUrl: j['logoUrl'] as String?,
+    status: (j['status'] ?? 'Pending') as String,
+    itemsCount: (j['itemsCount'] as num?)?.toInt() ?? 0,
+    total: (j['total'] as num?)?.toDouble() ?? 0,
+    accessToken: j['accessToken'] as String?,
+    createdAt:
+        DateTime.tryParse((j['createdAt'] ?? '') as String) ?? DateTime.now(),
+    scheduledDeliveryDate: j['scheduledDeliveryDate'] != null
+        ? DateTime.tryParse(j['scheduledDeliveryDate'] as String)
+        : null,
+  );
 }
 
 class BuyerOrdersPage {
@@ -138,13 +138,13 @@ class BuyerOrdersPage {
   bool get isEmpty => orders.isEmpty;
 
   factory BuyerOrdersPage.fromJson(Map<String, dynamic> j) => BuyerOrdersPage(
-        orders: ((j['orders'] as List?) ?? const [])
-            .map((e) => BuyerOrder.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        total: (j['total'] as num?)?.toInt() ?? 0,
-        page: (j['page'] as num?)?.toInt() ?? 1,
-        pageSize: (j['pageSize'] as num?)?.toInt() ?? 20,
-        filter: (j['filter'] ?? 'all') as String,
-        businessId: (j['businessId'] as num?)?.toInt(),
-      );
+    orders: ((j['orders'] as List?) ?? const [])
+        .map((e) => BuyerOrder.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    total: (j['total'] as num?)?.toInt() ?? 0,
+    page: (j['page'] as num?)?.toInt() ?? 1,
+    pageSize: (j['pageSize'] as num?)?.toInt() ?? 20,
+    filter: (j['filter'] ?? 'all') as String,
+    businessId: (j['businessId'] as num?)?.toInt(),
+  );
 }

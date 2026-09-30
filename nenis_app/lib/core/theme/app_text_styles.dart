@@ -79,11 +79,11 @@ class AppTextStyles {
   );
 
   static TextStyle eyebrow(Color color) => GoogleFonts.poppins(
-        fontSize: 12,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 1.4,
-        color: color,
-      );
+    fontSize: 12,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 1.4,
+    color: color,
+  );
 
   static TextTheme toTextTheme() {
     return GoogleFonts.poppinsTextTheme().apply(

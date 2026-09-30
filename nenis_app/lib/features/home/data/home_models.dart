@@ -18,14 +18,14 @@ class BuyerStore {
   final String? logoUrl;
 
   factory BuyerStore.fromJson(Map<String, dynamic> j) => BuyerStore(
-        businessId: (j['businessId'] as num).toInt(),
-        name: (j['name'] ?? '') as String,
-        brandPrimaryColor: (j['brandPrimaryColor'] ?? '#FB6F9C') as String,
-        points: (j['points'] as num?)?.toInt() ?? 0,
-        isLive: (j['isLive'] as bool?) ?? false,
-        slug: j['slug'] as String?,
-        logoUrl: j['logoUrl'] as String?,
-      );
+    businessId: (j['businessId'] as num).toInt(),
+    name: (j['name'] ?? '') as String,
+    brandPrimaryColor: (j['brandPrimaryColor'] ?? '#FB6F9C') as String,
+    points: (j['points'] as num?)?.toInt() ?? 0,
+    isLive: (j['isLive'] as bool?) ?? false,
+    slug: j['slug'] as String?,
+    logoUrl: j['logoUrl'] as String?,
+  );
 
   String get initial =>
       name.isNotEmpty ? name.substring(0, 1).toUpperCase() : '?';
@@ -56,18 +56,18 @@ class BuyerActiveOrder {
   int get displayNumber => orderNumber > 0 ? orderNumber : orderId;
 
   factory BuyerActiveOrder.fromJson(Map<String, dynamic> j) => BuyerActiveOrder(
-        orderId: (j['orderId'] as num).toInt(),
-        orderNumber: (j['orderNumber'] as num?)?.toInt() ?? 0,
-        businessId: (j['businessId'] as num).toInt(),
-        businessName: (j['businessName'] ?? '') as String,
-        brandPrimaryColor: (j['brandPrimaryColor'] ?? '#FB6F9C') as String,
-        status: (j['status'] ?? 'Pending') as String,
-        total: (j['total'] as num?)?.toDouble() ?? 0,
-        accessToken: j['accessToken'] as String?,
-        scheduledDeliveryDate: j['scheduledDeliveryDate'] != null
-            ? DateTime.tryParse(j['scheduledDeliveryDate'] as String)
-            : null,
-      );
+    orderId: (j['orderId'] as num).toInt(),
+    orderNumber: (j['orderNumber'] as num?)?.toInt() ?? 0,
+    businessId: (j['businessId'] as num).toInt(),
+    businessName: (j['businessName'] ?? '') as String,
+    brandPrimaryColor: (j['brandPrimaryColor'] ?? '#FB6F9C') as String,
+    status: (j['status'] ?? 'Pending') as String,
+    total: (j['total'] as num?)?.toDouble() ?? 0,
+    accessToken: j['accessToken'] as String?,
+    scheduledDeliveryDate: j['scheduledDeliveryDate'] != null
+        ? DateTime.tryParse(j['scheduledDeliveryDate'] as String)
+        : null,
+  );
 }
 
 class BuyerRecentOrder {
@@ -97,18 +97,18 @@ class BuyerRecentOrder {
   int get displayNumber => orderNumber > 0 ? orderNumber : orderId;
 
   factory BuyerRecentOrder.fromJson(Map<String, dynamic> j) => BuyerRecentOrder(
-        orderId: (j['orderId'] as num).toInt(),
-        orderNumber: (j['orderNumber'] as num?)?.toInt() ?? 0,
-        businessId: (j['businessId'] as num).toInt(),
-        businessName: (j['businessName'] ?? '') as String,
-        brandPrimaryColor: (j['brandPrimaryColor'] ?? '#FB6F9C') as String,
-        status: (j['status'] ?? 'Pending') as String,
-        itemsCount: (j['itemsCount'] as num?)?.toInt() ?? 0,
-        total: (j['total'] as num?)?.toDouble() ?? 0,
-        createdAt: DateTime.tryParse((j['createdAt'] ?? '') as String) ??
-            DateTime.now(),
-        accessToken: j['accessToken'] as String?,
-      );
+    orderId: (j['orderId'] as num).toInt(),
+    orderNumber: (j['orderNumber'] as num?)?.toInt() ?? 0,
+    businessId: (j['businessId'] as num).toInt(),
+    businessName: (j['businessName'] ?? '') as String,
+    brandPrimaryColor: (j['brandPrimaryColor'] ?? '#FB6F9C') as String,
+    status: (j['status'] ?? 'Pending') as String,
+    itemsCount: (j['itemsCount'] as num?)?.toInt() ?? 0,
+    total: (j['total'] as num?)?.toDouble() ?? 0,
+    createdAt:
+        DateTime.tryParse((j['createdAt'] ?? '') as String) ?? DateTime.now(),
+    accessToken: j['accessToken'] as String?,
+  );
 
   String get initial => businessName.isNotEmpty
       ? businessName.substring(0, 1).toUpperCase()
@@ -136,17 +136,17 @@ class BuyerHome {
       stores.isEmpty && recentOrders.isEmpty && activeOrder == null;
 
   factory BuyerHome.fromJson(Map<String, dynamic> j) => BuyerHome(
-        displayName: (j['displayName'] ?? '') as String,
-        totalPoints: (j['totalPoints'] as num?)?.toInt() ?? 0,
-        activeOrder: j['activeOrder'] != null
-            ? BuyerActiveOrder.fromJson(j['activeOrder'] as Map<String, dynamic>)
-            : null,
-        stores: ((j['stores'] as List?) ?? const [])
-            .map((e) => BuyerStore.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        recentOrders: ((j['recentOrders'] as List?) ?? const [])
-            .map((e) => BuyerRecentOrder.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        liveCount: (j['liveCount'] as num?)?.toInt() ?? 0,
-      );
+    displayName: (j['displayName'] ?? '') as String,
+    totalPoints: (j['totalPoints'] as num?)?.toInt() ?? 0,
+    activeOrder: j['activeOrder'] != null
+        ? BuyerActiveOrder.fromJson(j['activeOrder'] as Map<String, dynamic>)
+        : null,
+    stores: ((j['stores'] as List?) ?? const [])
+        .map((e) => BuyerStore.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    recentOrders: ((j['recentOrders'] as List?) ?? const [])
+        .map((e) => BuyerRecentOrder.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    liveCount: (j['liveCount'] as num?)?.toInt() ?? 0,
+  );
 }

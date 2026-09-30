@@ -14,6 +14,8 @@ String printFailureReason(String code, String message) => '$code: $message';
 String unknownPrintFailureReason(Object error) {
   const maxLength = 500;
   final detail = '${error.runtimeType}: $error';
-  final truncated = detail.length > maxLength ? '${detail.substring(0, maxLength)}…' : detail;
+  final truncated = detail.length > maxLength
+      ? '${detail.substring(0, maxLength)}…'
+      : detail;
   return 'unknown: $truncated';
 }

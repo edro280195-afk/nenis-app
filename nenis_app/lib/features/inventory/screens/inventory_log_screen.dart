@@ -21,8 +21,7 @@ class InventoryLogScreen extends ConsumerStatefulWidget {
   final String? boxCode;
 
   @override
-  ConsumerState<InventoryLogScreen> createState() =>
-      _InventoryLogScreenState();
+  ConsumerState<InventoryLogScreen> createState() => _InventoryLogScreenState();
 }
 
 class _InventoryLogScreenState extends ConsumerState<InventoryLogScreen> {
@@ -149,8 +148,7 @@ class _InventoryLogScreenState extends ConsumerState<InventoryLogScreen> {
                                     _LogFilter.conteos => 'Conteos',
                                   },
                                   selected: _filter == filter,
-                                  onTap: () =>
-                                      setState(() => _filter = filter),
+                                  onTap: () => setState(() => _filter = filter),
                                 ),
                                 const SizedBox(width: 8),
                               ],
@@ -164,12 +162,7 @@ class _InventoryLogScreenState extends ConsumerState<InventoryLogScreen> {
                                 .refresh(),
                             child: ListView(
                               controller: _scrollController,
-                              padding: const EdgeInsets.fromLTRB(
-                                18,
-                                6,
-                                18,
-                                28,
-                              ),
+                              padding: const EdgeInsets.fromLTRB(18, 6, 18, 28),
                               children: [
                                 _Timeline(entries: entries),
                                 if (logState.isLoadingMore) ...[
@@ -223,10 +216,7 @@ class _Timeline extends StatelessWidget {
           child: Container(width: 2, color: AppColors.line),
         ),
         Column(
-          children: [
-            for (final entry in entries)
-              _TimelineEntry(entry: entry),
-          ],
+          children: [for (final entry in entries) _TimelineEntry(entry: entry)],
         ),
       ],
     );

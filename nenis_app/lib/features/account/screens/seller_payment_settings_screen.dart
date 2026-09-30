@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/text_scale.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -1508,7 +1509,7 @@ class _KindGrid extends StatelessWidget {
         crossAxisSpacing: 6,
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        childAspectRatio: 3.15,
+        childAspectRatio: scaledAspectRatio(context, 3.15),
         children: SellerPayoutAccountKind.values.map((kind) {
           final selected = kind == value;
           return Material(

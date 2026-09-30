@@ -47,24 +47,24 @@ class OrderTeaser {
   }
 
   factory OrderTeaser.fromJson(Map<String, dynamic> j) => OrderTeaser(
-        businessName: (j['businessName'] ?? 'Tu tienda') as String,
-        businessLogoUrl: j['businessLogoUrl'] as String?,
-        clientName: (j['clientName'] ?? 'bonita') as String,
-        total: (j['total'] as num?)?.toDouble() ?? 0,
-        itemsCount: (j['itemsCount'] as num?)?.toInt() ?? 0,
-        statusLabel: (j['statusLabel'] ?? '') as String,
-        isExpired: (j['isExpired'] as bool?) ?? false,
-        clientPhone: j['clientPhone'] as String?,
-        scheduledDeliveryDate: j['scheduledDeliveryDate'] != null
-            ? DateTime.tryParse(j['scheduledDeliveryDate'] as String)
-            : null,
-      );
+    businessName: (j['businessName'] ?? 'Tu tienda') as String,
+    businessLogoUrl: j['businessLogoUrl'] as String?,
+    clientName: (j['clientName'] ?? 'bonita') as String,
+    total: (j['total'] as num?)?.toDouble() ?? 0,
+    itemsCount: (j['itemsCount'] as num?)?.toInt() ?? 0,
+    statusLabel: (j['statusLabel'] ?? '') as String,
+    isExpired: (j['isExpired'] as bool?) ?? false,
+    clientPhone: j['clientPhone'] as String?,
+    scheduledDeliveryDate: j['scheduledDeliveryDate'] != null
+        ? DateTime.tryParse(j['scheduledDeliveryDate'] as String)
+        : null,
+  );
 }
 
 /// Carga el teaser del pedido por token (endpoint público).
-final orderTeaserProvider =
-    FutureProvider.autoDispose.family<OrderTeaser, String>((ref, token) async {
-  final dio = ref.read(dioProvider);
-  final res = await dio.get('/api/pedido/$token/teaser');
-  return OrderTeaser.fromJson((res.data as Map).cast<String, dynamic>());
-});
+final orderTeaserProvider = FutureProvider.autoDispose
+    .family<OrderTeaser, String>((ref, token) async {
+      final dio = ref.read(dioProvider);
+      final res = await dio.get('/api/pedido/$token/teaser');
+      return OrderTeaser.fromJson((res.data as Map).cast<String, dynamic>());
+    });

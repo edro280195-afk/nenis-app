@@ -87,6 +87,7 @@ class LabelPrintService {
   }
 
   void _debugLogPngContent(Uint8List png) {
+    if (!kDebugMode) return;
     final decoded = img.decodeImage(png);
     if (decoded == null) {
       debugPrint(
@@ -94,18 +95,9 @@ class LabelPrintService {
       );
       return;
     }
-    var darkPixels = 0;
-    for (var y = 0; y < decoded.height; y++) {
-      for (var x = 0; x < decoded.width; x++) {
-        final p = decoded.getPixel(x, y);
-        if ((p.r + p.g + p.b) / 3 < 200) darkPixels++;
-      }
-    }
-    final total = decoded.width * decoded.height;
-    final pct = total == 0 ? 0 : (darkPixels * 100 / total).toStringAsFixed(1);
     debugPrint(
       '[LabelPrintService] renderPng: ${decoded.width}x${decoded.height}, '
-      '$darkPixels/$total px oscuros ($pct%)',
+      '${png.length} bytes',
     );
   }
 

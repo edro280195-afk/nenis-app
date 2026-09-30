@@ -27,7 +27,7 @@ Future<void> pushBackgroundHandler(RemoteMessage message) async {}
 /// push hasta que se complete esa configuración.
 class PushService {
   PushService(this._ref)
-      : _localNotifications = FlutterLocalNotificationsPlugin();
+    : _localNotifications = FlutterLocalNotificationsPlugin();
 
   final Ref _ref;
   final FlutterLocalNotificationsPlugin _localNotifications;
@@ -40,7 +40,8 @@ class PushService {
     try {
       await _localNotifications
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
+            AndroidFlutterLocalNotificationsPlugin
+          >()
           ?.createNotificationChannel(_androidChannel);
 
       await _localNotifications.initialize(
@@ -107,17 +108,15 @@ class PushService {
 
       final token = await _readFcmToken(messaging);
       if (token != null && token.isNotEmpty) {
-        await _ref.read(deviceRepositoryProvider).registerDevice(
-              token,
-              platform: _platform,
-            );
+        await _ref
+            .read(deviceRepositoryProvider)
+            .registerDevice(token, platform: _platform);
       }
 
       messaging.onTokenRefresh.listen((refreshed) {
-        _ref.read(deviceRepositoryProvider).registerDevice(
-              refreshed,
-              platform: _platform,
-            );
+        _ref
+            .read(deviceRepositoryProvider)
+            .registerDevice(refreshed, platform: _platform);
       });
     } catch (_) {
       // Sin Firebase configurado, no hay token que registrar.
@@ -143,9 +142,10 @@ class PushService {
   /// de margen es suficiente para un dispositivo sano; si no responde, se
   /// devuelve `null` y el flujo (login/logout) sigue sin trabarse.
   Future<String?> _readFcmToken(FirebaseMessaging messaging) {
-    return messaging
-        .getToken()
-        .timeout(const Duration(seconds: 10), onTimeout: () => null);
+    return messaging.getToken().timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => null,
+    );
   }
 
   String get _platform =>

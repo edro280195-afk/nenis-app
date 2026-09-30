@@ -55,8 +55,10 @@ class SubscriptionPaywallScreen extends ConsumerWidget {
                       data: (s) => s.subscriptionStatus == 'PastDue'
                           ? 'Tuvimos un problema para cobrar tu tarjeta. Actualiza tu pago para seguir usando tu tienda.'
                           : 'Elige un plan para seguir usando las herramientas de tu tienda.',
-                      loading: () => 'Elige un plan para seguir usando tu tienda.',
-                      error: (_, _) => 'Elige un plan para seguir usando tu tienda.',
+                      loading: () =>
+                          'Elige un plan para seguir usando tu tienda.',
+                      error: (_, _) =>
+                          'Elige un plan para seguir usando tu tienda.',
                     ),
                     textAlign: TextAlign.center,
                     style: AppTextStyles.subtitle,

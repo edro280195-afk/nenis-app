@@ -63,5 +63,5 @@ class TandasController extends AsyncNotifier<List<BuyerTanda>> {
 
 final tandasControllerProvider =
     AsyncNotifierProvider.autoDispose<TandasController, List<BuyerTanda>>(
-  TandasController.new,
-);
+      TandasController.new,
+    );

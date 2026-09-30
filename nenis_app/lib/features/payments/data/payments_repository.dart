@@ -37,7 +37,8 @@ final paymentsRepositoryProvider = Provider<PaymentsRepository>((ref) {
 
 /// Controller de la pantalla "Mis pagos". Solo lectura; se hidrata con
 /// `FutureProvider.autoDispose` ya que no hay filtros ni paginación.
-final paymentsFeedProvider =
-    FutureProvider.autoDispose<List<BuyerPayment>>((ref) {
+final paymentsFeedProvider = FutureProvider.autoDispose<List<BuyerPayment>>((
+  ref,
+) {
   return ref.read(paymentsRepositoryProvider).getMyPayments();
 });

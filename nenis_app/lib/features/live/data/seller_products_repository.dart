@@ -20,7 +20,9 @@ class SellerProductsRepository {
     try {
       final res = await _dio.get('/api/business/products');
       return ((res.data as List?) ?? const [])
-          .map((e) => SellerProduct.fromJson((e as Map).cast<String, dynamic>()))
+          .map(
+            (e) => SellerProduct.fromJson((e as Map).cast<String, dynamic>()),
+          )
           .toList();
     } on DioException catch (_) {
       throw SellerProductsException('No pudimos cargar tu catálogo.');
@@ -28,11 +30,14 @@ class SellerProductsRepository {
   }
 }
 
-final sellerProductsRepositoryProvider = Provider<SellerProductsRepository>((ref) {
+final sellerProductsRepositoryProvider = Provider<SellerProductsRepository>((
+  ref,
+) {
   return SellerProductsRepository(ref.read(dioProvider));
 });
 
-final sellerProductsProvider =
-    FutureProvider.autoDispose<List<SellerProduct>>((ref) {
+final sellerProductsProvider = FutureProvider.autoDispose<List<SellerProduct>>((
+  ref,
+) {
   return ref.read(sellerProductsRepositoryProvider).getProducts();
 });

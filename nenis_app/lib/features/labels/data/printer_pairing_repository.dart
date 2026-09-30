@@ -40,9 +40,7 @@ class PairedPrintersController extends Notifier<PairedPrinters> {
   Future<void> pair(PairedPrinter printer) async {
     await _loading;
     state = state.copyWith(
-      niimbotB1: printer.brand == PrinterBrand.niimbotB1
-          ? () => printer
-          : null,
+      niimbotB1: printer.brand == PrinterBrand.niimbotB1 ? () => printer : null,
       aiyinE40Pro: printer.brand == PrinterBrand.aiyinE40Pro
           ? () => printer
           : null,

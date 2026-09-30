@@ -214,6 +214,7 @@ class _InventoryBoxScreenState extends ConsumerState<InventoryBoxScreen> {
       String status;
       String feedback;
       if (paired != null) {
+        _message(connectingToPrinterMessage(paired.name));
         await service.printDirect(
           printer: paired,
           designJson: print.templateVersion.designJson,
@@ -223,8 +224,9 @@ class _InventoryBoxScreenState extends ConsumerState<InventoryBoxScreen> {
           copies: print.copies,
         );
         status = 'SentToSystem';
-        feedback = 'Etiqueta enviada a ${paired.name}.';
+        feedback = printedDirectMessage(1, paired.name);
       } else {
+        _message(preparingSystemPrintMessage);
         final handedOff = await service.handOffData(
           designJson: print.templateVersion.designJson,
           mediaSize: print.mediaSize,
@@ -296,7 +298,7 @@ class _InventoryBoxScreenState extends ConsumerState<InventoryBoxScreen> {
       _message(error.message, error: true);
     } catch (e) {
       await _recordLabelFailure(print, unknownPrintFailureReason(e));
-      _message('No pudimos preparar esta etiqueta para imprimir.', error: true);
+      _message(printUnknownFailureMessage, error: true);
     } finally {
       if (mounted) setState(() => _busy = false);
     }

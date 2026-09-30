@@ -320,7 +320,7 @@ class _SellerTeamSettingsScreenState extends State<SellerTeamSettingsScreen> {
           const SizedBox(height: 18),
           const _InlineWarning(
             text:
-                'Estos permisos todavia no se guardan en el servidor. Por ahora solo puedes copiar el mensaje para chofer.',
+                'Estos permisos todavía no se guardan en el servidor. Por ahora solo puedes copiar el mensaje para chofer.',
           ),
           const SizedBox(height: 14),
           _SettingsCard(

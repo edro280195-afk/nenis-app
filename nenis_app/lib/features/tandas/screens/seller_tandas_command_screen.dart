@@ -909,7 +909,7 @@ class _TandaRail extends StatelessWidget {
     if (tandas.isEmpty) {
       return const _EmptyPanel(
         icon: Symbols.groups,
-        title: 'No hay tandas aqui',
+        title: 'No hay tandas aquí',
         body: 'Cambia el filtro o crea una tanda nueva para empezar.',
       );
     }
@@ -2287,7 +2287,7 @@ class _BuilderSlots extends StatelessWidget {
             controller: clientSearchCtrl,
             onChanged: onSearchChanged,
             decoration: _inputDecoration(
-              hint: 'Buscar clienta por nombre o telefono',
+              hint: 'Buscar clienta por nombre o teléfono',
               prefixIcon: const Icon(Symbols.search, size: 20),
             ),
           ),

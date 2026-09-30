@@ -16,10 +16,10 @@ class FollowState {
   final bool isVip;
 
   factory FollowState.fromJson(Map<String, dynamic> j) => FollowState(
-        businessId: (j['businessId'] as num).toInt(),
-        isFollowing: (j['isFollowing'] as bool?) ?? false,
-        notifyOnPost: (j['notifyOnPost'] as bool?) ?? true,
-        notifyOnLive: (j['notifyOnLive'] as bool?) ?? true,
-        isVip: (j['isVip'] as bool?) ?? false,
-      );
+    businessId: (j['businessId'] as num).toInt(),
+    isFollowing: (j['isFollowing'] as bool?) ?? false,
+    notifyOnPost: (j['notifyOnPost'] as bool?) ?? true,
+    notifyOnLive: (j['notifyOnLive'] as bool?) ?? true,
+    isVip: (j['isVip'] as bool?) ?? false,
+  );
 }

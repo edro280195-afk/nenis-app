@@ -64,14 +64,16 @@ class DeliveryCelebrationState extends State<DeliveryCelebration>
     // Generar partículas de confeti
     final rnd = math.Random(42);
     for (int i = 0; i < 22; i++) {
-      _particles.add(_ConfettiParticle(
-        color: _kColors[i % _kColors.length],
-        angle: rnd.nextDouble() * math.pi * 2,
-        speed: 180 + rnd.nextDouble() * 200,
-        size: 5 + rnd.nextDouble() * 6,
-        spin: (rnd.nextDouble() - 0.5) * 6,
-        shape: i % 3 == 0 ? _Shape.circle : _Shape.rect,
-      ));
+      _particles.add(
+        _ConfettiParticle(
+          color: _kColors[i % _kColors.length],
+          angle: rnd.nextDouble() * math.pi * 2,
+          speed: 180 + rnd.nextDouble() * 200,
+          size: 5 + rnd.nextDouble() * 6,
+          spin: (rnd.nextDouble() - 0.5) * 6,
+          shape: i % 3 == 0 ? _Shape.circle : _Shape.rect,
+        ),
+      );
     }
   }
 
@@ -101,7 +103,10 @@ class DeliveryCelebrationState extends State<DeliveryCelebration>
     final box = ctx.findRenderObject() as RenderBox?;
     if (box == null) return;
     final pos = box.localToGlobal(Offset.zero);
-    final center = Offset(pos.dx + box.size.width / 2, pos.dy + box.size.height / 2);
+    final center = Offset(
+      pos.dx + box.size.width / 2,
+      pos.dy + box.size.height / 2,
+    );
 
     _flowerEntry = OverlayEntry(
       builder: (_) => Positioned(
@@ -251,10 +256,7 @@ class _ConfettiParticle {
 }
 
 class _ConfettiPainter extends CustomPainter {
-  const _ConfettiPainter({
-    required this.particles,
-    required this.progress,
-  });
+  const _ConfettiPainter({required this.particles, required this.progress});
   final List<_ConfettiParticle> particles;
   final double progress;
 
@@ -300,6 +302,5 @@ class _ConfettiPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_ConfettiPainter old) =>
-      old.progress != progress;
+  bool shouldRepaint(_ConfettiPainter old) => old.progress != progress;
 }

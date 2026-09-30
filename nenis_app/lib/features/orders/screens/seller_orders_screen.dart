@@ -412,6 +412,12 @@ class _OrderCard extends ConsumerWidget {
         ? '${o.itemsCount} ${o.itemsCount == 1 ? 'artículo' : 'artículos'}'
         : '${o.itemsCount} ${o.itemsCount == 1 ? 'artículo' : 'artículos'} · ${names.join(', ')}';
 
+    // Pantalla angosta o letra grande: el chip de estatus baja a su propia
+    // línea para que el nombre de la clienta no se parta a media palabra.
+    final compactHeader =
+        MediaQuery.sizeOf(context).width < 380 ||
+        MediaQuery.textScalerOf(context).scale(1.0) > 1.2;
+
     return GestureDetector(
       onTap: () => context.push('/orders/detail/${o.id}'),
       child: Container(
@@ -446,29 +452,30 @@ class _OrderCard extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
+                            // Wrap: con letra grande la etiqueta "Frecuente"
+                            // baja a la línea siguiente en vez de desbordar.
+                            Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 6,
+                              runSpacing: 2,
                               children: [
-                                Flexible(
-                                  child: Text(
-                                    o.clientName.isEmpty
-                                        ? 'Sin nombre'
-                                        : o.clientName,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AppTextStyles.body.copyWith(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                                Text(
+                                  o.clientName.isEmpty
+                                      ? 'Sin nombre'
+                                      : o.clientName,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTextStyles.body.copyWith(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                                if (o.isFrequent) ...[
-                                  const SizedBox(width: 6),
+                                if (o.isFrequent)
                                   const _MiniTag(
                                     label: 'Frecuente',
                                     fg: Color(0xFF7C5AC9),
                                     bg: Color(0xFFF1E9FF),
                                   ),
-                                ],
                               ],
                             ),
                             const SizedBox(height: 1),
@@ -483,10 +490,19 @@ class _OrderCard extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      SellerStatusChip(status: o.status),
+                      if (!compactHeader) ...[
+                        const SizedBox(width: 8),
+                        SellerStatusChip(status: o.status),
+                      ],
                     ],
                   ),
+                  if (compactHeader) ...[
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: SellerStatusChip(status: o.status),
+                    ),
+                  ],
                   const SizedBox(height: 11),
                   _MetaLine(icon: Symbols.shopping_bag, text: itemsText),
                   if ((o.clientAddress ?? '').isNotEmpty) ...[

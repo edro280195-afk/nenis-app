@@ -124,10 +124,7 @@ class _ChatHeader extends StatelessWidget {
               children: [
                 Text('Chat del pedido', style: AppTextStyles.h2),
                 const SizedBox(height: 2),
-                Text(
-                  'Soporte y repartidor 🎀',
-                  style: AppTextStyles.subtitle,
-                ),
+                Text('Soporte y repartidor 🎀', style: AppTextStyles.subtitle),
               ],
             ),
           ),
@@ -189,8 +186,9 @@ class _ChatBubble extends StatelessWidget {
             maxWidth: MediaQuery.sizeOf(context).width * 0.78,
           ),
           child: Column(
-            crossAxisAlignment:
-                isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            crossAxisAlignment: isMe
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
               if (!isMe && author.isNotEmpty)
@@ -219,8 +217,7 @@ class _ChatBubble extends StatelessWidget {
                     topLeft: const Radius.circular(18),
                     topRight: const Radius.circular(18),
                     bottomLeft: isMe ? const Radius.circular(18) : Radius.zero,
-                    bottomRight:
-                        isMe ? Radius.zero : const Radius.circular(18),
+                    bottomRight: isMe ? Radius.zero : const Radius.circular(18),
                   ),
                 ),
                 child: Column(
@@ -323,7 +320,11 @@ class _ChatInput extends StatelessWidget {
                         color: AppColors.surface,
                       ),
                     )
-                  : const Icon(Symbols.send, color: AppColors.surface, size: 20),
+                  : const Icon(
+                      Symbols.send,
+                      color: AppColors.surface,
+                      size: 20,
+                    ),
             ),
           ),
         ],

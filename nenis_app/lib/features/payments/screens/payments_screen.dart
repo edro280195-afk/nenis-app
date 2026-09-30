@@ -177,7 +177,7 @@ class _SummaryRow extends StatelessWidget {
               ],
             ),
             const Spacer(),
-            _SummaryPill(label: '$count pagos'),
+            _SummaryPill(label: count == 1 ? '1 pago' : '$count pagos'),
           ],
         ),
       ),

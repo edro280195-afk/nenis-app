@@ -71,25 +71,25 @@ class BuyerTanda {
   String get weeklyAmountLabel => '\$${weeklyAmount.toStringAsFixed(0)} / sem';
 
   factory BuyerTanda.fromJson(Map<String, dynamic> j) => BuyerTanda(
-        tandaId: (j['tandaId'] ?? '') as String,
-        businessId: (j['businessId'] as num).toInt(),
-        businessName: (j['businessName'] ?? '') as String,
-        brandPrimaryColor: (j['brandPrimaryColor'] ?? '#FB6F9C') as String,
-        clientId: (j['clientId'] as num).toInt(),
-        name: (j['name'] ?? '') as String,
-        productName: (j['productName'] ?? '') as String,
-        totalWeeks: (j['totalWeeks'] as num?)?.toInt() ?? 0,
-        weeklyAmount: (j['weeklyAmount'] as num?)?.toDouble() ?? 0,
-        startDate:
-            DateTime.tryParse((j['startDate'] ?? '') as String) ?? DateTime.now(),
-        status: (j['status'] ?? 'Active') as String,
-        currentWeek: (j['currentWeek'] as num?)?.toInt() ?? 1,
-        isMine: (j['isMine'] as bool?) ?? false,
-        myTurn: (j['myTurn'] as num?)?.toInt(),
-        hasPaidThisWeek: j['hasPaidThisWeek'] as bool?,
-        paidWeeks: ((j['paidWeeks'] as List?) ?? const [])
-            .map((e) => (e as num).toInt())
-            .toList(),
-        amIThisWeekWinner: j['amIThisWeekWinner'] as bool?,
-      );
+    tandaId: (j['tandaId'] ?? '') as String,
+    businessId: (j['businessId'] as num).toInt(),
+    businessName: (j['businessName'] ?? '') as String,
+    brandPrimaryColor: (j['brandPrimaryColor'] ?? '#FB6F9C') as String,
+    clientId: (j['clientId'] as num).toInt(),
+    name: (j['name'] ?? '') as String,
+    productName: (j['productName'] ?? '') as String,
+    totalWeeks: (j['totalWeeks'] as num?)?.toInt() ?? 0,
+    weeklyAmount: (j['weeklyAmount'] as num?)?.toDouble() ?? 0,
+    startDate:
+        DateTime.tryParse((j['startDate'] ?? '') as String) ?? DateTime.now(),
+    status: (j['status'] ?? 'Active') as String,
+    currentWeek: (j['currentWeek'] as num?)?.toInt() ?? 1,
+    isMine: (j['isMine'] as bool?) ?? false,
+    myTurn: (j['myTurn'] as num?)?.toInt(),
+    hasPaidThisWeek: j['hasPaidThisWeek'] as bool?,
+    paidWeeks: ((j['paidWeeks'] as List?) ?? const [])
+        .map((e) => (e as num).toInt())
+        .toList(),
+    amIThisWeekWinner: j['amIThisWeekWinner'] as bool?,
+  );
 }

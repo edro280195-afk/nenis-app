@@ -41,20 +41,20 @@ class AppShadows {
   ];
 
   static List<BoxShadow> brandPrimary(Color brand) => [
-        BoxShadow(
-          color: brand.withValues(alpha: 0.45),
-          offset: const Offset(0, 14),
-          blurRadius: 26,
-          spreadRadius: -12,
-        ),
-      ];
+    BoxShadow(
+      color: brand.withValues(alpha: 0.45),
+      offset: const Offset(0, 14),
+      blurRadius: 26,
+      spreadRadius: -12,
+    ),
+  ];
 
   static List<BoxShadow> brandSmall(Color brand) => [
-        BoxShadow(
-          color: brand.withValues(alpha: 0.4),
-          offset: const Offset(0, 10),
-          blurRadius: 20,
-          spreadRadius: -8,
-        ),
-      ];
+    BoxShadow(
+      color: brand.withValues(alpha: 0.4),
+      offset: const Offset(0, 10),
+      blurRadius: 20,
+      spreadRadius: -8,
+    ),
+  ];
 }

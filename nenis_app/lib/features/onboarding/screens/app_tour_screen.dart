@@ -172,7 +172,8 @@ class _SellerTrialPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasActivePlan = status.value != null &&
+    final hasActivePlan =
+        status.value != null &&
         !status.value!.isLocked &&
         !status.value!.isTrialing;
     return SingleChildScrollView(

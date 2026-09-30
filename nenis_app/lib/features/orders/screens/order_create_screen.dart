@@ -302,7 +302,7 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
                   Expanded(
                     child: _Field(
                       controller: _manualPhoneCtrl,
-                      hint: 'Telefono opcional',
+                      hint: 'Teléfono opcional',
                       icon: Symbols.call,
                       keyboard: TextInputType.phone,
                       textInputAction: TextInputAction.next,
@@ -335,8 +335,8 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
               GoogleAddressField(
                 controller: _manualAddressCtrl,
                 labelText: _manualDelivery == SellerDeliveryType.pickup
-                    ? 'Direccion opcional'
-                    : 'Direccion de entrega',
+                    ? 'Dirección opcional'
+                    : 'Dirección de entrega',
                 hintText: 'Busca calle, colonia o lugar',
                 onChanged: (_) {
                   if (_manualAddressLatitude != null ||
@@ -355,7 +355,7 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
               const SizedBox(height: 8),
               _InlineToggle(
                 value: _manualAddressOnlyForOrder,
-                label: 'Usar direccion solo para este pedido',
+                label: 'Usar dirección solo para este pedido',
                 onChanged: (value) =>
                     setState(() => _manualAddressOnlyForOrder = value),
               ),
@@ -539,7 +539,7 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
       return;
     }
     if (_manualItems.isEmpty) {
-      _snack('Agrega al menos un articulo');
+      _snack('Agrega al menos un artículo');
       return;
     }
 
@@ -745,7 +745,7 @@ class _OrderCreateScreenState extends ConsumerState<OrderCreateScreen> {
     }
 
     if (parsed == null) {
-      _snack('Formato rapido: Clienta, articulo, precio');
+      _snack('Formato rápido: Clienta, artículo, precio');
       return;
     }
 
@@ -1049,7 +1049,7 @@ class _ModeSwitch extends StatelessWidget {
       child: Row(
         children: [
           _ModeButton(
-            label: 'Rapido',
+            label: 'Rápido',
             icon: Symbols.bolt,
             selected: mode == _CaptureMode.quick,
             onTap: () => onChanged(_CaptureMode.quick),
@@ -1159,7 +1159,7 @@ class _QuickHero extends StatelessWidget {
   Widget build(BuildContext context) {
     return _SectionCard(
       icon: Symbols.bolt,
-      title: 'Modo rapido',
+      title: 'Modo rápido',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1175,7 +1175,7 @@ class _QuickHero extends StatelessWidget {
             ),
             decoration: InputDecoration(
               hintText: pinnedProduct == null
-                  ? 'Clienta, articulo, precio'
+                  ? 'Clienta, artículo, precio'
                   : 'Clienta o Clienta, variante',
               prefixIcon: const Icon(
                 Symbols.flash_on,
@@ -1292,11 +1292,7 @@ class _QuickProductControlState extends State<_QuickProductControl> {
               borderRadius: BorderRadius.circular(12),
               child: const Padding(
                 padding: EdgeInsets.all(2.0),
-                child: Icon(
-                  Symbols.close,
-                  size: 16,
-                  color: AppColors.neniDeep,
-                ),
+                child: Icon(Symbols.close, size: 16, color: AppColors.neniDeep),
               ),
             ),
           ],
@@ -1325,7 +1321,8 @@ class _QuickProductControlState extends State<_QuickProductControl> {
               ],
             ),
             TextButton.icon(
-              onPressed: () => setState(() => _showInlineForm = !_showInlineForm),
+              onPressed: () =>
+                  setState(() => _showInlineForm = !_showInlineForm),
               icon: Icon(
                 _showInlineForm ? Symbols.close : Symbols.edit,
                 size: 15,
@@ -1376,7 +1373,9 @@ class _QuickProductControlState extends State<_QuickProductControl> {
                   child: _MiniField(
                     controller: widget.pinPriceCtrl,
                     hint: 'Precio',
-                    keyboard: const TextInputType.numberWithOptions(decimal: true),
+                    keyboard: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     onSubmitted: (_) {
                       widget.onPin();
                       setState(() => _showInlineForm = false);
@@ -1392,7 +1391,10 @@ class _QuickProductControlState extends State<_QuickProductControl> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.neniDeep,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 10,
+                    ),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     shape: RoundedRectangleBorder(
@@ -1473,7 +1475,7 @@ class _QuickPreviewDialogState extends State<_QuickPreviewDialog> {
         double.tryParse(_priceCtrl.text.trim().replaceAll(',', '')) ?? 0;
 
     if (client.isEmpty || product.isEmpty || qty < 1 || price <= 0) {
-      setState(() => _error = 'Revisa clienta, articulo, cantidad y precio.');
+      setState(() => _error = 'Revisa clienta, artículo, cantidad y precio.');
       return;
     }
 
@@ -1515,7 +1517,7 @@ class _QuickPreviewDialogState extends State<_QuickPreviewDialog> {
             const SizedBox(height: 10),
             _DialogField(
               controller: _productCtrl,
-              label: 'Articulo',
+              label: 'Artículo',
               icon: Symbols.shopping_bag,
               onChanged: (_) => setState(() => _error = null),
             ),
@@ -1660,8 +1662,6 @@ class _PinnedBanner extends StatelessWidget {
   }
 }
 
-
-
 class _QuickQueuePanel extends StatelessWidget {
   const _QuickQueuePanel({
     required this.groups,
@@ -1690,7 +1690,7 @@ class _QuickQueuePanel extends StatelessWidget {
             const _EmptyCaptureState(
               icon: Symbols.playlist_add,
               title: 'Sin pedidos en cola',
-              message: 'Captura una linea y presiona Enter.',
+              message: 'Captura una línea y presiona Enter.',
             )
           else
             for (final group in groups)
@@ -1791,7 +1791,7 @@ class _ManualItemsList extends StatelessWidget {
       return const _EmptyCaptureState(
         icon: Symbols.shopping_cart,
         title: 'Ticket vacio',
-        message: 'Agrega articulos para crear el pedido.',
+        message: 'Agrega artículos para crear el pedido.',
       );
     }
     return Column(
@@ -1922,7 +1922,7 @@ class _ManualAddItemForm extends StatelessWidget {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  'Agregar articulo',
+                  'Agregar artículo',
                   style: AppTextStyles.body.copyWith(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -2013,7 +2013,7 @@ class _ManualSummary extends StatelessWidget {
       child: Column(
         children: [
           _SumLine(label: 'Subtotal', value: money(subtotal)),
-          _SumLine(label: 'Envio', value: money(shipping)),
+          _SumLine(label: 'Envío', value: money(shipping)),
           const SizedBox(height: 12),
           _SubmitBar(
             label: creating ? 'Guardando...' : 'Crear pedido',

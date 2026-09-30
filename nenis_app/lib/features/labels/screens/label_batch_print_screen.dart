@@ -119,6 +119,10 @@ class _LabelBatchPrintScreenState extends ConsumerState<LabelBatchPrintScreen> {
           .read(pairedPrintersProvider)
           .forMediaSize(job.mediaSize);
       if (paired != null) {
+        _showMessage(
+          connectingToPrinterMessage(paired.name),
+          color: AppColors.ink2,
+        );
         await service.printDirectJob(paired, job);
         await repository.updateJobStatus(
           jobId: job.id,
@@ -127,10 +131,11 @@ class _LabelBatchPrintScreenState extends ConsumerState<LabelBatchPrintScreen> {
         );
         setState(_selectedPackageIds.clear);
         _showMessage(
-          '${job.totalLabels} ${job.totalLabels == 1 ? 'etiqueta enviada' : 'etiquetas enviadas'} a ${paired.name}',
+          printedDirectMessage(job.totalLabels, paired.name),
           color: AppColors.lavender,
         );
       } else {
+        _showMessage(preparingSystemPrintMessage, color: AppColors.ink2);
         final accepted = await service.handOffToSystem(job);
         await repository.updateJobStatus(
           jobId: job.id,
@@ -149,34 +154,47 @@ class _LabelBatchPrintScreenState extends ConsumerState<LabelBatchPrintScreen> {
       }
     } on LabelPrintException catch (error) {
       if (job != null) {
-        await _recordFailure(repository, job.id, printFailureReason(error.code, error.message));
+        await _recordFailure(
+          repository,
+          job.id,
+          printFailureReason(error.code, error.message),
+        );
       }
       if (!mounted) return;
       _showMessage(error.message, color: AppColors.liveRed);
       if (error.isFeatureLocked) context.push('/seller/plan');
     } on LabelPrintRenderException catch (error) {
       if (job != null) {
-        await _recordFailure(repository, job.id, printFailureReason(error.code, error.message));
+        await _recordFailure(
+          repository,
+          job.id,
+          printFailureReason(error.code, error.message),
+        );
       }
       _showMessage(error.message, color: AppColors.liveRed);
     } on NiimbotPrintException catch (error) {
       if (job != null) {
-        await _recordFailure(repository, job.id, printFailureReason(error.code, error.message));
+        await _recordFailure(
+          repository,
+          job.id,
+          printFailureReason(error.code, error.message),
+        );
       }
       _showMessage(error.message, color: AppColors.liveRed);
     } on AiyinPrintException catch (error) {
       if (job != null) {
-        await _recordFailure(repository, job.id, printFailureReason(error.code, error.message));
+        await _recordFailure(
+          repository,
+          job.id,
+          printFailureReason(error.code, error.message),
+        );
       }
       _showMessage(error.message, color: AppColors.liveRed);
     } catch (e) {
       if (job != null) {
         await _recordFailure(repository, job.id, unknownPrintFailureReason(e));
       }
-      _showMessage(
-        'No pudimos abrir el selector de impresión.',
-        color: AppColors.liveRed,
-      );
+      _showMessage(printUnknownFailureMessage, color: AppColors.liveRed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -211,65 +229,76 @@ class _LabelBatchPrintScreenState extends ConsumerState<LabelBatchPrintScreen> {
     // permiso solo se enteraba después de tocarlo, sin explicación.
     final canManageLabels = session?.canManageLabels ?? false;
 
-    return Scaffold(
-      backgroundColor: AppColors.surfaceCream,
-      body: NeniBackground(
-        child: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              _Header(
-                onBack: _back,
-                showInventory: unlocked,
-                onInventory: () => context.push('/seller/inventory'),
-                canManageLabels: canManageLabels,
-                onEditTemplate: () =>
-                    context.push('/seller/labels/editor?mediaSize=Shipping4x6'),
-                onPrinters: () => context.push('/seller/labels/printers'),
-              ),
-              Expanded(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 680),
-                    child: !unlocked
-                        ? const _LockedLabelsBody()
-                        : packages.when(
-                            loading: () => const _BatchLoading(),
-                            error: (error, _) => _BatchError(
-                              onRetry: () => ref.invalidate(
-                                availableLabelPackagesProvider,
+    return PopScope<void>(
+      // La entrada desde el menú usa context.go(), así que no existe una
+      // ruta anterior que el botón físico pueda recuperar. En ese caso
+      // interceptamos el intento y usamos el mismo regreso seguro del botón
+      // visible; si llegó con push, se conserva el regreso natural.
+      canPop: context.canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _back();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.surfaceCream,
+        body: NeniBackground(
+          child: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                _Header(
+                  onBack: _back,
+                  showInventory: unlocked,
+                  onInventory: () => context.push('/seller/inventory'),
+                  canManageLabels: canManageLabels,
+                  onEditTemplate: () => context.push(
+                    '/seller/labels/editor?mediaSize=Shipping4x6',
+                  ),
+                  onPrinters: () => context.push('/seller/labels/printers'),
+                ),
+                Expanded(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 680),
+                      child: !unlocked
+                          ? const _LockedLabelsBody()
+                          : packages.when(
+                              loading: () => const _BatchLoading(),
+                              error: (error, _) => _BatchError(
+                                onRetry: () => ref.invalidate(
+                                  availableLabelPackagesProvider,
+                                ),
                               ),
-                            ),
-                            data: (items) => RefreshIndicator(
-                              onRefresh: () async => ref.invalidate(
-                                availableLabelPackagesProvider,
-                              ),
-                              child: _BatchPackageList(
-                                packages: items,
-                                selectedIds: _selectedPackageIds,
-                                busy: _busy,
-                                canManageLabels: canManageLabels,
-                                onToggle: _toggle,
-                                onToggleAll: () => _toggleAll(items),
-                                onEditTemplate: () => context.push(
-                                  '/seller/labels/editor?mediaSize=Shipping4x6',
+                              data: (items) => RefreshIndicator(
+                                onRefresh: () async => ref.invalidate(
+                                  availableLabelPackagesProvider,
+                                ),
+                                child: _BatchPackageList(
+                                  packages: items,
+                                  selectedIds: _selectedPackageIds,
+                                  busy: _busy,
+                                  canManageLabels: canManageLabels,
+                                  onToggle: _toggle,
+                                  onToggleAll: () => _toggleAll(items),
+                                  onEditTemplate: () => context.push(
+                                    '/seller/labels/editor?mediaSize=Shipping4x6',
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
+                    ),
                   ),
                 ),
-              ),
-              if (unlocked)
-                packages.maybeWhen(
-                  data: (items) => _BatchFooter(
-                    count: _selectedPackageIds.length,
-                    busy: _busy,
-                    onPrint: () => _printSelected(items),
+                if (unlocked)
+                  packages.maybeWhen(
+                    data: (items) => _BatchFooter(
+                      count: _selectedPackageIds.length,
+                      busy: _busy,
+                      onPrint: () => _printSelected(items),
+                    ),
+                    orElse: () => const SizedBox.shrink(),
                   ),
-                  orElse: () => const SizedBox.shrink(),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -306,7 +335,10 @@ class _Header extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Etiquetas', style: AppTextStyles.h1.copyWith(fontSize: 22)),
+                Text(
+                  'Etiquetas',
+                  style: AppTextStyles.h1.copyWith(fontSize: 22),
+                ),
                 const SizedBox(height: 1),
                 Text(
                   'Bolsa por bolsa, lista para imprimir.',
@@ -501,9 +533,7 @@ class _Hero extends StatelessWidget {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Center(
-                      child: LabelQrPlaceholder(size: 40),
-                    ),
+                    child: const Center(child: LabelQrPlaceholder(size: 40)),
                   ),
                 ],
               ),
@@ -577,11 +607,7 @@ class _GhostChip extends StatelessWidget {
       ),
     );
     if (onTap == null) return chip;
-    return InteractiveBounce(
-      onPressed: onTap,
-      scaleFactor: 0.95,
-      child: chip,
-    );
+    return InteractiveBounce(onPressed: onTap, scaleFactor: 0.95, child: chip);
   }
 }
 
@@ -604,7 +630,10 @@ class _SelectAllRow extends StatelessWidget {
       Expanded(
         child: Text(
           'Seleccionar todas',
-          style: AppTextStyles.body.copyWith(fontSize: 13, fontWeight: FontWeight.w600),
+          style: AppTextStyles.body.copyWith(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
       Container(
@@ -682,7 +711,11 @@ class _OrderPackageGroup extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(Symbols.expand_more, color: AppColors.ink3, size: 20),
+                const Icon(
+                  Symbols.expand_more,
+                  color: AppColors.ink3,
+                  size: 20,
+                ),
               ],
             ),
           ),
@@ -800,29 +833,26 @@ class _BatchFooter extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '$count ${count == 1 ? 'bolsa seleccionada' : 'bolsas seleccionadas'}',
-                        style: AppTextStyles.body.copyWith(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      'Puedes mezclar formatos al elegir tu impresora',
-                      style: AppTextStyles.subtitle.copyWith(fontSize: 11),
-                    ),
-                  ],
+                // En columna: en fila el texto de ayuda le quitaba el ancho al
+                // contador y los dos se encimaban en pantallas normales.
+                Text(
+                  '$count ${count == 1 ? 'bolsa seleccionada' : 'bolsas seleccionadas'}',
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Puedes mezclar formatos al elegir tu impresora',
+                  style: AppTextStyles.subtitle.copyWith(fontSize: 11),
                 ),
                 const SizedBox(height: 10),
                 PillButton(
                   label: count == 0
                       ? 'Selecciona bolsas para imprimir'
                       : busy
-                      ? 'Abriendo impresoras...'
+                      ? 'Conectando e imprimiendo...'
                       : 'Imprimir $count ${count == 1 ? 'etiqueta' : 'etiquetas'}',
                   icon: Symbols.print,
                   onPressed: count == 0 || busy ? null : onPrint,

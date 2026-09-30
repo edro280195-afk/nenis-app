@@ -72,7 +72,8 @@ class _AddressEditScreenState extends ConsumerState<AddressEditScreen> {
           deliveryInstructions: _instrCtl.text.trim().isEmpty
               ? null
               : _instrCtl.text.trim(),
-          clearLatLng: _latCtl.text.trim().isEmpty && _lngCtl.text.trim().isEmpty,
+          clearLatLng:
+              _latCtl.text.trim().isEmpty && _lngCtl.text.trim().isEmpty,
         );
       } else {
         // Con original: solo enviamos lo que cambió (null = no tocar).
@@ -91,7 +92,8 @@ class _AddressEditScreenState extends ConsumerState<AddressEditScreen> {
               newInstr == (orig.deliveryInstructions?.trim() ?? '')
               ? null
               : (newInstr.isEmpty ? '' : newInstr),
-          clearLatLng: orig.latitude != null && newLat == null && newLng == null,
+          clearLatLng:
+              orig.latitude != null && newLat == null && newLng == null,
         );
       }
       await ref.read(addressesRepositoryProvider).updateAddress(id, req);

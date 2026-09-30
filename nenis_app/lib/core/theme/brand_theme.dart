@@ -82,17 +82,12 @@ class BrandTheme {
   ];
 
   static BrandTheme byId(String id) {
-    return all.firstWhere(
-      (b) => b.id == id,
-      orElse: () => neni,
-    );
+    return all.firstWhere((b) => b.id == id, orElse: () => neni);
   }
 }
 
 class BrandColors extends ThemeExtension<BrandColors> {
-  const BrandColors({
-    required this.brand,
-  });
+  const BrandColors({required this.brand});
 
   final BrandTheme brand;
 

@@ -9,9 +9,7 @@ class NeniBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceCream,
-      ),
+      decoration: const BoxDecoration(color: AppColors.surfaceCream),
       child: Stack(
         children: [
           const Positioned.fill(
@@ -31,7 +29,7 @@ class NeniBackground extends StatelessWidget {
                 gradient: RadialGradient(
                   center: Alignment(0.85, -0.85),
                   radius: 0.85,
-                  colors: [Color(0xFFE9DEFB), Color(0x00E9DEFB)],
+                  colors: [Color(0x24E9DEFB), Color(0x00E9DEFB)],
                 ),
               ),
             ),

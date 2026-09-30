@@ -86,7 +86,8 @@ class BuyerNotification {
         tag: (j['tag'] ?? 'general') as String,
         url: j['url'] as String?,
         orderId: (j['orderId'] as num?)?.toInt(),
-        createdAt: DateTime.tryParse((j['createdAt'] ?? '') as String) ??
+        createdAt:
+            DateTime.tryParse((j['createdAt'] ?? '') as String) ??
             DateTime.now(),
         readAt: j['readAt'] != null
             ? DateTime.tryParse(j['readAt'] as String)

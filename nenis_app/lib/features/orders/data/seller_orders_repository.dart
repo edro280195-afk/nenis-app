@@ -181,7 +181,7 @@ class SellerOrdersRepository {
       return OrderCaptureSettings.fromJson(res.data as Map<String, dynamic>);
     } catch (e) {
       throw SellerOrdersException(
-        _friendly(e, 'No pudimos cargar la configuracion de captura.'),
+        _friendly(e, 'No pudimos cargar la configuración de captura.'),
       );
     }
   }

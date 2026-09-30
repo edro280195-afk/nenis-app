@@ -11,6 +11,7 @@ import '../../../core/utils/color_hex.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/pill_button.dart';
+import '../../../shared/widgets/premium_toast.dart';
 import '../../../shared/widgets/status_chip.dart';
 import '../../../shared/widgets/store_avatar.dart';
 import '../../../shared/widgets/skeleton.dart';
@@ -74,9 +75,25 @@ class BuyerHomeScreen extends ConsumerWidget {
   }
 }
 
-class _HomeContent extends StatelessWidget {
+class _HomeContent extends StatefulWidget {
   const _HomeContent({required this.home});
   final BuyerHome home;
+
+  @override
+  State<_HomeContent> createState() => _HomeContentState();
+}
+
+class _HomeContentState extends State<_HomeContent> {
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+
+  BuyerHome get home => widget.home;
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
 
   String get _firstName {
     final name = home.displayName.trim();
@@ -86,8 +103,32 @@ class _HomeContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Búsqueda local sobre lo que la clienta ya tiene: sus pedidos (por folio
+    // o tienda) y sus tiendas. No existe un directorio de tiendas nuevas.
+    final q = _query.trim().toLowerCase();
+    final searching = q.isNotEmpty;
+    final digits = q.replaceAll('#', '');
+    bool matchesOrder(String store, int number) =>
+        store.toLowerCase().contains(q) ||
+        (digits.isNotEmpty && '$number'.contains(digits));
+    final stores = searching
+        ? home.stores.where((s) => s.name.toLowerCase().contains(q)).toList()
+        : home.stores;
+    final orders = searching
+        ? home.recentOrders
+              .where((o) => matchesOrder(o.businessName, o.displayNumber))
+              .toList()
+        : home.recentOrders;
+    final active = home.activeOrder;
+    final showActive =
+        active != null &&
+        (!searching || matchesOrder(active.businessName, active.displayNumber));
+    final noResults =
+        searching && stores.isEmpty && orders.isEmpty && !showActive;
+
     return ListView(
       padding: const EdgeInsets.only(bottom: 24),
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(22, 4, 22, 0),
@@ -115,70 +156,89 @@ class _HomeContent extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 22),
-          child: SearchField(),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 22),
+          child: SearchField(
+            controller: _searchCtrl,
+            hint: 'Busca en tus pedidos o tiendas',
+            onChanged: (v) => setState(() => _query = v),
+          ),
         ),
         const SizedBox(height: 18),
-        if (home.activeOrder != null) ...[
+        if (showActive) ...[
           Padding(
             padding: const EdgeInsets.fromLTRB(22, 0, 22, 8),
             child: Text(
-              'Tu pedido en camino',
+              // "En camino" solo cuando de verdad salió a entrega.
+              (active.status == 'InRoute' || active.status == 'Shipped')
+                  ? 'Tu pedido en camino'
+                  : 'Tu pedido activo',
               style: AppTextStyles.eyebrow(AppColors.neniDeep),
             ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 22),
-            child: _ActiveOrderHero(order: home.activeOrder!),
+            child: _ActiveOrderHero(order: active),
           ),
           const SizedBox(height: 16),
         ],
-        if (home.isEmpty) _ClaimBanner(),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 22),
-          child: Row(
-            children: [
-              Expanded(
-                child: _BentoTile(
-                  icon: Symbols.stars,
-                  iconColor: AppColors.gold,
-                  iconBg: const Color(0xFFFFF2D4),
-                  value: '${home.totalPoints}',
-                  caption: 'Puntos acumulados',
-                  tint: const Color(0xFFFFF7E6),
-                  onTap: () => context.go('/points'),
+        if (noResults) _NoSearchResults(query: _query.trim()),
+        if (!searching && home.isEmpty) _ClaimBanner(),
+        if (!searching)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _BentoTile(
+                    icon: Symbols.stars,
+                    iconColor: AppColors.gold,
+                    iconBg: const Color(0xFFFFF2D4),
+                    value: '${home.totalPoints}',
+                    caption: 'Puntos acumulados',
+                    tint: const Color(0xFFFFF7E6),
+                    onTap: () => context.go('/points'),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: _BentoTile(
-                  icon: Symbols.sensors,
-                  iconColor: AppColors.lavender,
-                  iconBg: const Color(0xFFECE0FF),
-                  value: '${home.liveCount}',
-                  caption: 'Lives en vivo',
-                  tint: const Color(0xFFF1E9FF),
-                  // `/live` sin :businessId no es una ruta válida (solo
-                  // existe `/live/:businessId`) — cada tap disparaba la
-                  // pantalla de error de go_router. Sin un solo destino
-                  // claro cuando hay 0 o varias tiendas en vivo a la vez,
-                  // vamos directo a la única tienda en vivo si hay
-                  // exactamente una.
-                  onTap: () {
-                    final liveStores =
-                        home.stores.where((s) => s.isLive).toList();
-                    if (liveStores.length == 1) {
-                      context.go('/live/${liveStores.first.businessId}');
-                    }
-                  },
+                const SizedBox(width: 14),
+                Expanded(
+                  child: _BentoTile(
+                    icon: Symbols.sensors,
+                    iconColor: AppColors.lavender,
+                    iconBg: const Color(0xFFECE0FF),
+                    value: '${home.liveCount}',
+                    caption: 'Lives en vivo',
+                    tint: const Color(0xFFF1E9FF),
+                    // `/live` sin :businessId no es una ruta válida (solo
+                    // existe `/live/:businessId`) — cada tap disparaba la
+                    // pantalla de error de go_router. Sin un solo destino
+                    // claro cuando hay 0 o varias tiendas en vivo a la vez,
+                    // vamos directo a la única tienda en vivo si hay
+                    // exactamente una.
+                    onTap: () {
+                      final liveStores = home.stores
+                          .where((s) => s.isLive)
+                          .toList();
+                      if (liveStores.length == 1) {
+                        context.push('/live/${liveStores.first.businessId}');
+                      } else if (liveStores.isEmpty) {
+                        context.showPremiumToast(
+                          'Ninguna de tus tiendas está en vivo ahora.',
+                        );
+                      } else {
+                        context.showPremiumToast(
+                          'Hay varias tiendas en vivo: entra a la que quieras '
+                          'desde "Mis tiendas".',
+                        );
+                      }
+                    },
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        if (home.isEmpty) const _EmptyHome(),
-        if (home.stores.isNotEmpty) ...[
+        if (!searching && home.isEmpty) const _EmptyHome(),
+        if (stores.isNotEmpty) ...[
           const SizedBox(height: 20),
           _SectionHeader(title: 'Mis tiendas'),
           const SizedBox(height: 12),
@@ -187,17 +247,17 @@ class _HomeContent extends StatelessWidget {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 22),
-              itemCount: home.stores.length,
+              itemCount: stores.length,
               separatorBuilder: (_, _) => const SizedBox(width: 13),
-              itemBuilder: (context, i) => _StoreCard(store: home.stores[i]),
+              itemBuilder: (context, i) => _StoreCard(store: stores[i]),
             ),
           ),
         ],
-        if (home.recentOrders.isNotEmpty) ...[
+        if (orders.isNotEmpty) ...[
           const SizedBox(height: 20),
           _SectionHeader(title: 'Pedidos recientes'),
           const SizedBox(height: 12),
-          ...home.recentOrders.map(
+          ...orders.map(
             (o) => Padding(
               padding: const EdgeInsets.fromLTRB(22, 0, 22, 11),
               child: _RecentOrderRow(order: o),
@@ -243,7 +303,7 @@ class _ActiveOrderHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final brand = colorFromHex(order.brandPrimaryColor);
     return GestureDetector(
-      onTap: () => context.go(
+      onTap: () => context.push(
         '/tracking/${order.orderId}?token=${order.accessToken ?? ''}',
       ),
       child: Container(
@@ -489,7 +549,7 @@ class _RecentOrderRow extends StatelessWidget {
         ? '1 artículo'
         : '${order.itemsCount} artículos';
     return GestureDetector(
-      onTap: () => context.go(
+      onTap: () => context.push(
         '/tracking/${order.orderId}?token=${order.accessToken ?? ''}',
       ),
       child: Container(
@@ -831,6 +891,40 @@ class _BuyerHomeSkeleton extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Estado vacío de la búsqueda de Inicio. La búsqueda solo recorre lo que la
+/// clienta ya tiene (pedidos y tiendas vinculadas): para llegar a una tienda
+/// nueva se entra por el enlace que comparte la vendedora.
+class _NoSearchResults extends StatelessWidget {
+  const _NoSearchResults({required this.query});
+  final String query;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(32, 28, 32, 0),
+      child: Column(
+        children: [
+          const Icon(Symbols.search_off, size: 44, color: AppColors.ink3),
+          const SizedBox(height: 12),
+          Text(
+            'Sin resultados para "$query"',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.h2.copyWith(fontSize: 16),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Busca por folio (#851) o por el nombre de la tienda. Para '
+            'encontrar una tienda nueva, abre el enlace que te comparta la '
+            'vendedora.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.subtitle.copyWith(fontSize: 12.5),
+          ),
+        ],
+      ),
     );
   }
 }

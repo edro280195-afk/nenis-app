@@ -15,6 +15,21 @@ String printedViaSystemMessage(int count) {
       'Configurar impresoras para imprimir directo la próxima vez.';
 }
 
+String printedDirectMessage(int count, String printerName) {
+  final plural = count == 1 ? 'etiqueta enviada' : 'etiquetas enviadas';
+  return '$count $plural a $printerName. La impresora recibió el trabajo.';
+}
+
+String connectingToPrinterMessage(String printerName) =>
+    'Conectando con $printerName y enviando las etiquetas…';
+
+const String preparingSystemPrintMessage =
+    'Preparando las etiquetas para el selector de impresión…';
+
+const String printUnknownFailureMessage =
+    'No pudimos completar la impresión. Revisa la impresora y vuelve a intentarlo.';
+
 /// La vendedora cerró/canceló el selector de impresión del sistema sin
 /// elegir nada.
-const String printCanceledMessage = 'Cancelaste la impresión antes de enviarla.';
+const String printCanceledMessage =
+    'Cancelaste la impresión antes de enviarla.';

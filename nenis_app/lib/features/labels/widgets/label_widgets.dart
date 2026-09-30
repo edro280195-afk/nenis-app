@@ -32,10 +32,26 @@ class _QrPainter extends CustomPainter {
   static const double _grid = 44.0;
 
   static const List<(double, double)> _modules = [
-    (4, 16), (9, 19), (14, 3), (19, 8), (25, 14), (31, 10),
-    (16, 2), (11, 24), (16, 29), (22, 25), (29, 29), (34, 25),
-    (31, 18), (25, 22), (18, 14), (12, 12), (25, 34), (18, 34),
-    (6, 34), (36, 2),
+    (4, 16),
+    (9, 19),
+    (14, 3),
+    (19, 8),
+    (25, 14),
+    (31, 10),
+    (16, 2),
+    (11, 24),
+    (16, 29),
+    (22, 25),
+    (29, 29),
+    (34, 25),
+    (31, 18),
+    (25, 22),
+    (18, 14),
+    (12, 12),
+    (25, 34),
+    (18, 34),
+    (6, 34),
+    (36, 2),
   ];
 
   @override
@@ -44,7 +60,10 @@ class _QrPainter extends CustomPainter {
     final paint = Paint()..color = color;
 
     void square(double x, double y, double w) {
-      canvas.drawRect(Rect.fromLTWH(x * scale, y * scale, w * scale, w * scale), paint);
+      canvas.drawRect(
+        Rect.fromLTWH(x * scale, y * scale, w * scale, w * scale),
+        paint,
+      );
     }
 
     // Patrones de esquina.
@@ -59,13 +78,23 @@ class _QrPainter extends CustomPainter {
 
     // Centros blancos de los patrones de esquina.
     final white = Paint()..color = Colors.white;
-    canvas.drawRect(Rect.fromLTWH(4.5 * scale, 4.5 * scale, 7 * scale, 7 * scale), white);
-    canvas.drawRect(Rect.fromLTWH(4.5 * scale, 32.5 * scale, 7 * scale, 7 * scale), white);
-    canvas.drawRect(Rect.fromLTWH(32.5 * scale, 4.5 * scale, 7 * scale, 7 * scale), white);
+    canvas.drawRect(
+      Rect.fromLTWH(4.5 * scale, 4.5 * scale, 7 * scale, 7 * scale),
+      white,
+    );
+    canvas.drawRect(
+      Rect.fromLTWH(4.5 * scale, 32.5 * scale, 7 * scale, 7 * scale),
+      white,
+    );
+    canvas.drawRect(
+      Rect.fromLTWH(32.5 * scale, 4.5 * scale, 7 * scale, 7 * scale),
+      white,
+    );
   }
 
   @override
-  bool shouldRepaint(covariant _QrPainter oldDelegate) => oldDelegate.color != color;
+  bool shouldRepaint(covariant _QrPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
 
 /// Miniatura de la etiqueta que se va a imprimir, tal como se aprobó en el
@@ -133,11 +162,7 @@ class MiniLabelPreview extends StatelessWidget {
                   barHeight: 6,
                 ),
               ),
-            Positioned(
-              right: 3,
-              top: 3,
-              child: LabelQrPlaceholder(size: 20),
-            ),
+            Positioned(right: 3, top: 3, child: LabelQrPlaceholder(size: 20)),
             Positioned(
               left: 5,
               bottom: 4,

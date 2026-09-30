@@ -22,17 +22,17 @@ class ClaimCandidate {
   final DateTime? lastOrderAt;
 
   factory ClaimCandidate.fromJson(Map<String, dynamic> j) => ClaimCandidate(
-        clientId: (j['clientId'] as num).toInt(),
-        businessId: (j['businessId'] as num).toInt(),
-        businessName: (j['businessName'] ?? '') as String,
-        clientName: (j['clientName'] ?? '') as String,
-        ordersCount: (j['ordersCount'] as num?)?.toInt() ?? 0,
-        matchedBy: (j['matchedBy'] ?? 'phone') as String,
-        city: j['city'] as String?,
-        lastOrderAt: j['lastOrderAt'] != null
-            ? DateTime.tryParse(j['lastOrderAt'] as String)
-            : null,
-      );
+    clientId: (j['clientId'] as num).toInt(),
+    businessId: (j['businessId'] as num).toInt(),
+    businessName: (j['businessName'] ?? '') as String,
+    clientName: (j['clientName'] ?? '') as String,
+    ordersCount: (j['ordersCount'] as num?)?.toInt() ?? 0,
+    matchedBy: (j['matchedBy'] ?? 'phone') as String,
+    city: j['city'] as String?,
+    lastOrderAt: j['lastOrderAt'] != null
+        ? DateTime.tryParse(j['lastOrderAt'] as String)
+        : null,
+  );
 }
 
 /// Desenlace de reclamar un pedido por su token de acceso (camino principal del

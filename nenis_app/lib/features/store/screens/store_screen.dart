@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/deeplinks/deep_link_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
@@ -33,6 +34,7 @@ class StoreScreen extends ConsumerStatefulWidget {
   @override
   ConsumerState<StoreScreen> createState() => _StoreScreenState();
 }
+
 class _StoreScreenState extends ConsumerState<StoreScreen> {
   @override
   void initState() {
@@ -41,6 +43,10 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
     if (id != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ref.read(storeBusinessIdProvider.notifier).set(id);
+        // Llegó a la tienda del enlace compartido: ya no queda pendiente.
+        if (ref.read(pendingStoreDeepLinkProvider) == id) {
+          ref.read(pendingStoreDeepLinkProvider.notifier).clear();
+        }
       });
     }
   }
@@ -295,26 +301,31 @@ class _StoreHeader extends StatelessWidget {
                 ],
               ),
             ),
+            // Centrado arriba: abajo a la izquierda lo tapaba el avatar de la
+            // fila de perfil, que sube 34 px sobre el encabezado.
             Positioned(
-              left: 18,
-              bottom: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.liveRed,
-                  borderRadius: AppRadii.pillRadius,
-                ),
-                child: const Text(
-                  'TIENDA',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    letterSpacing: 1.2,
+              top: 18,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.liveRed,
+                    borderRadius: AppRadii.pillRadius,
+                  ),
+                  child: const Text(
+                    'TIENDA',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      letterSpacing: 1.2,
+                    ),
                   ),
                 ),
               ),
@@ -383,7 +394,7 @@ class _ProfileRow extends ConsumerWidget {
                         Flexible(
                           child: Text(
                             store.name,
-                            maxLines: 1,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: AppTextStyles.h1.copyWith(fontSize: 20),
                           ),
@@ -454,6 +465,7 @@ class _ProfileRow extends ConsumerWidget {
               label: store.isFollowing ? 'Siguiendo' : 'Seguir',
               icon: store.isFollowing ? Symbols.check : Symbols.add,
               expand: false,
+              compact: true,
               variant: store.isFollowing
                   ? PillButtonVariant.ghost
                   : PillButtonVariant.brand,

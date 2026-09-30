@@ -19,13 +19,16 @@ class StorePostFeedItem {
   final bool isLocked;
   final DateTime createdAt;
 
-  factory StorePostFeedItem.fromJson(Map<String, dynamic> j) => StorePostFeedItem(
+  factory StorePostFeedItem.fromJson(Map<String, dynamic> j) =>
+      StorePostFeedItem(
         id: (j['id'] as num).toInt(),
         businessId: (j['businessId'] as num).toInt(),
         body: (j['body'] ?? '') as String,
         imageUrl: j['imageUrl'] as String?,
         isVipOnly: (j['isVipOnly'] as bool?) ?? false,
         isLocked: (j['isLocked'] as bool?) ?? false,
-        createdAt: DateTime.tryParse(j['createdAt']?.toString() ?? '') ?? DateTime.now(),
+        createdAt:
+            DateTime.tryParse(j['createdAt']?.toString() ?? '') ??
+            DateTime.now(),
       );
 }

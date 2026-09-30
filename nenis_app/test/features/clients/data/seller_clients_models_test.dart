@@ -77,7 +77,7 @@ void main() {
           'confidence': 0.95,
         });
 
-        expect(suggestion.reasonLabel, 'Mismo telefono');
+        expect(suggestion.reasonLabel, 'Mismo teléfono');
         expect(suggestion.confidenceLabel, '95%');
         expect(suggestion.recommendedTargetId, 8);
         expect(suggestion.sourceIdForTarget(8), 4);

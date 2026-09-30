@@ -118,7 +118,11 @@ class InventoryRepository {
   }) async {
     await _dio.put(
       '/api/inventory/label-prints/$id/status',
-      data: {'status': status, 'failureReason': failureReason, 'output': output},
+      data: {
+        'status': status,
+        'failureReason': failureReason,
+        'output': output,
+      },
     );
   }
 

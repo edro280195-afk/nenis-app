@@ -39,19 +39,18 @@ class BuyerPayment {
       : '?';
 
   factory BuyerPayment.fromJson(Map<String, dynamic> j) => BuyerPayment(
-        paymentId: (j['paymentId'] as num).toInt(),
-        orderId: (j['orderId'] as num).toInt(),
-        businessId: (j['businessId'] as num).toInt(),
-        businessName: (j['businessName'] ?? '') as String,
-        brandPrimaryColor: (j['brandPrimaryColor'] ?? '#FB6F9C') as String,
-        logoUrl: j['logoUrl'] as String?,
-        amount: (j['amount'] as num?)?.toDouble() ?? 0,
-        method: (j['method'] ?? 'Efectivo') as String,
-        date:
-            DateTime.tryParse((j['date'] ?? '') as String) ?? DateTime.now(),
-        registeredBy: (j['registeredBy'] ?? 'Admin') as String,
-        notes: j['notes'] as String?,
-        orderStatus: (j['orderStatus'] ?? 'Pending') as String,
-        orderTotal: (j['orderTotal'] as num?)?.toDouble() ?? 0,
-      );
+    paymentId: (j['paymentId'] as num).toInt(),
+    orderId: (j['orderId'] as num).toInt(),
+    businessId: (j['businessId'] as num).toInt(),
+    businessName: (j['businessName'] ?? '') as String,
+    brandPrimaryColor: (j['brandPrimaryColor'] ?? '#FB6F9C') as String,
+    logoUrl: j['logoUrl'] as String?,
+    amount: (j['amount'] as num?)?.toDouble() ?? 0,
+    method: (j['method'] ?? 'Efectivo') as String,
+    date: DateTime.tryParse((j['date'] ?? '') as String) ?? DateTime.now(),
+    registeredBy: (j['registeredBy'] ?? 'Admin') as String,
+    notes: j['notes'] as String?,
+    orderStatus: (j['orderStatus'] ?? 'Pending') as String,
+    orderTotal: (j['orderTotal'] as num?)?.toDouble() ?? 0,
+  );
 }

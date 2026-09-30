@@ -7,7 +7,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/dio_provider.dart';
-import '../router/app_router.dart';
 import 'pending_claim_store.dart';
 
 /// Token del pedido que llegó por deep link / referrer y que debe abrirse (y
@@ -28,8 +27,9 @@ class PendingDeepLink extends Notifier<String?> {
   }
 }
 
-final pendingDeepLinkProvider =
-    NotifierProvider<PendingDeepLink, String?>(PendingDeepLink.new);
+final pendingDeepLinkProvider = NotifierProvider<PendingDeepLink, String?>(
+  PendingDeepLink.new,
+);
 
 /// Destino de una tarjeta NFC de bodega. El token es opaco y el negocio se
 /// incluye para seleccionar la tienda correcta antes de consultar la caja.
@@ -56,6 +56,25 @@ final pendingInventoryDeepLinkProvider =
     NotifierProvider<PendingInventoryDeepLink, PendingInventoryTag?>(
       PendingInventoryDeepLink.new,
     );
+
+/// Tienda a la que apunta un enlace "compartir tienda" y a la que hay que
+/// llevar a la usuaria en cuanto tenga sesión. Es el camino de una clienta
+/// nueva: abre el enlace del live, aún sin cuenta, y debe terminar en la
+/// tienda (para seguirla) después de registrarse o entrar.
+class PendingStoreDeepLink extends Notifier<int?> {
+  @override
+  int? build() => null;
+
+  void set(int businessId) {
+    if (businessId <= 0) return;
+    state = businessId;
+  }
+
+  void clear() => state = null;
+}
+
+final pendingStoreDeepLinkProvider =
+    NotifierProvider<PendingStoreDeepLink, int?>(PendingStoreDeepLink.new);
 
 /// Extrae el `accessToken` de una URL de pedido. Soporta el short-link
 /// `/o/{token}` y la ruta larga `/pedido/{token}`, con o sin dominio y con el
@@ -161,10 +180,7 @@ class DeepLinkService {
     } catch (_) {}
 
     // 4) Links que llegan con la app viva.
-    _sub = _appLinks.uriLinkStream.listen(
-      _handleUri,
-      onError: (_) {},
-    );
+    _sub = _appLinks.uriLinkStream.listen(_handleUri, onError: (_) {});
   }
 
   /// Lee el Install Referrer de Google Play y, si trae `token=...`, lo siembra
@@ -210,14 +226,16 @@ class DeepLinkService {
   /// Fire-and-forget: si falla, no rompe el flujo de deep link.
   Future<void> _reportInstallReferrer(String token, String rawReferrer) async {
     try {
-      await _ref.read(dioProvider).post<dynamic>(
-        '/api/link-events',
-        data: {
-          'AccessToken': token,
-          'Event': 'install_referrer',
-          'Referrer': rawReferrer,
-        },
-      );
+      await _ref
+          .read(dioProvider)
+          .post<dynamic>(
+            '/api/link-events',
+            data: {
+              'AccessToken': token,
+              'Event': 'install_referrer',
+              'Referrer': rawReferrer,
+            },
+          );
     } catch (_) {}
   }
 
@@ -234,16 +252,13 @@ class DeepLinkService {
       return;
     }
 
-    // Link "compartir tienda": a diferencia del pedido, no necesita
-    // sobrevivir un login/OTP interrumpido — si ya hay sesión, navega
-    // directo; si no, se pierde (la próxima vez que abra la app entra a
-    // su home normal). Cubre el caso común: la app ya está instalada y
-    // con sesión cuando le tocan el link.
+    // Link "compartir tienda": se guarda como destino pendiente. El router
+    // la lleva a la tienda de inmediato si ya hay sesión, o cuando termine de
+    // registrarse / entrar si no (antes, sin sesión, el destino se perdía y la
+    // clienta nueva jamás llegaba a la tienda).
     final businessId = extractStoreBusinessId(uri);
     if (businessId != null) {
-      try {
-        _ref.read(routerProvider).go('/store/$businessId');
-      } catch (_) {}
+      _ref.read(pendingStoreDeepLinkProvider.notifier).set(businessId);
     }
   }
 

@@ -79,72 +79,72 @@ class BuyerStoreDetail {
   bool get hasCurrentLiveProduct => isLiveNow && liveCurrentProductId != null;
   bool get hasRatings => ratingsCount > 0 && averageRating != null;
 
-  String get initial => name.isNotEmpty
-      ? name.characters.first.toUpperCase()
-      : '?';
+  String get initial =>
+      name.isNotEmpty ? name.characters.first.toUpperCase() : '?';
 
   factory BuyerStoreDetail.fromJson(Map<String, dynamic> j) => BuyerStoreDetail(
-        businessId: (j['businessId'] as num).toInt(),
-        name: (j['name'] ?? '') as String,
-        slug: j['slug'] as String?,
-        city: j['city'] as String?,
-        logoUrl: j['logoUrl'] as String?,
-        brandPrimaryColor: (j['brandPrimaryColor'] ?? '#FB6F9C') as String,
-        brandAccentColor: j['brandAccentColor'] as String?,
-        clientCount: (j['clientCount'] as num?)?.toInt() ?? 0,
-        isVerified: (j['isVerified'] as bool?) ?? false,
-        points: StorePoints.fromJson(
-            (j['points'] as Map<String, dynamic>?) ?? const {}),
-        products: ((j['products'] as List?) ?? const [])
-            .map((e) => BuyerProduct.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        activeTandasCount: (j['activeTandasCount'] as num?)?.toInt() ?? 0,
-        activeRafflesCount: (j['activeRafflesCount'] as num?)?.toInt() ?? 0,
-        followerCount: (j['followerCount'] as num?)?.toInt() ?? 0,
-        isFollowing: (j['isFollowing'] as bool?) ?? false,
-        isVip: (j['isVip'] as bool?) ?? false,
-        isLiveNow: (j['isLiveNow'] as bool?) ?? false,
-        liveAnnouncementTitle: j['liveAnnouncementTitle'] as String?,
-        liveCurrentProductId: (j['liveCurrentProductId'] as num?)?.toInt(),
-        liveCurrentProductName: j['liveCurrentProductName'] as String?,
-        liveCurrentProductPrice: (j['liveCurrentProductPrice'] as num?)?.toDouble(),
-        liveCurrentAnnouncedAt: j['liveCurrentAnnouncedAt'] != null
-            ? DateTime.tryParse(j['liveCurrentAnnouncedAt'] as String)
-            : null,
-        averageRating: (j['averageRating'] as num?)?.toDouble(),
-        ratingsCount: (j['ratingsCount'] as num?)?.toInt() ?? 0,
-      );
+    businessId: (j['businessId'] as num).toInt(),
+    name: (j['name'] ?? '') as String,
+    slug: j['slug'] as String?,
+    city: j['city'] as String?,
+    logoUrl: j['logoUrl'] as String?,
+    brandPrimaryColor: (j['brandPrimaryColor'] ?? '#FB6F9C') as String,
+    brandAccentColor: j['brandAccentColor'] as String?,
+    clientCount: (j['clientCount'] as num?)?.toInt() ?? 0,
+    isVerified: (j['isVerified'] as bool?) ?? false,
+    points: StorePoints.fromJson(
+      (j['points'] as Map<String, dynamic>?) ?? const {},
+    ),
+    products: ((j['products'] as List?) ?? const [])
+        .map((e) => BuyerProduct.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    activeTandasCount: (j['activeTandasCount'] as num?)?.toInt() ?? 0,
+    activeRafflesCount: (j['activeRafflesCount'] as num?)?.toInt() ?? 0,
+    followerCount: (j['followerCount'] as num?)?.toInt() ?? 0,
+    isFollowing: (j['isFollowing'] as bool?) ?? false,
+    isVip: (j['isVip'] as bool?) ?? false,
+    isLiveNow: (j['isLiveNow'] as bool?) ?? false,
+    liveAnnouncementTitle: j['liveAnnouncementTitle'] as String?,
+    liveCurrentProductId: (j['liveCurrentProductId'] as num?)?.toInt(),
+    liveCurrentProductName: j['liveCurrentProductName'] as String?,
+    liveCurrentProductPrice: (j['liveCurrentProductPrice'] as num?)?.toDouble(),
+    liveCurrentAnnouncedAt: j['liveCurrentAnnouncedAt'] != null
+        ? DateTime.tryParse(j['liveCurrentAnnouncedAt'] as String)
+        : null,
+    averageRating: (j['averageRating'] as num?)?.toDouble(),
+    ratingsCount: (j['ratingsCount'] as num?)?.toInt() ?? 0,
+  );
 
   BuyerStoreDetail copyWith({
     int? followerCount,
     bool? isFollowing,
     bool? isVip,
   }) => BuyerStoreDetail(
-        businessId: businessId,
-        name: name,
-        slug: slug,
-        city: city,
-        logoUrl: logoUrl,
-        brandPrimaryColor: brandPrimaryColor,
-        brandAccentColor: brandAccentColor,
-        clientCount: clientCount,
-        isVerified: isVerified,
-        points: points,
-        products: products,
-        activeTandasCount: activeTandasCount,
-        activeRafflesCount: activeRafflesCount,
-        followerCount: followerCount ?? this.followerCount,
-        isFollowing: isFollowing ?? this.isFollowing,
-        isVip: isVip ?? this.isVip,
-        isLiveNow: isLiveNow,
-        liveAnnouncementTitle: liveAnnouncementTitle,
-        liveCurrentProductId: liveCurrentProductId,
-        liveCurrentProductName: liveCurrentProductName,
-        liveCurrentProductPrice: liveCurrentProductPrice,
-        liveCurrentAnnouncedAt: liveCurrentAnnouncedAt,
-        averageRating: averageRating,
-        ratingsCount: ratingsCount,
-      );
+    businessId: businessId,
+    name: name,
+    slug: slug,
+    city: city,
+    logoUrl: logoUrl,
+    brandPrimaryColor: brandPrimaryColor,
+    brandAccentColor: brandAccentColor,
+    clientCount: clientCount,
+    isVerified: isVerified,
+    points: points,
+    products: products,
+    activeTandasCount: activeTandasCount,
+    activeRafflesCount: activeRafflesCount,
+    followerCount: followerCount ?? this.followerCount,
+    isFollowing: isFollowing ?? this.isFollowing,
+    isVip: isVip ?? this.isVip,
+    isLiveNow: isLiveNow,
+    liveAnnouncementTitle: liveAnnouncementTitle,
+    liveCurrentProductId: liveCurrentProductId,
+    liveCurrentProductName: liveCurrentProductName,
+    liveCurrentProductPrice: liveCurrentProductPrice,
+    liveCurrentAnnouncedAt: liveCurrentAnnouncedAt,
+    averageRating: averageRating,
+    ratingsCount: ratingsCount,
+  );
 }
 
 /// Puntos que la compradora tiene acumulados en esta tienda, y el costo
@@ -156,9 +156,9 @@ class StorePoints {
   final int? nextRewardAt;
 
   factory StorePoints.fromJson(Map<String, dynamic> j) => StorePoints(
-        currentPoints: (j['currentPoints'] as num?)?.toInt() ?? 0,
-        nextRewardAt: (j['nextRewardAt'] as num?)?.toInt(),
-      );
+    currentPoints: (j['currentPoints'] as num?)?.toInt() ?? 0,
+    nextRewardAt: (j['nextRewardAt'] as num?)?.toInt(),
+  );
 }
 
 /// Producto del catálogo público de la tienda. (El backend todavía no
@@ -181,10 +181,10 @@ class BuyerProduct {
   bool get inStock => stock > 0;
 
   factory BuyerProduct.fromJson(Map<String, dynamic> j) => BuyerProduct(
-        id: (j['id'] as num).toInt(),
-        sku: (j['sku'] ?? '') as String,
-        name: (j['name'] ?? '') as String,
-        price: (j['price'] as num?)?.toDouble() ?? 0,
-        stock: (j['stock'] as num?)?.toInt() ?? 0,
-      );
+    id: (j['id'] as num).toInt(),
+    sku: (j['sku'] ?? '') as String,
+    name: (j['name'] ?? '') as String,
+    price: (j['price'] as num?)?.toDouble() ?? 0,
+    stock: (j['stock'] as num?)?.toInt() ?? 0,
+  );
 }

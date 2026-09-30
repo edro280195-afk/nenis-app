@@ -16,12 +16,26 @@ class AppRadii {
   static const double iconBtn = 14;
   static const double smallTile = 13;
 
-  static const BorderRadius cardRadius = BorderRadius.all(Radius.circular(card));
-  static const BorderRadius softRadius = BorderRadius.all(Radius.circular(soft));
-  static const BorderRadius fieldRadius = BorderRadius.all(Radius.circular(field));
-  static const BorderRadius pillRadius = BorderRadius.all(Radius.circular(pill));
+  static const BorderRadius cardRadius = BorderRadius.all(
+    Radius.circular(card),
+  );
+  static const BorderRadius softRadius = BorderRadius.all(
+    Radius.circular(soft),
+  );
+  static const BorderRadius fieldRadius = BorderRadius.all(
+    Radius.circular(field),
+  );
+  static const BorderRadius pillRadius = BorderRadius.all(
+    Radius.circular(pill),
+  );
   static const BorderRadius navRadius = BorderRadius.all(Radius.circular(nav));
-  static const BorderRadius iconBtnRadius = BorderRadius.all(Radius.circular(iconBtn));
-  static const BorderRadius avatarRadius = BorderRadius.all(Radius.circular(avatar));
-  static const BorderRadius avatarLgRadius = BorderRadius.all(Radius.circular(avatarLg));
+  static const BorderRadius iconBtnRadius = BorderRadius.all(
+    Radius.circular(iconBtn),
+  );
+  static const BorderRadius avatarRadius = BorderRadius.all(
+    Radius.circular(avatar),
+  );
+  static const BorderRadius avatarLgRadius = BorderRadius.all(
+    Radius.circular(avatarLg),
+  );
 }

@@ -366,10 +366,92 @@ Cuenta de prueba creada: `vendedora.qa@nenisapp.test` / tel. `868 140 0001` / ti
 
 ## Clienta
 
-_(pendiente)_
+_(ver sección "Sesión 2026-09-30 — clienta" al final del documento)_
 
 ---
 
 ## Resumen final
 
 _(se completa al cerrar la sesión)_
+
+---
+
+## Sesión 2026-09-30 — vendedora (cuenta real Regi Bazar) + pantalla chica + letra grande
+
+> Emulador `Medium_Phone_API_36.1`, APK debug contra **producción** (`AppConfig.apiBaseUrl` fijo en `https://app.nenisapp.com`, sin switch debug/release: cualquier APK pega a la base real). Se navegó en modo solo lectura sobre datos reales. Pruebas de estrés: 720×1280 @ 320 dpi (~360 dp) + `font_scale 1.5`.
+
+### 🔴 Botón atrás de Android cerraba la app desde cualquier pantalla del shell — 🔧 Corregido
+- **Síntoma:** atrás desde Pedidos/Clientas/Tandas, o desde Rutas/Bodega abiertas con "Más", mandaba directo al launcher.
+- **Causa 1:** faltaba `android:enableOnBackInvokedCallback="true"` en `<application>` del `AndroidManifest.xml`. Sin él, ningún `PopScope` funciona en Android modernos (afectaba también a los 3 que ya existían: `label_batch_print_screen`, `mp_checkout_webview_screen`, `order_link_screen`).
+- **Causa 2:** el `Navigator` interno del `ShellRoute` notificaba `canHandlePop=false` y pisaba el aviso del `PopScope` de la raíz → Android cerraba la tarea sin consultar a Flutter (log: transición `CLOSE`, sin callback registrado).
+- **Corrección:** `app_shell.dart` — `PopScope` (atrás → `/home`, solo Inicio cierra) + `NotificationListener<NavigationNotification>` que absorbe los avisos negativos del navigator interno; los módulos fuera del shell (Bodega) se abren con `push` desde "Más".
+- **Verificado en emulador:** Pedidos→atrás=Inicio ✅ · Más>Rutas→atrás=Inicio ✅ · Más>Bodega→atrás regresa ✅ · Inicio→atrás cierra ✅.
+
+### 🔴 Desbordes con letra grande / pantalla chica — 🔧 Corregidos
+Causa común: `childAspectRatio` fijo en cuadrículas y `Row` sin `Flexible`. Nuevo helper `core/utils/text_scale.dart` (`scaledAspectRatio`, con prueba en `test/core/utils/text_scale_test.dart`).
+- Inicio: 4 tarjetas KPI (`seller_home_screen.dart`) — los números quedaban tapados ("BOTTOM OVERFLOWED BY 8.1 PIXELS").
+- Clientas: KPIs, acciones rápidas y encabezado (título en columna de 40 px; los 4 botones bajan a 2.ª línea en pantalla angosta) — `seller_clients_screen.dart`.
+- Cuentas de cobro: selector de tipo (`seller_payment_settings_screen.dart`).
+- Pedidos: tarjeta con etiqueta "Frecuente" desbordada 14 px; el chip de estatus baja a su línea (`seller_orders_screen.dart`).
+- Tandas (y todo `SegmentedControl`): 4 pestañas montadas unas sobre otras → `FittedBox` (`shared/widgets/segmented.dart`).
+- Barra inferior: etiquetas pegadas → escala limitada a 1.15× (`glass_bottom_nav.dart`).
+- Menú "Más": título/etiqueta/insignia/pie desbordaban (hasta 177 px) → `Wrap`/`Flexible` (`app_shell.dart`).
+
+### Pendiente / observaciones (no corregido)
+- 🟡 Botón de borrar en la tarjeta de pedido sale recortado en el borde superior de la primera tarjeta (`seller_orders_screen.dart`, `Stack` con `Clip.none` dentro de la lista). No se probó que pida confirmación (son pedidos reales).
+- 🟡 KPIs de Clientas truncan con "…" en pantalla chica ("$648…" oculta el monto). Legible pero no ideal.
+- 🟢 Fuentes fijas de 8–8.5 px en tarjetas KPI de Inicio: muy pequeñas incluso a escala 1.0.
+- Grids de productos de tienda (`store_screen.dart`, `childAspectRatio: 0.78`) **no verificados** con letra grande.
+- ⏳ **No probado:** flujo completo de **clienta** (solo hubo sesión de vendedora), Nuevo pedido, Etiquetas, Mi negocio, checkout.
+- ⏳ El backend de producción sigue sin desplegar los fixes de la QA del 5 de agosto.
+
+
+---
+
+## Sesión 2026-09-30 (2) — clienta (cuenta real "Juana López", vinculada a Regi Bazar)
+
+> Mismo entorno: emulador, APK debug contra producción, solo lectura (no se tocó "Eliminar mi cuenta", "Cerrar sesión", canjes ni guardados). Recorrido a tamaño normal y en estrés (360 dp + letra 150 %).
+
+### Corregido
+- 🔴 **Puntos:** tarjetas de premios desbordaban 2 px por abajo **a tamaño normal** cuando el nombre ocupa 2 líneas (altura fija 172) — `points_screen.dart`; ahora 196 px + crece con la letra.
+- 🔴 **Mis direcciones:** subtítulo del encabezado desbordaba 11 px a tamaño normal — `addresses_screen.dart` (`Expanded`).
+- 🟡 **Tienda:** el chip rojo "TIENDA" quedaba tapado por el avatar (sube 34 px sobre el encabezado) — movido al centro superior, `store_screen.dart`.
+- 🟡 **`PillButton` con `expand:false`** no tenía relleno horizontal: "Editar" y "Siguiendo" tocaban los bordes redondeados. Se agregó relleno y una variante `compact` (44 px) usada en la fila de la tienda y en "Editar" para no aplastar el nombre — `shared/widgets/pill_button.dart`.
+- 🟡 **Mis pagos:** decía "1 pagos" → "1 pago".
+
+### Verificado sin hallazgos
+Inicio, Mis pedidos, Cuenta, menú "Más Experiencias", Notificaciones (estado vacío claro), Mis pagos, editor de dirección, Sorteos; todas sin errores de desborde a 360 dp / 150 %. Atrás de Android correcto en: Notificaciones, Pagos, Direcciones, editor, tienda, Sorteos (regresan sin cerrar la app).
+
+### Pendiente / decisiones de producto (no corregido)
+- 🔴 **Pedido activo → "Este enlace ha expirado".** Al tocar el pedido #851 (23 jul, "Pendiente") desde Inicio, `TrackingScreen` llama a `/api/pedido/{token}` y el backend responde 410 porque `Order.ExpiresAt` venció (`ClientViewController.cs:64`). La app lo sigue listando como activo y la clienta ya con sesión queda en un callejón sin salida. Arreglo real = endpoint autenticado para clientas (backend) o ocultar/etiquetar pedidos vencidos. Puede ser solo dato viejo de prueba, pero un pedido vencido y aún "en curso" es posible en producción.
+- 🟡 **Estatus inconsistente del mismo pedido:** Inicio muestra "Pendiente / Preparando tu pedido" y Mis pedidos "En ruta" para el #851. Revisar de dónde sale cada uno.
+- 🟢 El editor de dirección de la clienta pide latitud/longitud a mano; poco natural para una compradora.
+- 🟢 Sorteos: título con hueco a la izquierda (sin flecha atrás) — revisar consistencia con Tandas/Puntos.
+- 🟢 Sorteo "10 de mayo" (fecha 17 may 2026) sigue "Activo" en septiembre (dato).
+- ⏳ **No probado:** Tandas de la clienta, reserva de producto (`/reserve`), pantalla de en vivo, reclamar pedido, flujo de registro/login de clienta nuevo, canje real de puntos.
+
+---
+
+## Sesión 2026-09-30 (3) — huecos de flujo de negocio + vendedora
+
+Criterio: `PRODUCT.md` — la app une a clientas y vendedoras para que la relación que empieza en un live continúe dentro de la app.
+
+### 🔴 Huecos de flujo corregidos
+- **Clienta nueva no podía entrar a la tienda del enlace del live** (`/store/{id}`): backend respondía "Esta tienda no está en tu cuenta" y el destino se perdía si no había sesión. Ahora `BuyerStoreService`/`BuyerFeedPostsService` dejan ver el perfil público (los puntos siguen ligados a su Client; lo VIP sale bloqueado), la app guarda el destino pendiente (`pendingStoreDeepLinkProvider`) y el router la lleva a la tienda al terminar de entrar. "Apartar" da un mensaje claro. **Requiere desplegar backend.**
+- **Puntos sin salida en la app:** la vendedora veía RegiPuntos pero solo podía canjear en el panel web. Nueva hoja `redeem_reward_sheet.dart` desde la ficha de la clienta (elige pedido → premio → confirma; espeja las validaciones de `POST /api/loyalty/redeem`). El botón de la clienta ahora explica que la tienda aplica el premio al cobrar.
+- 🔴 **Bug de dinero encontrado al construir lo anterior:** `OrdersController.UpdateStatus` reescribía `Total = Subtotal + Envío` sin restar `DiscountAmount`. Cualquier cambio de estatus borraba el descuento de un premio ya canjeado (los puntos ya se habían descontado). Reproducido con prueba roja y corregido; 2 pruebas nuevas.
+- **Tandas "Disponibles"** ofrecía tandas terminadas/vencidas por calendario; ahora solo Active/Draft que no agotaron sus semanas (se conservan las que la clienta cursó). El conteo de la pestaña de la tienda usa el mismo criterio.
+- **Buscador de Inicio (clienta)** no hacía nada; ahora filtra pedidos y tiendas propios y explica cómo llegar a una tienda nueva. Mosaico "Lives en vivo" avisa en vez de no responder. Etiqueta "en camino" solo si de verdad va en camino.
+
+### Otras correcciones
+- ~35 textos de UI sin acento ("Direccion", "Rapido", "articulo", "Envio", "telefono", "configuracion"…) en Nuevo pedido, Clientas, Tandas, Rutas, auth, direcciones, notificaciones, preferencias.
+- Etiquetas: la barra inferior encimaba el contador de bolsas con el texto de ayuda.
+- Nombre de tienda en el encabezado admite 2 líneas.
+
+### ⏳ Huecos que siguen abiertos (decisión de producto o fuera de alcance)
+- 🔴 **Enlace público del pedido vence (410) y la clienta con sesión no puede ver su pedido** (`Order.ExpiresAt`, `ClientViewController`). Necesita endpoint autenticado o renovar el enlace.
+- 🟡 **"Equipo de reparto" y "Preferencias" son pantallas de interruptores que no hacen nada** (la propia app lo avisa en un recuadro ámbar). Riesgo de reseña en Play Store ("funciones que no funcionan"): conviene ocultarlas hasta que persistan o marcarlas claramente como "próximamente".
+- 🟡 Apartar sigue exigiendo ser clienta de la tienda; la clienta nueva puede seguirla pero no comprar hasta que la vendedora la registre (sin "crear clienta al apartar").
+- 🟡 Estatus inconsistente del mismo pedido: Inicio "Pendiente" vs Mis pedidos "En ruta".
+- 🟢 Clienta no ve pagos por tarjeta/Mercado Pago dentro de la app ("en revisión" en seguimiento).
+- Sin probar: checkout de plan (WebView de Mercado Pago), impresión Bluetooth real, NFC, Live real, ejecutar un canje real, crear/borrar pedidos reales (datos de producción).

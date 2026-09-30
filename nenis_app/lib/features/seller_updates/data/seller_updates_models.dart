@@ -20,15 +20,20 @@ class SellerLiveAnnouncement {
   final double? currentProductPrice;
   final DateTime? currentAnnouncedAt;
 
-  factory SellerLiveAnnouncement.fromJson(Map<String, dynamic> j) => SellerLiveAnnouncement(
+  factory SellerLiveAnnouncement.fromJson(Map<String, dynamic> j) =>
+      SellerLiveAnnouncement(
         id: (j['id'] as num).toInt(),
         title: j['title'] as String?,
-        startedAt: DateTime.tryParse(j['startedAt']?.toString() ?? '') ?? DateTime.now(),
+        startedAt:
+            DateTime.tryParse(j['startedAt']?.toString() ?? '') ??
+            DateTime.now(),
         isActive: (j['isActive'] as bool?) ?? false,
         currentProductId: (j['currentProductId'] as num?)?.toInt(),
         currentProductName: j['currentProductName'] as String?,
         currentProductPrice: (j['currentProductPrice'] as num?)?.toDouble(),
-        currentAnnouncedAt: DateTime.tryParse(j['currentAnnouncedAt']?.toString() ?? ''),
+        currentAnnouncedAt: DateTime.tryParse(
+          j['currentAnnouncedAt']?.toString() ?? '',
+        ),
       );
 }
 
@@ -49,10 +54,11 @@ class SellerStorePost {
   final DateTime createdAt;
 
   factory SellerStorePost.fromJson(Map<String, dynamic> j) => SellerStorePost(
-        id: (j['id'] as num).toInt(),
-        body: (j['body'] ?? '') as String,
-        imageUrl: j['imageUrl'] as String?,
-        isVipOnly: (j['isVipOnly'] as bool?) ?? false,
-        createdAt: DateTime.tryParse(j['createdAt']?.toString() ?? '') ?? DateTime.now(),
-      );
+    id: (j['id'] as num).toInt(),
+    body: (j['body'] ?? '') as String,
+    imageUrl: j['imageUrl'] as String?,
+    isVipOnly: (j['isVipOnly'] as bool?) ?? false,
+    createdAt:
+        DateTime.tryParse(j['createdAt']?.toString() ?? '') ?? DateTime.now(),
+  );
 }

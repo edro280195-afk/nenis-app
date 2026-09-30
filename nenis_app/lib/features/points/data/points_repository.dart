@@ -41,7 +41,8 @@ final pointsRepositoryProvider = Provider<PointsRepository>((ref) {
 
 /// Catálogo de recompensas por tienda. Devuelve una lista (vacía si la
 /// compradora no tiene ninguna tienda reclamada).
-final pointsFeedProvider =
-    FutureProvider.autoDispose<List<RewardsByBusiness>>((ref) {
+final pointsFeedProvider = FutureProvider.autoDispose<List<RewardsByBusiness>>((
+  ref,
+) {
   return ref.read(pointsRepositoryProvider).getRewards();
 });

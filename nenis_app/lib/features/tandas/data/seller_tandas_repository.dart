@@ -278,7 +278,6 @@ class SellerTandasRepository {
   }
 }
 
-
 final sellerTandasRepositoryProvider = Provider<SellerTandasRepository>((ref) {
   return SellerTandasRepository(ref.read(dioProvider));
 });
@@ -472,7 +471,6 @@ class SellerTandasController extends AsyncNotifier<SellerTandasWorkspace> {
     await ref.read(sellerTandasRepositoryProvider).drawTurns(tanda.id);
     await reloadSelected(tanda.id);
   }
-
 
   Future<void> reloadSelected(String selectedId) async {
     final current = state.asData?.value;

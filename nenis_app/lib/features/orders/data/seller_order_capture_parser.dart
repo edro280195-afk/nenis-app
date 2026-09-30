@@ -80,7 +80,7 @@ QuickCaptureDraft? parseQuickProductCapture({
   } else {
     quantity = 1;
   }
-  if (productWords.isEmpty) productWords = ['Articulo'];
+  if (productWords.isEmpty) productWords = ['Artículo'];
 
   return QuickCaptureDraft(
     clientName: resolvedClientName,
@@ -149,9 +149,9 @@ QuickCaptureDraft? _parseCommaCapture(List<String> chunks) {
   if (price <= 0) return null;
 
   // El nombre del producto es el texto sin el número del precio.
-  var productName = (cleaned.substring(0, lastMatch.start) +
-          cleaned.substring(lastMatch.end))
-      .trim();
+  var productName =
+      (cleaned.substring(0, lastMatch.start) + cleaned.substring(lastMatch.end))
+          .trim();
 
   // Cantidad al inicio del producto (ej. "2 blusas" → qty=2, "blusas").
   final words = productName
@@ -167,7 +167,7 @@ QuickCaptureDraft? _parseCommaCapture(List<String> chunks) {
       productName = words.join(' ');
     }
   }
-  if (productName.isEmpty) productName = 'Articulo';
+  if (productName.isEmpty) productName = 'Artículo';
 
   return QuickCaptureDraft(
     clientName: clientName,

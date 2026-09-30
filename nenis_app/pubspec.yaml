@@ -108,6 +108,7 @@ flutter:
   assets:
     - assets/branding/nenis-mark.png
     - assets/branding/nenis-logo.png
+    - assets/branding/nenis-auth-bg.png
     - assets/fonts/Poppins-Regular.ttf
     - assets/fonts/Poppins-Bold.ttf
 
