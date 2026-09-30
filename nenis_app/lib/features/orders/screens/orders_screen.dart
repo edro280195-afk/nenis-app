@@ -280,7 +280,7 @@ class _PagerButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final disabled = onTap == null;
-    final fg = disabled ? AppColors.ink3 : AppColors.ink;
+    final fg = disabled ? AppColors.inkDisabled : AppColors.ink;
     final children = <Widget>[
       if (!trailingIcon) Icon(icon, size: 16, color: fg),
       if (!trailingIcon) const SizedBox(width: 4),

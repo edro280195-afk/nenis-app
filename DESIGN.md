@@ -3,13 +3,14 @@ name: "Neni's App"
 description: "El espacio moderno donde clientas y vendedoras siguen conectadas."
 colors:
   ink-plum: "#3A2233"
-  ink-muted: "#8A6F82"
-  ink-soft: "#B6A4B1"
+  ink-muted: "#695563"
+  ink-soft: "#786072"
+  ink-disabled: "#B6A4B1"
   surface-petal: "#FFFCFD"
   surface-blush: "#FDF4F7"
   line-plum: "#3A223314"
   neni-pink: "#FB6F9C"
-  neni-deep: "#E84E83"
+  neni-deep: "#C71A56"
   lavender: "#9B7BE0"
   celebration-gold: "#F3B341"
   facebook-blue: "#1877F2"
@@ -110,7 +111,7 @@ La paleta combina un marfil rosado luminoso con rosa coral, ciruela y lavanda co
 ### Primary
 
 - **Rosa Neni:** acción principal, selección y momentos de marca.
-- **Rosa profundo:** contraste, estado activo y continuidad de marca.
+- **Rosa profundo:** texto, enlaces, iconos, estado activo y continuidad de marca. Cumple AA (4.5:1) sobre todos los fondos, igual que el texto secundario y terciario; el gris suave (`ink-disabled`) es solo para controles deshabilitados.
 
 ### Secondary
 

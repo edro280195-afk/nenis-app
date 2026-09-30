@@ -4,23 +4,41 @@ class AppColors {
   AppColors._();
 
   static const Color ink = Color(0xFF3A2233);
-  static const Color ink2 = Color(0xFF8A6F82);
-  static const Color ink3 = Color(0xFFB6A4B1);
 
-  /// Texto secundario que SÍ cumple contraste AA (6.2:1 o más sobre
-  /// `surface` y `surfaceCream`). `ink2` (4.4:1) e `ink3` (2.3:1) quedan para
-  /// decoración o texto grande. Usar este para explicaciones y avisos.
-  static const Color textAa = Color(0xFF6E5468);
+  // ── Texto secundario y terciario con contraste AA ──────────────────────────
+  // Los tres colores de abajo (`ink2`, `ink3`, `neniDeep`) cumplen 4.5:1 sobre
+  // TODOS los fondos de la app, incluido el caso más duro: el brillo rosa de
+  // `NeniBackground` (#FFE1EE) y los chips rosados (#FFE1EC). Conservan el tono
+  // de la marca; solo son más oscuros que antes (8A6F82 / B6A4B1 / E84E83, que
+  // daban 3.7 / 1.9 / 3.0:1 en ese caso).
 
-  /// Rosa para enlaces y acciones de texto pequeñas (4.8:1 o más). El
-  /// `neniDeep` (3.5:1) solo cumple en texto grande o iconos.
-  static const Color linkAa = Color(0xFFC2366B);
+  /// Texto secundario (subtítulos, explicaciones, etiquetas). 5.6:1 o más.
+  static const Color ink2 = Color(0xFF695563);
+
+  /// Texto terciario (horas, pistas, contadores) e iconos de apoyo. 4.6:1 o más.
+  static const Color ink3 = Color(0xFF786072);
+
+  /// Solo para controles DESHABILITADOS (las WCAG los eximen de contraste): es el
+  /// `ink3` de antes, suave a propósito para que se note que no se puede tocar.
+  /// Nunca para texto que la persona necesita leer.
+  static const Color inkDisabled = Color(0xFFB6A4B1);
+
+  /// Alias histórico de [ink2] (la pantalla de acceso lo usaba antes de que
+  /// `ink2` cumpliera AA).
+  static const Color textAa = ink2;
+
+  /// Alias histórico de [neniDeep] (enlaces y acciones de texto pequeñas).
+  static const Color linkAa = neniDeep;
   static const Color surface = Color(0xFFFFFCFD);
   static const Color line = Color(0x143A2233);
   static const Color lineSoft = Color(0x0D3A2233);
 
   static const Color neni = Color(0xFFFB6F9C);
-  static const Color neniDeep = Color(0xFFE84E83);
+
+  /// Rosa profundo de marca para texto, enlaces, iconos y acentos. 4.6:1 o más sobre
+  /// todos los fondos (antes #E84E83, 3.0:1 en el caso más duro). El rosa claro
+  /// [neni] sigue siendo para rellenos y decoración, no para texto.
+  static const Color neniDeep = Color(0xFFC71A56);
   static const Color lavender = Color(0xFF9B7BE0);
   static const Color gold = Color(0xFFF3B341);
 

@@ -153,7 +153,7 @@ class _StatusJourneyCardState extends State<StatusJourneyCard>
                         style: const TextStyle(
                           fontFamily: 'Outfit',
                           fontSize: 13,
-                          color: Color(0xFF8A6F82),
+                          color: AppColors.ink2,
                         ),
                       ),
                     ],
@@ -197,7 +197,7 @@ class _EyebrowRow extends StatelessWidget {
               fontFamily: 'Outfit',
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
-              color: Color(0xFFE84E83),
+              color: AppColors.neniDeep,
               letterSpacing: 0.3,
             ),
           ),
@@ -353,7 +353,7 @@ class _EtaSection extends StatelessWidget {
                     style: const TextStyle(
                       fontFamily: 'Outfit',
                       fontSize: 11.5,
-                      color: Color(0xFF8A6F82),
+                      color: AppColors.ink2,
                     ),
                   ),
               ],
@@ -509,7 +509,7 @@ class _TimelineStep extends StatelessWidget {
         ? AppColors.neniDeep
         : isActive
         ? AppColors.neni
-        : const Color(0xFFB6A4B1);
+        : AppColors.ink3;
 
     final Color bg = isDone
         ? const Color(0xFFFFE8F0)

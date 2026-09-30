@@ -322,7 +322,7 @@ class _FormView extends StatelessWidget {
             style: TextStyle(
               fontFamily: 'Outfit',
               fontSize: 13,
-              color: Color(0xFF8A6F82),
+              color: AppColors.ink2,
             ),
           ),
           const SizedBox(height: 22),
@@ -361,7 +361,7 @@ class _FormView extends StatelessWidget {
                 hintStyle: const TextStyle(
                   fontFamily: 'Outfit',
                   fontSize: 13,
-                  color: Color(0xFFB6A4B1),
+                  color: AppColors.ink3,
                 ),
                 filled: true,
                 fillColor: const Color(0xFFFDF4F7),
@@ -373,7 +373,7 @@ class _FormView extends StatelessWidget {
                 counterStyle: const TextStyle(
                   fontFamily: 'Outfit',
                   fontSize: 11,
-                  color: Color(0xFFB6A4B1),
+                  color: AppColors.ink3,
                 ),
               ),
               style: const TextStyle(
@@ -442,7 +442,7 @@ class _FormView extends StatelessWidget {
                 style: TextStyle(
                   fontFamily: 'Outfit',
                   fontSize: 14,
-                  color: Color(0xFFB6A4B1),
+                  color: AppColors.ink3,
                 ),
               ),
             ),
@@ -649,9 +649,7 @@ class _FeedbackStickerState extends State<_FeedbackSticker>
                 : const Color(0xFFF5EEF2),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: widget.selected
-                  ? const Color(0xFFE84E83)
-                  : Colors.transparent,
+              color: widget.selected ? AppColors.neniDeep : Colors.transparent,
               width: 1.5,
             ),
             boxShadow: widget.selected
@@ -670,9 +668,7 @@ class _FeedbackStickerState extends State<_FeedbackSticker>
               fontFamily: 'Outfit',
               fontSize: 13.5,
               fontWeight: widget.selected ? FontWeight.w700 : FontWeight.w500,
-              color: widget.selected
-                  ? const Color(0xFFE84E83)
-                  : const Color(0xFF8A6F82),
+              color: widget.selected ? AppColors.neniDeep : AppColors.ink2,
             ),
           ),
         ),
@@ -800,7 +796,7 @@ class _SuccessViewState extends State<_SuccessView>
             style: TextStyle(
               fontFamily: 'Outfit',
               fontSize: 13,
-              color: Color(0xFF8A6F82),
+              color: AppColors.ink2,
             ),
           ),
           const SizedBox(height: 28),

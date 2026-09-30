@@ -1085,7 +1085,7 @@ class _SoftButton extends StatelessWidget {
               Icon(
                 icon,
                 size: 16,
-                color: disabled ? AppColors.ink3 : AppColors.neniDeep,
+                color: disabled ? AppColors.inkDisabled : AppColors.neniDeep,
               ),
               const SizedBox(width: 6),
               Text(
@@ -1093,7 +1093,7 @@ class _SoftButton extends StatelessWidget {
                 style: AppTextStyles.body.copyWith(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: disabled ? AppColors.ink3 : AppColors.neniDeep,
+                  color: disabled ? AppColors.inkDisabled : AppColors.neniDeep,
                 ),
               ),
             ],
@@ -1201,7 +1201,7 @@ class _PagerBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final disabled = onTap == null;
-    final fg = disabled ? AppColors.ink3 : AppColors.ink;
+    final fg = disabled ? AppColors.inkDisabled : AppColors.ink;
     return Opacity(
       opacity: disabled ? 0.5 : 1,
       child: GestureDetector(

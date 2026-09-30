@@ -577,7 +577,7 @@ class LabelCopyButton extends StatelessWidget {
             child: Icon(
               icon,
               size: 18,
-              color: enabled ? AppColors.neniDeep : AppColors.ink3,
+              color: enabled ? AppColors.neniDeep : AppColors.inkDisabled,
             ),
           ),
         ),

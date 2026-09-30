@@ -837,7 +837,7 @@ class _Tool extends StatelessWidget {
           Icon(
             icon,
             size: 20,
-            color: onTap == null ? AppColors.ink3 : AppColors.neniDeep,
+            color: onTap == null ? AppColors.inkDisabled : AppColors.neniDeep,
           ),
           const SizedBox(height: 2),
           Text(label, style: AppTextStyles.subtitle.copyWith(fontSize: 10)),

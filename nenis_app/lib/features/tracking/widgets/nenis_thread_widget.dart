@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'nenis_thread_painter.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Widget del "Hilo Nenis" con animación de progreso y shimmer.
 ///
@@ -279,7 +280,7 @@ class _HomePinDotState extends State<_HomePinDot>
             ),
             child: Icon(
               Icons.home_rounded,
-              color: widget.isActive ? Colors.white : const Color(0xFFB6A4B1),
+              color: widget.isActive ? Colors.white : AppColors.ink3,
               size: 14,
             ),
           ),

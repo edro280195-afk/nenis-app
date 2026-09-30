@@ -340,7 +340,7 @@ class _OrderDetailOverviewCardState extends State<OrderDetailOverviewCard> {
                         fontFamily: 'Outfit',
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF8A6F82),
+                        color: AppColors.ink2,
                       ),
                     ),
                   ],
@@ -482,9 +482,7 @@ class _TabButton extends StatelessWidget {
                   Icon(
                     icon,
                     size: 17,
-                    color: selected
-                        ? AppColors.neniDeep
-                        : const Color(0xFF8A6F82),
+                    color: selected ? AppColors.neniDeep : AppColors.ink2,
                   ),
                   const SizedBox(width: 5),
                   Text(
@@ -493,9 +491,7 @@ class _TabButton extends StatelessWidget {
                       fontFamily: 'Outfit',
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
-                      color: selected
-                          ? AppColors.neniDeep
-                          : const Color(0xFF8A6F82),
+                      color: selected ? AppColors.neniDeep : AppColors.ink2,
                     ),
                   ),
                 ],
@@ -573,7 +569,7 @@ class _SummaryTab extends StatelessWidget {
                       fontFamily: 'Outfit',
                       fontSize: 11.5,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF8A6F82),
+                      color: AppColors.ink2,
                     ),
                   ),
                 ),
@@ -704,7 +700,7 @@ class _AmountTile extends StatelessWidget {
               fontFamily: 'Outfit',
               fontSize: 10.5,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF8A6F82),
+              color: AppColors.ink2,
             ),
           ),
           const SizedBox(height: 2),
@@ -804,7 +800,7 @@ class _EmptyItemsMessage extends StatelessWidget {
           fontFamily: 'Outfit',
           fontSize: 12.5,
           fontWeight: FontWeight.w600,
-          color: Color(0xFF8A6F82),
+          color: AppColors.ink2,
         ),
       ),
     );
@@ -888,7 +884,7 @@ class _TicketTotalRow extends StatelessWidget {
               fontFamily: 'Outfit',
               fontSize: bold ? 15 : 13,
               fontWeight: bold ? FontWeight.w900 : FontWeight.w700,
-              color: bold ? const Color(0xFF3A2233) : const Color(0xFF8A6F82),
+              color: bold ? const Color(0xFF3A2233) : AppColors.ink2,
             ),
           ),
           const Spacer(),
@@ -938,7 +934,7 @@ class _InfoCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, size: 18, color: const Color(0xFF8A6F82)),
+              Icon(icon, size: 18, color: AppColors.ink2),
               const SizedBox(width: 8),
               Text(
                 title,
@@ -946,7 +942,7 @@ class _InfoCard extends StatelessWidget {
                   fontFamily: 'Outfit',
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF8A6F82),
+                  color: AppColors.ink2,
                 ),
               ),
             ],
