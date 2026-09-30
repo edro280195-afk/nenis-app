@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../../core/auth/auth_controller.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_shadows.dart';
@@ -56,7 +57,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
     setState(() => _markingAllAsRead = true);
     try {
-      final n = await ref.read(notificationsRepositoryProvider).markAllAsRead();
+      // Solo las del papel actual: marcar las de la tienda no toca las de clienta.
+      final n = await ref
+          .read(notificationsRepositoryProvider)
+          .markAllAsRead(audience: ref.read(notificationAudienceProvider));
       if (!mounted) return;
       ref.invalidate(notificationsFeedProvider);
       ref.invalidate(unreadNotificationsCountProvider);
@@ -78,6 +82,18 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     // navegamos. Si es externa, la ignoramos por ahora.
     final url = n.url;
     if (url != null && url.startsWith('/')) {
+      // Aviso de tienda de OTRO de sus negocios: primero se cambia el negocio activo,
+      // para que la pantalla a la que lleva muestre los datos de ese negocio.
+      if (n.audience == NotificationAudience.seller) {
+        final session = ref.read(authControllerProvider).asData?.value;
+        if (session != null &&
+            session.managesBusiness(n.businessId) &&
+            session.activeBusinessId != n.businessId) {
+          ref
+              .read(authControllerProvider.notifier)
+              .setActiveBusiness(n.businessId);
+        }
+      }
       if (mounted) context.go(url);
     }
   }
@@ -85,6 +101,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     final feed = ref.watch(notificationsFeedProvider);
+    final audience = ref.watch(notificationAudienceProvider);
 
     return Scaffold(
       backgroundColor: AppColors.surfaceCream,
@@ -104,6 +121,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               return Column(
                 children: [
                   _Header(
+                    audience: audience,
                     onBack: () =>
                         context.canPop() ? context.pop() : context.go('/home'),
                   ),
@@ -122,7 +140,12 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                     ),
                   ),
                   if (list.isEmpty)
-                    Expanded(child: _EmptyNotifications(filter: _filter))
+                    Expanded(
+                      child: _EmptyNotifications(
+                        filter: _filter,
+                        audience: audience,
+                      ),
+                    )
                   else
                     Expanded(
                       child: RefreshIndicator(
@@ -165,8 +188,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.onBack});
+  const _Header({required this.onBack, required this.audience});
   final VoidCallback onBack;
+  final NotificationAudience audience;
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -202,7 +226,9 @@ class _Header extends StatelessWidget {
                 style: AppTextStyles.h1.copyWith(fontSize: 24),
               ),
               Text(
-                'Avisos de pedidos, entregas y mensajes.',
+                audience == NotificationAudience.seller
+                    ? 'Avisos de tu tienda: pedidos, cobros y entregas.'
+                    : 'Avisos de pedidos, entregas y mensajes.',
                 style: AppTextStyles.subtitle.copyWith(
                   fontSize: 12.5,
                   color: AppColors.ink2,
@@ -351,8 +377,9 @@ class _NotificationRow extends StatelessWidget {
 }
 
 class _EmptyNotifications extends StatelessWidget {
-  const _EmptyNotifications({required this.filter});
+  const _EmptyNotifications({required this.filter, required this.audience});
   final NotificationsFilter filter;
+  final NotificationAudience audience;
   @override
   Widget build(BuildContext context) {
     final isUnread = filter == NotificationsFilter.unread;
@@ -369,7 +396,9 @@ class _EmptyNotifications extends StatelessWidget {
             AppColors.neniDeep,
             const Color(0xFFFFE1EC),
             'Aún no tienes notificaciones',
-            'Cuando recibas un pedido, el repartidor salga hacia ti o te dejen un mensaje, aparecerá aquí.',
+            audience == NotificationAudience.seller
+                ? 'Cuando una clienta aparte, confirme o pague un pedido, o haya algo pendiente en tu tienda, te avisaremos aquí.'
+                : 'Cuando recibas un pedido, el repartidor salga hacia ti o te dejen un mensaje, aparecerá aquí.',
           );
     return ListView(
       padding: const EdgeInsets.fromLTRB(30, 40, 30, 0),

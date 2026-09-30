@@ -21,7 +21,16 @@
 3. Redespliega. En los logs de Render debe aparecer: `🔥 Motor de Firebase conectado con éxito (proyecto: nenisapp-60810)`.
 4. **No subas ese archivo a git** (ya está en `.gitignore`).
 
-> ⚠️ Los choferes y el panel web usan el mismo servicio de FCM (`FcmToken`, `regibazar_channel`). Un proceso solo puede tener **una** credencial por defecto. Si tus choferes reciben push con tokens del proyecto `regibazarnotify`, con esta credencial dejarán de recibirlos. Confirma cuál usan antes de cambiar; si hacen falta ambos proyectos hay que agregar una segunda `FirebaseApp` con nombre.
+> ⚠️ Un token FCM solo lo acepta el proyecto con el que se registró. Los choferes (`FcmToken`, `regibazar_channel`) usan su propia app; si sus tokens son del proyecto `regibazarnotify`, la credencial de `nenisapp-60810` de arriba los rechaza (`SenderIdMismatch`).
+>
+> **Corregido 2026-09-30 en el código:** el backend ahora tiene un segundo canal de FCM solo para choferes (`IDriverFcmService`, segunda `FirebaseApp` llamada `drivers`). Solo falta darle su credencial (ver A2).
+
+### A2. Credencial aparte para choferes (proyecto `regibazarnotify`)
+Hazlo **solo si** los choferes siguen con la app anterior (proyecto `regibazarnotify`). Si la app de choferes nueva vive en `nenisapp-60810`, sáltate este paso: sin este archivo, los choferes usan la misma credencial que la app.
+1. Usa la credencial de `regibazarnotify`: es la misma que tienes local en `sellgeneral-api/firebase-service-account.json` (o genera una nueva en Firebase Console → proyecto **regibazarnotify** → *Cuentas de servicio*).
+2. Render → servicio de la API → *Environment* → **Secret Files** → agrega uno llamado exactamente `firebase-drivers-service-account.json` con ese contenido.
+3. Redespliega. En los logs debe aparecer **además**: `🔥 Firebase de choferes conectado (proyecto: regibazarnotify)`. Si no lo pones, verás `ℹ️ Sin credencial aparte para choferes…` (no es un error).
+4. **No lo subas a git** (ya está en `.gitignore`).
 
 ### B. Phone Auth y huellas (Firebase Console → proyecto nenisapp-60810)
 1. *Authentication → Sign-in method* → habilita **Teléfono**.

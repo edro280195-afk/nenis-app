@@ -1,6 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+/// A quién van dirigidas las notificaciones que lista la pantalla. La app pide SOLO las
+/// del papel con el que entró la persona: `seller` (dueña/administradora: avisos de su
+/// tienda) o `buyer` (clienta: pedidos, en vivo y novedades). Una cuenta con ambos
+/// papeles nunca mezcla las dos campanitas. El valor viaja como `?audience=`.
+enum NotificationAudience {
+  buyer,
+  seller;
+
+  String get apiValue => name;
+}
+
 /// Filtro de la pantalla "Notificaciones". `all` muestra todo; `unread`
 /// solo las que no han sido marcadas como leídas.
 enum NotificationsFilter { all, unread }
@@ -28,6 +39,7 @@ class BuyerNotification {
     required this.message,
     required this.tag,
     required this.createdAt,
+    this.audience,
     this.url,
     this.orderId,
     this.readAt,
@@ -40,6 +52,10 @@ class BuyerNotification {
   final String title;
   final String message;
   final String tag;
+
+  /// Destinatario que fijó el backend (`buyer`/`seller`). Es `null` si el backend
+  /// todavía no lo manda (versión anterior).
+  final NotificationAudience? audience;
   final String? url;
   final int? orderId;
   final DateTime createdAt;
@@ -70,6 +86,19 @@ class BuyerNotification {
         return Symbols.sensors;
       case 'store-post':
         return Symbols.campaign;
+      // Avisos de tienda (vendedora).
+      case 'pedidos-por-vencer':
+        return Symbols.hourglass_top;
+      case 'saldos-sin-cobrar':
+      case 'payment-received':
+      case 'tanda-payment':
+        return Symbols.payments;
+      case 'pulso-negocio':
+        return Symbols.insights;
+      case 'delivery-failed':
+        return Symbols.warning;
+      case 'packages-returned':
+        return Symbols.assignment_return;
       default:
         return Symbols.notifications;
     }
@@ -84,6 +113,11 @@ class BuyerNotification {
         title: (j['title'] ?? '') as String,
         message: (j['message'] ?? '') as String,
         tag: (j['tag'] ?? 'general') as String,
+        audience: switch (j['audience']) {
+          'seller' => NotificationAudience.seller,
+          'buyer' => NotificationAudience.buyer,
+          _ => null,
+        },
         url: j['url'] as String?,
         orderId: (j['orderId'] as num?)?.toInt(),
         createdAt:

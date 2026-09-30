@@ -6,7 +6,9 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/devices/data/device_repository.dart';
+import '../auth/auth_controller.dart';
 import 'push_navigation.dart';
+import 'push_payload.dart';
 
 const _androidChannel = AndroidNotificationChannel(
   'nenis_app_channel',
@@ -83,14 +85,15 @@ class PushService {
           iOS: DarwinInitializationSettings(),
         ),
         onDidReceiveNotificationResponse: (response) {
-          handlePushNavigation(_ref, response.payload);
+          handlePushNavigation(_ref, PushPayload.decode(response.payload));
         },
       );
 
       FirebaseMessaging.onBackgroundMessage(pushBackgroundHandler);
       FirebaseMessaging.onMessage.listen(_showForegroundNotification);
       FirebaseMessaging.onMessageOpenedApp.listen(
-        (message) => handlePushNavigation(_ref, message.data['url'] as String?),
+        (message) =>
+            handlePushNavigation(_ref, PushPayload.fromData(message.data)),
       );
 
       // `getInitialMessage` puede colgarse si Firebase no está configurado
@@ -99,7 +102,7 @@ class PushService {
           .getInitialMessage()
           .timeout(const Duration(seconds: 5), onTimeout: () => null);
       if (initialMessage != null) {
-        handlePushNavigation(_ref, initialMessage.data['url'] as String?);
+        handlePushNavigation(_ref, PushPayload.fromData(initialMessage.data));
       }
     } catch (_) {
       // Firebase no configurado nativamente todavía — sin push por ahora.
@@ -109,6 +112,14 @@ class PushService {
   Future<void> _showForegroundNotification(RemoteMessage message) async {
     final notification = message.notification;
     if (notification == null) return;
+
+    // Solo se muestra si es para la sesión abierta: un aviso de otra cuenta (p. ej. la
+    // que cerró sesión antes en este teléfono) o de tienda en una sesión que no es
+    // dueña de ese negocio se descarta en vez de enseñarse.
+    final payload = PushPayload.fromData(message.data);
+    final session = _ref.read(authControllerProvider).asData?.value;
+    if (session == null || !payload.isFor(session)) return;
+
     try {
       await _localNotifications.show(
         id: message.hashCode,
@@ -124,7 +135,7 @@ class PushService {
           ),
           iOS: const DarwinNotificationDetails(),
         ),
-        payload: message.data['url'] as String?,
+        payload: payload.encode(),
       );
     } catch (_) {
       // No hay UI que mostrar si Firebase/local notifications no están listos.
@@ -245,11 +256,18 @@ class PushService {
 
   /// Quita el token del dispositivo (logout), para no seguir empujando push
   /// a una cuenta que ya cerró sesión en este dispositivo.
-  Future<void> unregisterCurrentToken() async {
+  ///
+  /// [accessToken] es el JWT de la sesión que se está cerrando, capturado ANTES de
+  /// borrarla: el cierre de sesión limpia el estado primero, así que sin esto la
+  /// petición salía sin credenciales, el backend la rechazaba y el token se quedaba
+  /// registrado a la cuenta que ya salió (sus avisos seguían llegando a este teléfono).
+  Future<void> unregisterCurrentToken({String? accessToken}) async {
     try {
       final token = await _readFcmToken(FirebaseMessaging.instance);
       if (token == null) return;
-      await _ref.read(deviceRepositoryProvider).unregisterDevice(token);
+      await _ref
+          .read(deviceRepositoryProvider)
+          .unregisterDevice(token, accessToken: accessToken);
     } catch (_) {
       // Sin Firebase configurado, no hay nada que des-registrar.
     }

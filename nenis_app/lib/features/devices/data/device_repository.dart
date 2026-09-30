@@ -60,9 +60,17 @@ class DeviceRepository {
     }
   }
 
-  Future<void> unregisterDevice(String token) async {
+  /// Quita el token del dispositivo. [accessToken] permite mandar la credencial de la
+  /// sesión que se está cerrando aunque el estado de la app ya la haya borrado (el
+  /// interceptor de Dio solo adjunta la sesión vigente).
+  Future<void> unregisterDevice(String token, {String? accessToken}) async {
     try {
-      await _dio.delete('/api/me/devices/$token');
+      await _dio.delete(
+        '/api/me/devices/$token',
+        options: accessToken == null
+            ? null
+            : Options(headers: {'Authorization': 'Bearer $accessToken'}),
+      );
     } catch (e) {
       if (kDebugMode) debugPrint('[Push] unregisterDevice falló: $e');
     }

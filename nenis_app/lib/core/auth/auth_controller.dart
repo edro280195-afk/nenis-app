@@ -154,6 +154,10 @@ class AuthController extends AsyncNotifier<Session?> {
     } catch (_) {
       await _safeClear(ref.read(sessionStorageProvider));
       state = const AsyncData<Session?>(null);
+      // Sesión caducada o revocada: este teléfono ya no debe recibir los avisos de esa
+      // cuenta. No queda un JWT vigente, así que se apoya en que el backend acepta
+      // quitar el token de push sin sesión (el token es un secreto del dispositivo).
+      unawaited(ref.read(pushServiceProvider).unregisterCurrentToken());
       return false;
     }
   }
@@ -340,8 +344,11 @@ class AuthController extends AsyncNotifier<Session?> {
   }
 
   Future<void> logout() async {
-    // 1. Capturamos lo necesario ANTES de tocar el estado.
+    // 1. Capturamos lo necesario ANTES de tocar el estado. El JWT también: el
+    //    estado se limpia enseguida y el backend necesita esta sesión para quitar el
+    //    token de push de ESTA cuenta (si no, sus avisos seguirían llegando al teléfono).
     final rt = state.asData?.value?.refreshToken;
+    final accessToken = state.asData?.value?.token;
     final repo = ref.read(authRepositoryProvider);
     final push = ref.read(pushServiceProvider);
     final firebase = ref.read(firebasePhoneAuthServiceProvider);
@@ -366,6 +373,7 @@ class AuthController extends AsyncNotifier<Session?> {
         push: push,
         firebase: firebase,
         refreshToken: rt,
+        accessToken: accessToken,
       ),
     );
   }
@@ -406,6 +414,7 @@ class AuthController extends AsyncNotifier<Session?> {
     required PushService push,
     required FirebasePhoneAuthService firebase,
     required String? refreshToken,
+    required String? accessToken,
   }) async {
     try {
       await Future.any([
@@ -414,6 +423,7 @@ class AuthController extends AsyncNotifier<Session?> {
           push: push,
           firebase: firebase,
           refreshToken: refreshToken,
+          accessToken: accessToken,
         ),
         Future<void>.delayed(const Duration(seconds: 8)),
       ]);
@@ -427,11 +437,12 @@ class AuthController extends AsyncNotifier<Session?> {
     required PushService push,
     required FirebasePhoneAuthService firebase,
     required String? refreshToken,
+    required String? accessToken,
   }) async {
     await Future.wait([
       if (refreshToken != null && refreshToken.isNotEmpty)
         repo.revokeRefreshToken(refreshToken),
-      push.unregisterCurrentToken(),
+      push.unregisterCurrentToken(accessToken: accessToken),
       firebase.signOut(),
     ]);
   }

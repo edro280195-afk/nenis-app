@@ -117,6 +117,22 @@ class Session {
     return memberships.any(isAllowed);
   }
 
+  /// ¿Es dueña o administradora de [businessId]? Sin negocio indicado basta con serlo
+  /// de alguno. Un aviso de tienda (push `audience: seller`) solo puede mostrarse o
+  /// abrirse con una sesión que cumpla esto; un chofer o escaneador no lo recibe.
+  bool managesBusiness(int? businessId) {
+    bool isManager(Membership membership) {
+      final role = membership.role.trim().toLowerCase();
+      return role == 'owner' || role == 'admin';
+    }
+
+    return memberships.any(
+      (membership) =>
+          isManager(membership) &&
+          (businessId == null || membership.businessId == businessId),
+    );
+  }
+
   bool get canAccessRoutes =>
       hasActiveBusinessRole(const {'Owner', 'Admin', 'Driver'});
 

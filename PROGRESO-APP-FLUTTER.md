@@ -7,6 +7,8 @@
 
 ## Cómo retomar (resumen de 1 minuto)
 
+- **Notificaciones (2026-09-30):** quién recibe qué, el contrato del push y los candados están en `docs/NOTIFICACIONES-DESTINATARIOS.md`. Cada aviso tiene un destinatario declarado (clienta · seguidoras · vendedoras · chofer de una ruta) y nunca se mezclan.
+
 - **Ya no es solo la app de la compradora.** Sigue siendo multi-tenant (un `Account` global le compra a muchas tiendas), pero desde julio/2026 la misma app Flutter también sirve a la **vendedora**: hay una familia completa de rutas `/routes`, `/clients`, `/seller/settings` (+ `profile`/`payments`/`team`/`preferences`), `/seller/plan` (+ checkout de suscripción con Mercado Pago), `/seller/updates`, `/seller/vip`, todas gateadas por `session.hasMembership` en `app_router.dart`. La compradora sigue usando el patrón cross-tenant por `AccountId` sin membership; la vendedora usa el patrón estándar de membership + `X-Business-Id` (igual que el panel Angular).
 - Método: **full-stack pantalla por pantalla**. Cada bloque: backend → `dotnet build` + `dotnet test` verde; Flutter → `flutter analyze` 0 issues.
 - Los **mockups son solo inspiración** (colores/tipografía/layout/componentes). **NUNCA** clonar el chrome del teléfono. Usar `SafeArea` + chrome real del OS.
