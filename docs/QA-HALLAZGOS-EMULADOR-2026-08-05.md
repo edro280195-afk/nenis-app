@@ -455,3 +455,11 @@ Criterio: `PRODUCT.md` — la app une a clientas y vendedoras para que la relaci
 - 🟡 Estatus inconsistente del mismo pedido: Inicio "Pendiente" vs Mis pedidos "En ruta".
 - 🟢 Clienta no ve pagos por tarjeta/Mercado Pago dentro de la app ("en revisión" en seguimiento).
 - Sin probar: checkout de plan (WebView de Mercado Pago), impresión Bluetooth real, NFC, Live real, ejecutar un canje real, crear/borrar pedidos reales (datos de producción).
+
+
+### ✅ 2026-09-30 (4) — Enlace vencido del pedido: corregido y subido
+- **Causa:** `/api/pedido/{token}` devolvía 410 solo por `Order.ExpiresAt`, y la app no mandaba el JWT a ese prefijo (`_publicPrefixes`), así que el backend no podía saber que quien llamaba era la dueña.
+- **Backend** (`ClientViewController.IsLinkExpiredAsync`): con sesión y pedido de una de sus fichas de clienta, el vencimiento no aplica (ver, confirmar, calificar, instrucciones). Anónimo u otra cuenta → 410 igual que antes. El pago con tarjeta conserva el vencimiento estricto a propósito. 4 pruebas nuevas (`ClientViewExpiryTests`).
+- **App** (`dio_provider.dart`): a `/api/pedido/` se le manda solo `Authorization` cuando hay sesión (sin `X-Business-Id`, para no alterar la resolución de tienda pública).
+- Subido a `main`: API `307969f`, app `410a09c`. **Falta verificar en producción cuando Render termine de desplegar**: abrir como clienta el pedido #851 desde Inicio.
+- Al integrar con `origin/main` (commits del 25/ago y 17/sep) hubo conflictos en 6 archivos de etiquetas/inventario porque el árbol local traía trabajo de Bluetooth sin commitear. Se tomó la versión del remoto; el árbol local completo quedó en la rama local `respaldo-qa-2026-09-30` (no se subió).
