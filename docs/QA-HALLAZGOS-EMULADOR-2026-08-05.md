@@ -463,3 +463,12 @@ Criterio: `PRODUCT.md` — la app une a clientas y vendedoras para que la relaci
 - **App** (`dio_provider.dart`): a `/api/pedido/` se le manda solo `Authorization` cuando hay sesión (sin `X-Business-Id`, para no alterar la resolución de tienda pública).
 - Subido a `main`: API `307969f`, app `410a09c`. **Falta verificar en producción cuando Render termine de desplegar**: abrir como clienta el pedido #851 desde Inicio.
 - Al integrar con `origin/main` (commits del 25/ago y 17/sep) hubo conflictos en 6 archivos de etiquetas/inventario porque el árbol local traía trabajo de Bluetooth sin commitear. Se tomó la versión del remoto; el árbol local completo quedó en la rama local `respaldo-qa-2026-09-30` (no se subió).
+
+### 🔴 2026-09-30 (5) — Validación del token (Firebase): producción NO lo puede validar
+Detalle y pasos en [`FIREBASE-CHECKLIST-PRODUCCION.md`](FIREBASE-CHECKLIST-PRODUCCION.md). Resumen:
+- `POST /api/auth/firebase` en producción → **503 firebase_auth_not_configured** (sin credencial Admin).
+- La credencial local es del proyecto `regibazarnotify`; la app usa `nenisapp-60810` → no coinciden.
+- `google-services.json` sin huellas SHA registradas (faltan release, debug y **Play App Signing**).
+- El token push SÍ se obtiene y registra (`[Push] token …EPpYO4 (142 car.) registrado: true`).
+- Código: registro del token en cada sesión (login y arranque), botón "Probar notificaciones", endpoint `POST /api/me/devices/test-push`, búsqueda de la credencial en `/etc/secrets`, canal `regibazar_channel`, y se ocultan "Equipo de reparto"/"Preferencias".
+- `.aab` regenerado con número de compilación 2 (firmado con la llave de release).
