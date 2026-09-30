@@ -74,25 +74,28 @@ void main() {
       expect(order.mergedAt, isNotNull);
     });
 
-    test('un pedido normal (nunca fusionado) no está marcado como fusionado', () {
-      final order = SellerOrder.fromJson({
-        'id': 9,
-        'clientName': 'Mamá',
-        'status': 'Pending',
-        'orderType': 'Delivery',
-        'total': 500,
-        'subtotal': 440,
-        'shippingCost': 60,
-        'amountPaid': 0,
-        'balanceDue': 500,
-        'itemsCount': 2,
-        'createdAt': '2026-07-08T10:00:00Z',
-        'type': 'Nueva',
-      });
+    test(
+      'un pedido normal (nunca fusionado) no está marcado como fusionado',
+      () {
+        final order = SellerOrder.fromJson({
+          'id': 9,
+          'clientName': 'Mamá',
+          'status': 'Pending',
+          'orderType': 'Delivery',
+          'total': 500,
+          'subtotal': 440,
+          'shippingCost': 60,
+          'amountPaid': 0,
+          'balanceDue': 500,
+          'itemsCount': 2,
+          'createdAt': '2026-07-08T10:00:00Z',
+          'type': 'Nueva',
+        });
 
-      expect(order.isMergedAway, isFalse);
-      expect(order.mergedIntoOrderId, isNull);
-    });
+        expect(order.isMergedAway, isFalse);
+        expect(order.mergedIntoOrderId, isNull);
+      },
+    );
 
     test('un artículo movido al fusionar trae la clienta original', () {
       final item = SellerOrderItem.fromJson({

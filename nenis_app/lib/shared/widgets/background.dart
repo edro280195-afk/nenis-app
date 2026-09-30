@@ -8,6 +8,26 @@ class NeniBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // El fondo debe cubrir siempre toda el área disponible. El cuerpo de un
+    // Scaffold da restricciones sueltas, y un SingleChildScrollView corto se
+    // encoge a su contenido: sin esto el degradado terminaba en una línea
+    // recta donde acababa el contenido y debajo se veía el color liso.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final background = _buildBackground();
+        if (!constraints.hasBoundedWidth || !constraints.hasBoundedHeight) {
+          return background;
+        }
+        return SizedBox(
+          width: constraints.maxWidth,
+          height: constraints.maxHeight,
+          child: background,
+        );
+      },
+    );
+  }
+
+  Widget _buildBackground() {
     return DecoratedBox(
       decoration: const BoxDecoration(color: AppColors.surfaceCream),
       child: Stack(

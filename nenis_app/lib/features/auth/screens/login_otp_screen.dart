@@ -19,13 +19,17 @@ import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/nenis_logo.dart';
 import '../../../shared/widgets/otp_cell.dart';
 import '../../../shared/widgets/pill_button.dart';
-import '../widgets/auth_editorial_hero.dart';
 import '../widgets/auth_feedback.dart';
 import '../widgets/auth_motion.dart';
+import '../widgets/auth_otp_notices.dart';
 import '../widgets/legal_acceptance.dart';
 
-/// Login passwordless genérico: teléfono + código por SMS mediante Firebase.
-/// Si el telefono no existe, el backend puede crear una cuenta de clienta.
+/// Acceso con teléfono: número y código de 6 dígitos por SMS (Firebase).
+/// Si el teléfono no existe, el backend crea una cuenta de clienta.
+///
+/// Dos pasos en la misma pantalla, sin indicador de progreso (con dos pasos
+/// el título ya dice dónde estás). "Atrás" regresa al paso anterior en vez de
+/// sacar a la usuaria de la pantalla.
 class LoginOtpScreen extends ConsumerStatefulWidget {
   const LoginOtpScreen({super.key});
 
@@ -72,13 +76,13 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
     final phoneDigits = _phone.text.replaceAll(RegExp(r'\D'), '');
     final phone = PhoneNumberNormalizer.toE164(_phone.text);
     if (phoneDigits.length != 10 || !PhoneNumberNormalizer.isValidE164(phone)) {
-      setState(() => _error = 'Escribe un teléfono válido a 10 dígitos.');
+      setState(() => _error = 'Escribe tu teléfono a 10 dígitos.');
       return;
     }
     if (!_acceptedLegal) {
       setState(
         () => _error =
-            'Acepta los Terminos y el Aviso de privacidad para continuar.',
+            'Acepta los Términos y el Aviso de privacidad para continuar.',
       );
       return;
     }
@@ -101,7 +105,7 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
     } on AuthException catch (e) {
       _fail(e.message);
     } catch (_) {
-      _fail('Ocurrio un problema inesperado. Intentalo de nuevo.');
+      _fail('Ocurrió un problema inesperado. Inténtalo de nuevo.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -119,12 +123,12 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
       await ref
           .read(authControllerProvider.notifier)
           .loginWithFirebaseIdToken(idToken);
-      // Exito: el redirect del router lleva a /home o /pedido/{token}.
+      // Éxito: el redirect del router lleva a /home o /pedido/{token}.
     } on AuthException catch (e) {
       _fail(e.message, resetCode: true);
     } catch (_) {
       _fail(
-        'Ocurrio un problema inesperado. Intentalo de nuevo.',
+        'Ocurrió un problema inesperado. Inténtalo de nuevo.',
         resetCode: true,
       );
     } finally {
@@ -215,152 +219,83 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
     });
   }
 
+  /// "Atrás" deshace un paso: del código vuelve al teléfono, y solo desde el
+  /// teléfono sale a la bienvenida.
+  void _goBack() {
+    if (_loading) return;
+    if (_step == _Step.code) {
+      _timer?.cancel();
+      setState(() {
+        _step = _Step.phone;
+        _error = null;
+        _seconds = 0;
+      });
+      return;
+    }
+    context.go('/login');
+  }
+
   @override
   Widget build(BuildContext context) {
     final reduceMotion = MediaQuery.of(context).disableAnimations;
+    final isCode = _step == _Step.code;
 
-    return Scaffold(
-      backgroundColor: AppColors.surfaceCream,
-      body: NeniBackground(
-        child: SafeArea(
-          child: SingleChildScrollView(
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            padding: const EdgeInsets.fromLTRB(22, 14, 22, 28),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 520),
-                child: AuthMotionColumn(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: BackIconButton(
-                        onPressed: _loading ? null : () => context.go('/login'),
+    return PopScope(
+      // Sin esto el atrás del sistema sacaba de la pantalla aun estando en el
+      // paso del código.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _goBack();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.surfaceCream,
+        body: NeniBackground(
+          child: SafeArea(
+            child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: const EdgeInsets.fromLTRB(22, 12, 22, 28),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 520),
+                  child: AuthMotionColumn(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          BackIconButton(onPressed: _loading ? null : _goBack),
+                          const Expanded(
+                            child: Center(
+                              child: NenisLogo(markSize: 34, wordmarkSize: 19),
+                            ),
+                          ),
+                          // Equilibra el botón de atrás para centrar el logo.
+                          const SizedBox(width: 48),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    const Center(
-                      child: NenisLogo(markSize: 46, wordmarkSize: 23),
-                    ),
-                    const SizedBox(height: 18),
-                    AnimatedSwitcher(
-                      duration: reduceMotion
-                          ? Duration.zero
-                          : const Duration(milliseconds: 260),
-                      switchInCurve: Curves.easeOutCubic,
-                      child: _OtpHeroHeader(
-                        key: ValueKey(_step),
-                        step: _step,
-                        last4: _last4(_phone.text),
-                      ),
-                    ),
-                    const SizedBox(height: 22),
-                    _OtpProgress(activeCode: _step == _Step.code),
-                    const SizedBox(height: 22),
-                    if (_step == _Step.phone) ...[
-                      AppTextField(
-                        key: const Key('login-otp-phone-field'),
-                        controller: _phone,
-                        label: 'Teléfono celular',
-                        prefix: '+52',
-                        hint: '868 145 22 90',
-                        keyboardType: TextInputType.phone,
-                        textInputAction: TextInputAction.done,
-                        autofillHints: const [AutofillHints.telephoneNumber],
-                      ),
-                      const SizedBox(height: 14),
-                      LegalAcceptanceCheckbox(
-                        key: const Key('login-otp-legal-checkbox'),
-                        value: _acceptedLegal,
-                        enabled: !_loading,
-                        onChanged: (value) => setState(() {
-                          _acceptedLegal = value;
-                          if (value) _error = null;
-                        }),
-                      ),
-                      if (_error != null) ...[
-                        const SizedBox(height: 14),
-                        AuthFeedbackBanner(
-                          key: const Key('login-otp-error'),
-                          message: _error!,
-                        ),
-                      ],
-                      const SizedBox(height: 22),
+                      const SizedBox(height: 26),
                       AnimatedSwitcher(
                         duration: reduceMotion
                             ? Duration.zero
                             : const Duration(milliseconds: 220),
-                        child: _loading
-                            ? const _LoadingPill(
-                                key: ValueKey('login-otp-loading'),
-                              )
-                            : PillButton(
-                                key: const Key('login-otp-send'),
-                                label: 'Enviar código por SMS',
-                                icon: Symbols.arrow_forward,
-                                onPressed: _sendCode,
-                              ),
-                      ),
-                    ] else ...[
-                      OtpInput(
-                        key: ValueKey('login-otp-$_otpRevision'),
-                        length: 6,
-                        onCompleted: _verify,
-                      ),
-                      const SizedBox(height: 14),
-                      Center(
-                        child: Text(
-                          'Al completar los 6 dígitos verificaremos tu teléfono automáticamente.',
-                          textAlign: TextAlign.center,
-                          style: AppTextStyles.subtitle.copyWith(fontSize: 12),
+                        switchInCurve: Curves.easeOutCubic,
+                        child: AuthTitleBlock(
+                          key: ValueKey(_step),
+                          title: isCode
+                              ? 'Escribe tu código'
+                              : 'Entra con tu teléfono',
+                          subtitle: isCode
+                              ? 'Lo enviamos por SMS al +52 ··· '
+                                    '${_last4(_phone.text)}. Puede tardar '
+                                    'hasta un minuto en llegar.'
+                              : 'Te mandamos un código por SMS. Si es tu '
+                                    'primera vez, creamos tu cuenta de '
+                                    'clienta.',
                         ),
                       ),
-                      const SizedBox(height: 17),
-                      Center(
-                        child: _seconds > 0
-                            ? Text(
-                                'Puedes pedir otro código en 0:${_seconds.toString().padLeft(2, '0')}',
-                                style: AppTextStyles.subtitle,
-                              )
-                            : TextButton(
-                                onPressed: _resend,
-                                child: const Text('Reenviar código'),
-                              ),
-                      ),
-                      if (_error != null) ...[
-                        const SizedBox(height: 12),
-                        AuthFeedbackBanner(
-                          key: const Key('login-otp-error'),
-                          message: _error!,
-                        ),
-                      ],
-                      if (_loading) ...[
-                        const SizedBox(height: 18),
-                        const _VerifyingPhoneIndicator(),
-                      ],
-                      const SizedBox(height: 8),
-                      Center(
-                        child: TextButton(
-                          onPressed: _loading
-                              ? null
-                              : () => setState(() {
-                                  _step = _Step.phone;
-                                  _error = null;
-                                }),
-                          child: const Text('Cambiar número'),
-                        ),
-                      ),
+                      const SizedBox(height: 24),
+                      if (!isCode) ..._phoneStep() else ..._codeStep(),
                     ],
-                    const SizedBox(height: 14),
-                    Center(
-                      child: TextButton(
-                        onPressed: _loading
-                            ? null
-                            : () => context.go('/register'),
-                        child: const Text('Crear mi cuenta'),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -370,6 +305,120 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
     );
   }
 
+  List<Widget> _phoneStep() {
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+    return [
+      AppTextField(
+        key: const Key('login-otp-phone-field'),
+        controller: _phone,
+        label: 'Teléfono celular',
+        prefix: '+52',
+        hint: '868 145 22 90',
+        keyboardType: TextInputType.phone,
+        textInputAction: TextInputAction.done,
+        autofillHints: const [AutofillHints.telephoneNumber],
+      ),
+      const SizedBox(height: 16),
+      const OtpExplainer(),
+      const SizedBox(height: 14),
+      LegalAcceptanceCheckbox(
+        key: const Key('login-otp-legal-checkbox'),
+        value: _acceptedLegal,
+        enabled: !_loading,
+        onChanged: (value) => setState(() {
+          _acceptedLegal = value;
+          if (value) _error = null;
+        }),
+      ),
+      if (_error != null) ...[
+        const SizedBox(height: 14),
+        AuthFeedbackBanner(key: const Key('login-otp-error'), message: _error!),
+      ],
+      const SizedBox(height: 20),
+      AnimatedSwitcher(
+        duration: reduceMotion
+            ? Duration.zero
+            : const Duration(milliseconds: 200),
+        child: _loading
+            ? const _LoadingPill(
+                key: ValueKey('login-otp-loading'),
+                label: 'Preparando tu código…',
+              )
+            : PillButton(
+                key: const Key('login-otp-send'),
+                label: 'Enviar código por SMS',
+                icon: Symbols.arrow_forward,
+                onPressed: _sendCode,
+              ),
+      ),
+      if (_loading) ...[const SizedBox(height: 14), const BrowserCheckHint()],
+      const SizedBox(height: 10),
+      Center(
+        child: TextButton(
+          key: const Key('login-otp-sell'),
+          onPressed: _loading
+              ? null
+              : () => context.go('/register?role=seller'),
+          style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+          child: Text(
+            '¿Quieres vender en Neni\'s? Crea tu tienda',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.subtitle.copyWith(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.linkAa,
+            ),
+          ),
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _codeStep() {
+    return [
+      OtpInput(
+        key: ValueKey('login-otp-$_otpRevision'),
+        length: 6,
+        onCompleted: _verify,
+      ),
+      const SizedBox(height: 16),
+      if (_error != null) ...[
+        AuthFeedbackBanner(key: const Key('login-otp-error'), message: _error!),
+        const SizedBox(height: 14),
+      ],
+      if (_loading)
+        const _VerifyingPhoneIndicator()
+      else
+        Center(
+          child: _seconds > 0
+              ? Text(
+                  'Puedes pedir otro código en 0:${_seconds.toString().padLeft(2, '0')}',
+                  style: AppTextStyles.subtitle.copyWith(
+                    fontSize: 13,
+                    color: AppColors.textAa,
+                  ),
+                )
+              : TextButton(
+                  key: const Key('login-otp-resend'),
+                  onPressed: _resend,
+                  style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+                  child: const Text('Reenviar código'),
+                ),
+        ),
+      const SizedBox(height: 14),
+      const OtpExplainer(compact: true),
+      const SizedBox(height: 8),
+      Center(
+        child: TextButton(
+          key: const Key('login-otp-change-number'),
+          onPressed: _loading ? null : _goBack,
+          style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+          child: const Text('Cambiar número'),
+        ),
+      ),
+    ];
+  }
+
   static String _last4(String phone) {
     final digits = phone.replaceAll(RegExp(r'\D'), '');
     return digits.length >= 4 ? digits.substring(digits.length - 4) : '····';
@@ -377,7 +426,9 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
 }
 
 class _LoadingPill extends StatelessWidget {
-  const _LoadingPill({super.key});
+  const _LoadingPill({super.key, required this.label});
+
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -389,11 +440,11 @@ class _LoadingPill extends StatelessWidget {
           colors: [AppColors.neni, AppColors.neniDeep],
         ),
       ),
-      child: const Center(
+      child: Center(
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
+            const SizedBox(
               width: 22,
               height: 22,
               child: CircularProgressIndicator(
@@ -401,10 +452,10 @@ class _LoadingPill extends StatelessWidget {
                 color: AppColors.surface,
               ),
             ),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Text(
-              'Preparando tu código…',
-              style: TextStyle(
+              label,
+              style: const TextStyle(
                 color: AppColors.surface,
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
@@ -417,143 +468,41 @@ class _LoadingPill extends StatelessWidget {
   }
 }
 
-class _OtpHeroHeader extends StatelessWidget {
-  const _OtpHeroHeader({super.key, required this.step, required this.last4});
-
-  final _Step step;
-  final String last4;
-
-  @override
-  Widget build(BuildContext context) {
-    final isCode = step == _Step.code;
-    return AuthEditorialHero(
-      role: AuthHeroRole.client,
-      compact: true,
-      title: isCode ? 'Tu código llega por SMS' : 'Entra con tu teléfono',
-      subtitle: isCode
-          ? 'Enviamos un código de 6 dígitos al +52 ··· $last4.'
-          : 'Te enviaremos un código seguro. Si es tu primera vez, crearemos tu cuenta de clienta.',
-    );
-  }
-}
-
-class _OtpProgress extends StatelessWidget {
-  const _OtpProgress({required this.activeCode});
-
-  final bool activeCode;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _OtpProgressStep(
-          label: 'Teléfono',
-          number: '1',
-          active: !activeCode,
-          completed: activeCode,
-        ),
-        Expanded(
-          child: Container(
-            height: 3,
-            margin: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: activeCode ? AppColors.neni : AppColors.line,
-              borderRadius: BorderRadius.circular(99),
-            ),
-          ),
-        ),
-        _OtpProgressStep(
-          label: 'Código SMS',
-          number: '2',
-          active: activeCode,
-          completed: false,
-        ),
-      ],
-    );
-  }
-}
-
-class _OtpProgressStep extends StatelessWidget {
-  const _OtpProgressStep({
-    required this.label,
-    required this.number,
-    required this.active,
-    required this.completed,
-  });
-
-  final String label;
-  final String number;
-  final bool active;
-  final bool completed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          width: 25,
-          height: 25,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: active ? AppColors.neniDeep : AppColors.segTrack,
-            shape: BoxShape.circle,
-          ),
-          child: Text(
-            completed ? '✓' : number,
-            style: TextStyle(
-              color: active ? AppColors.surface : AppColors.ink2,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: AppTextStyles.subtitle.copyWith(
-            fontSize: 11.5,
-            color: active ? AppColors.ink : AppColors.ink2,
-            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _VerifyingPhoneIndicator extends StatelessWidget {
   const _VerifyingPhoneIndicator();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: AppColors.neni.withValues(alpha: 0.10),
-        borderRadius: AppRadii.softRadius,
-        border: Border.all(color: AppColors.neni.withValues(alpha: 0.18)),
-      ),
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SizedBox.square(
-            dimension: 20,
-            child: CircularProgressIndicator(
-              strokeWidth: 2.2,
-              color: AppColors.neniDeep,
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.neni.withValues(alpha: 0.10),
+          borderRadius: AppRadii.softRadius,
+          border: Border.all(color: AppColors.neni.withValues(alpha: 0.18)),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox.square(
+              dimension: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.2,
+                color: AppColors.neniDeep,
+              ),
             ),
-          ),
-          SizedBox(width: 10),
-          Text(
-            'Verificando tu teléfono…',
-            style: TextStyle(
-              color: AppColors.neniDeep,
-              fontSize: 13.5,
-              fontWeight: FontWeight.w700,
+            SizedBox(width: 10),
+            Text(
+              'Verificando tu teléfono…',
+              style: TextStyle(
+                color: AppColors.neniDeep,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

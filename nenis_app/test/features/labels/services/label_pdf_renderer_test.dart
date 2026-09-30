@@ -83,9 +83,9 @@ void main() {
         copies: 1,
         templateVersion: const LabelTemplateVersionSnapshot(
           id: 'template-1',
-        versionNumber: 1,
-        designJson: design,
-      ),
+          versionNumber: 1,
+          designJson: design,
+        ),
         assets: const [],
         items: const [],
       );
@@ -97,8 +97,10 @@ void main() {
     },
   );
 
-  test('genera una etiqueta de caja desde datos inmutables de inventario', () async {
-    const design = '''
+  test(
+    'genera una etiqueta de caja desde datos inmutables de inventario',
+    () async {
+      const design = '''
       {
         "canvas":{"widthMm":50,"heightMm":50,"background":"#FFFFFF"},
         "elements":[
@@ -109,21 +111,22 @@ void main() {
       }
     ''';
 
-    final bytes = await const LabelPdfRenderer().renderData(
-      designJson: design,
-      mediaSize: LabelMediaSize.square50x50,
-      assets: const [],
-      documents: const [
-        {
-          'business.name': 'Boutique Miel',
-          'box.code': 'B-01',
-          'box.name': 'Blusas',
-          'box.nfcUrl': 'https://app.nenisapp.com/caja/1/token-seguro',
-        },
-      ],
-    );
+      final bytes = await const LabelPdfRenderer().renderData(
+        designJson: design,
+        mediaSize: LabelMediaSize.square50x50,
+        assets: const [],
+        documents: const [
+          {
+            'business.name': 'Boutique Miel',
+            'box.code': 'B-01',
+            'box.name': 'Blusas',
+            'box.nfcUrl': 'https://app.nenisapp.com/caja/1/token-seguro',
+          },
+        ],
+      );
 
-    expect(bytes.length, greaterThan(100));
-    expect(String.fromCharCodes(bytes.take(4)), '%PDF');
-  });
+      expect(bytes.length, greaterThan(100));
+      expect(String.fromCharCodes(bytes.take(4)), '%PDF');
+    },
+  );
 }

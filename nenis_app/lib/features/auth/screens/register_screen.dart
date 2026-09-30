@@ -19,8 +19,8 @@ import '../../../shared/widgets/password_field.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../../subscription/data/subscription_models.dart';
 import '../../subscription/data/subscription_repository.dart';
-import '../widgets/auth_editorial_hero.dart';
 import '../widgets/auth_feedback.dart';
+import '../widgets/auth_otp_notices.dart';
 import '../widgets/auth_motion.dart';
 import '../widgets/legal_acceptance.dart';
 
@@ -227,9 +227,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           isSeller: _isSeller,
                           reduceMotion: reduceMotion,
                         ),
-                        const SizedBox(height: 20),
-                        _RegistrationProgress(accent: _roleAccent),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 22),
                         _AccountTypeSelector(
                           value: _accountType,
                           onChanged: _loading
@@ -269,7 +267,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 key: const Key('register-last-name-field'),
                                 controller: _lastName,
                                 label: 'Apellido',
-                                hint: 'Lopez',
+                                hint: 'López',
                                 keyboardType: TextInputType.name,
                                 textInputAction: TextInputAction.next,
                                 autofillHints: const [AutofillHints.familyName],
@@ -396,6 +394,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                   ),
                                 ),
                         ),
+                        const SizedBox(height: 18),
+                        const OtpExplainer(),
                         const SizedBox(height: 20),
                         AnimatedSwitcher(
                           duration: reduceMotion
@@ -446,7 +446,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                   TextSpan(
                                     text: 'Inicia sesión',
                                     style: AppTextStyles.subtitle.copyWith(
-                                      color: _roleAccent,
+                                      // Con contraste AA: el lavanda y el rosa de
+                                      // marca son demasiado claros para texto.
+                                      color: _isSeller
+                                          ? const Color(0xFF6A4DBB)
+                                          : AppColors.linkAa,
                                       fontWeight: FontWeight.w700,
                                       fontSize: 13.5,
                                     ),
@@ -477,120 +481,23 @@ class _RegistrationHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = isSeller ? AppColors.lavender : AppColors.neniDeep;
-    final title = isSeller ? 'Haz crecer lo que vendes' : 'Consiente tu estilo';
+    final title = isSeller ? 'Abre tu tienda en Neni\'s' : 'Crea tu cuenta';
     final subtitle = isSeller
-        ? 'Crea tu espacio, recibe pedidos y conecta con más clientas locales.'
-        : 'Crea tu cuenta para descubrir boutiques, pedidos y favoritas cerca de ti.';
+        ? 'Recibe pedidos y conecta con más clientas de tu ciudad. Primero '
+              'tus datos y luego confirmamos tu teléfono con un código por SMS.'
+        : 'Descubre boutiques, sigue tus pedidos y guarda tus favoritas. '
+              'Primero tus datos y luego confirmamos tu teléfono con un código '
+              'por SMS.';
 
-    return Column(
-      children: [
-        AnimatedSwitcher(
-          duration: reduceMotion
-              ? Duration.zero
-              : const Duration(milliseconds: 220),
-          child: AuthEditorialHero(
-            key: ValueKey(title),
-            role: isSeller ? AuthHeroRole.seller : AuthHeroRole.client,
-            compact: true,
-            title: title,
-            subtitle: subtitle,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          'Nuevo Laredo · Paso 1 de 2',
-          style: AppTextStyles.chip.copyWith(
-            color: accent,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _RegistrationProgress extends StatelessWidget {
-  const _RegistrationProgress({required this.accent});
-
-  final Color accent;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _ProgressStep(
-          number: '1',
-          label: 'Datos',
-          active: true,
-          accent: accent,
-        ),
-        Expanded(
-          child: Container(
-            height: 3,
-            margin: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: AppColors.neni.withValues(alpha: 0.22),
-              borderRadius: BorderRadius.circular(99),
-            ),
-          ),
-        ),
-        _ProgressStep(
-          number: '2',
-          label: 'Código SMS',
-          active: false,
-          accent: accent,
-        ),
-      ],
-    );
-  }
-}
-
-class _ProgressStep extends StatelessWidget {
-  const _ProgressStep({
-    required this.number,
-    required this.label,
-    required this.active,
-    required this.accent,
-  });
-
-  final String number;
-  final String label;
-  final bool active;
-  final Color accent;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 25,
-          height: 25,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: active ? accent : AppColors.segTrack,
-            shape: BoxShape.circle,
-          ),
-          child: Text(
-            number,
-            style: AppTextStyles.body.copyWith(
-              color: active ? AppColors.surface : AppColors.ink2,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-        const SizedBox(width: 7),
-        Text(
-          label,
-          style: AppTextStyles.subtitle.copyWith(
-            color: active ? AppColors.ink : AppColors.ink2,
-            fontSize: 11.5,
-            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-          ),
-        ),
-      ],
+    return AnimatedSwitcher(
+      duration: reduceMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 200),
+      child: AuthTitleBlock(
+        key: ValueKey(title),
+        title: title,
+        subtitle: subtitle,
+      ),
     );
   }
 }

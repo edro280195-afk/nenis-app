@@ -472,3 +472,21 @@ Detalle y pasos en [`FIREBASE-CHECKLIST-PRODUCCION.md`](FIREBASE-CHECKLIST-PRODU
 - El token push SÍ se obtiene y registra (`[Push] token …EPpYO4 (142 car.) registrado: true`).
 - Código: registro del token en cada sesión (login y arranque), botón "Probar notificaciones", endpoint `POST /api/me/devices/test-push`, búsqueda de la credencial en `/etc/secrets`, canal `regibazar_channel`, y se ocultan "Equipo de reparto"/"Preferencias".
 - `.aab` regenerado con número de compilación 2 (firmado con la llave de release).
+
+---
+
+## 2026-09-30 (6) — Rediseño del flujo de acceso (login / registro) y aviso del código OTP
+
+**Por qué se abría el navegador (log del Pixel):** `SMS verification code request failed: 18002 Invalid PlayIntegrity token; app not Recognized by Play Store` → `Re-triggering phone verification with Recaptcha flow forced` → Chrome a `nenisapp-60810.firebaseapp.com`. Firebase intenta verificar el dispositivo en silencio con Play Integrity; una app instalada por cable (no de Play Store) no es reconocida y recurre a reCAPTCHA en el navegador. Desde Play Store normalmente no ocurre, pero puede pasar en algunos teléfonos, por eso el aviso en pantalla.
+
+**Rediseño (registro de producto, `PRODUCT.md`):**
+- Bienvenida: una acción principal + dos caminos de igual peso ("Soy clienta" / "Vendo en Neni's", este último con `?role=seller`).
+- Acceso por SMS: sin foto ni indicador de pasos; `OtpExplainer` explica qué es el código y el aviso del navegador ANTES de enviarlo; `BrowserCheckHint` mientras se prepara el código; "atrás" deshace un paso; camino de vendedora visible.
+- Crear cuenta y confirmar: encabezado funcional + mismo aviso; se quitó el indicador "Paso 1 de 2".
+- Contraseña: flecha que faltaba y título corto.
+- Atrás de Android en register / confirm / password / reset / OTP: `AuthBackScope` (antes cerraba la app).
+- Bug de layout corregido: el fondo compartido (`NeniBackground`) terminaba donde acababa el contenido.
+- Bug que habría roto la bienvenida: `Row` con `stretch` en área desplazable (alto infinito) → `IntrinsicHeight`.
+- `PillButton`: el texto se encoge en vez de desbordar con letra grande.
+- Accesibilidad: `AppColors.textAa` (6.2:1) y `AppColors.linkAa` (4.8:1); `AppTheme.readableOn` oscurece el color de marca en botones de texto hasta AA. **Pendiente de decisión:** `ink2` (4.4:1), `ink3` (2.3:1) y `neniDeep` (3.5:1) siguen sin cumplir AA en el resto de la app.
+- Pruebas nuevas: bienvenida, acceso SMS, atrás, contraste (164 en total).

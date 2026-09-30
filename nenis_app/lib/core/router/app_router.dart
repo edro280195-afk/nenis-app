@@ -7,6 +7,7 @@ import '../auth/auth_repository.dart';
 import '../deeplinks/deep_link_service.dart';
 import '../../features/auth/screens/auth_welcome_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
+import '../../features/auth/widgets/auth_back_scope.dart';
 import '../../features/auth/screens/login_otp_screen.dart';
 import '../../features/auth/screens/password_reset_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
@@ -207,8 +208,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/login-password',
-        pageBuilder: (context, state) =>
-            _pageTransition(key: state.pageKey, child: const LoginScreen()),
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: const AuthBackScope(child: LoginScreen()),
+        ),
       ),
       GoRoute(
         path: '/login-otp',
@@ -219,10 +222,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/register',
         pageBuilder: (context, state) => _pageTransition(
           key: state.pageKey,
-          child: RegisterScreen(
-            initialRole: state.uri.queryParameters['role'] == 'seller'
-                ? AccountType.seller
-                : AccountType.client,
+          child: AuthBackScope(
+            child: RegisterScreen(
+              initialRole: state.uri.queryParameters['role'] == 'seller'
+                  ? AccountType.seller
+                  : AccountType.client,
+            ),
           ),
         ),
       ),
@@ -235,8 +240,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/confirm',
-        pageBuilder: (context, state) =>
-            _pageTransition(key: state.pageKey, child: const ConfirmScreen()),
+        pageBuilder: (context, state) => _pageTransition(
+          key: state.pageKey,
+          child: const AuthBackScope(child: ConfirmScreen()),
+        ),
       ),
       GoRoute(
         path: '/claim',

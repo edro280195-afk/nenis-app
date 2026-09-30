@@ -16,6 +16,7 @@ import '../../../shared/widgets/otp_cell.dart';
 import '../../../shared/widgets/password_field.dart';
 import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/shake_widget.dart';
+import '../widgets/auth_back_scope.dart';
 import '../widgets/auth_feedback.dart';
 
 enum _PasswordResetStep { request, verifyOtp, newPassword, success }
@@ -305,6 +306,10 @@ class _PasswordResetScreenState extends ConsumerState<PasswordResetScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return AuthBackScope(onBack: _back, child: _buildScaffold(context));
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surfaceCream,
       body: NeniBackground(

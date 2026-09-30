@@ -14,25 +14,32 @@ void main() {
       expect(attempts, 1);
     });
 
-    test('reintenta tras un fallo y se queda con el resultado del intento bueno', () async {
-      var attempts = 0;
-      final result = await withBluetoothRetry<String>((attempt) async {
-        attempts++;
-        if (attempts < 3) throw Exception('falla momentánea');
-        return 'ok tras reintentos';
-      }, delaysBetweenAttempts: const []);
+    test(
+      'reintenta tras un fallo y se queda con el resultado del intento bueno',
+      () async {
+        var attempts = 0;
+        final result = await withBluetoothRetry<String>((attempt) async {
+          attempts++;
+          if (attempts < 3) throw Exception('falla momentánea');
+          return 'ok tras reintentos';
+        }, delaysBetweenAttempts: const []);
 
-      expect(result, 'ok tras reintentos');
-      expect(attempts, 3);
-    });
+        expect(result, 'ok tras reintentos');
+        expect(attempts, 3);
+      },
+    );
 
     test('respeta maxAttempts: no reintenta más allá del límite', () async {
       var attempts = 0;
       await expectLater(
-        withBluetoothRetry<void>((attempt) async {
-          attempts++;
-          throw Exception('siempre falla');
-        }, maxAttempts: 3, delaysBetweenAttempts: const []),
+        withBluetoothRetry<void>(
+          (attempt) async {
+            attempts++;
+            throw Exception('siempre falla');
+          },
+          maxAttempts: 3,
+          delaysBetweenAttempts: const [],
+        ),
         throwsA(isA<Exception>()),
       );
 
@@ -42,13 +49,15 @@ void main() {
     test('propaga el error del último intento, no del primero', () async {
       var attempts = 0;
       await expectLater(
-        withBluetoothRetry<void>((attempt) async {
-          attempts++;
-          throw Exception('intento $attempts');
-        }, maxAttempts: 3, delaysBetweenAttempts: const []),
-        throwsA(
-          predicate((e) => e.toString().contains('intento 3')),
+        withBluetoothRetry<void>(
+          (attempt) async {
+            attempts++;
+            throw Exception('intento $attempts');
+          },
+          maxAttempts: 3,
+          delaysBetweenAttempts: const [],
         ),
+        throwsA(predicate((e) => e.toString().contains('intento 3'))),
       );
     });
 

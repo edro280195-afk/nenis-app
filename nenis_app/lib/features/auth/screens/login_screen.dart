@@ -12,9 +12,11 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/background.dart';
 import '../../../shared/widgets/password_field.dart';
+import '../../../shared/widgets/pill_button.dart';
 import '../../../shared/widgets/shake_widget.dart';
 import '../widgets/auth_editorial_hero.dart';
 import '../widgets/auth_feedback.dart';
+import '../widgets/auth_otp_notices.dart';
 import '../widgets/legal_acceptance.dart';
 
 enum LoginRole { client, seller }
@@ -227,8 +229,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           : Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: BackIconButton(
+                                    onPressed: _loading
+                                        ? null
+                                        : () => context.go('/login'),
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
                                 _LoginIntro(compact: true, role: _role),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 16),
                                 surface,
                               ],
                             ),
@@ -253,6 +264,23 @@ class _LoginIntro extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isClient = role == LoginRole.client;
+    if (compact) {
+      // En teléfono, título y una línea de contexto en lugar de la foto: el
+      // formulario queda a la vista sin desplazar. La foto se conserva en el
+      // diseño ancho (tablet), que sí tiene espacio.
+      return AnimatedSwitcher(
+        duration: MediaQuery.of(context).disableAnimations
+            ? Duration.zero
+            : const Duration(milliseconds: 200),
+        child: AuthTitleBlock(
+          key: ValueKey(role),
+          title: 'Entra con tu contraseña',
+          // El detalle de cada cuenta ya lo explica la tarjeta de abajo; aquí
+          // solo lo que hay que hacer, sin repetir el mismo mensaje.
+          subtitle: 'Usa el teléfono y la contraseña de tu cuenta.',
+        ),
+      );
+    }
     return AnimatedSwitcher(
       duration: MediaQuery.of(context).disableAnimations
           ? Duration.zero

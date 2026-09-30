@@ -13,10 +13,11 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/background.dart';
+import '../../../shared/widgets/nenis_logo.dart';
 import '../../../shared/widgets/otp_cell.dart';
 import '../../../shared/widgets/pill_button.dart';
-import '../widgets/auth_editorial_hero.dart';
 import '../widgets/auth_feedback.dart';
+import '../widgets/auth_otp_notices.dart';
 
 /// Confirmación del teléfono con el código de 6 dígitos enviado por SMS.
 /// Conserva el camino legacy para cuentas que todavía estaban en confirmación
@@ -201,36 +202,26 @@ class _ConfirmScreenState extends ConsumerState<ConfirmScreen> {
                 const SizedBox(height: 8),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(22, 4, 22, 0),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: BackIconButton(
-                      onPressed: () => context.go('/login'),
-                    ),
+                  child: Row(
+                    children: [
+                      BackIconButton(onPressed: () => context.go('/login')),
+                      const Expanded(
+                        child: Center(
+                          child: NenisLogo(markSize: 34, wordmarkSize: 19),
+                        ),
+                      ),
+                      const SizedBox(width: 48),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 26),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 22),
-                  child: AuthEditorialHero(
-                    role: AuthHeroRole.client,
-                    compact: true,
-                    title: 'Tu código llega por SMS',
+                  child: AuthTitleBlock(
+                    title: 'Escribe tu código',
                     subtitle:
-                        'Escribe el código de 6 dígitos que enviamos por SMS a $_maskedPhone.',
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Center(
-                  child: GestureDetector(
-                    onTap: () => context.go('/login'),
-                    child: Text(
-                      'Cambiar número',
-                      style: AppTextStyles.subtitle.copyWith(
-                        color: AppColors.neniDeep,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                    ),
+                        'Lo enviamos por SMS al $_maskedPhone. Puede tardar '
+                        'hasta un minuto en llegar.',
                   ),
                 ),
                 const SizedBox(height: 26),
@@ -273,6 +264,21 @@ class _ConfirmScreenState extends ConsumerState<ConfirmScreen> {
                             ),
                           ),
                         ),
+                ),
+                const SizedBox(height: 16),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 22),
+                  child: OtpExplainer(compact: true),
+                ),
+                Center(
+                  child: TextButton(
+                    key: const Key('confirm-change-number'),
+                    onPressed: () => context.go('/login'),
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(48, 48),
+                    ),
+                    child: const Text('Cambiar número'),
+                  ),
                 ),
                 if (_errorMessage != null) ...[
                   const SizedBox(height: 18),

@@ -6,6 +6,15 @@ class AppColors {
   static const Color ink = Color(0xFF3A2233);
   static const Color ink2 = Color(0xFF8A6F82);
   static const Color ink3 = Color(0xFFB6A4B1);
+
+  /// Texto secundario que SÍ cumple contraste AA (6.2:1 o más sobre
+  /// `surface` y `surfaceCream`). `ink2` (4.4:1) e `ink3` (2.3:1) quedan para
+  /// decoración o texto grande. Usar este para explicaciones y avisos.
+  static const Color textAa = Color(0xFF6E5468);
+
+  /// Rosa para enlaces y acciones de texto pequeñas (4.8:1 o más). El
+  /// `neniDeep` (3.5:1) solo cumple en texto grande o iconos.
+  static const Color linkAa = Color(0xFFC2366B);
   static const Color surface = Color(0xFFFFFCFD);
   static const Color line = Color(0x143A2233);
   static const Color lineSoft = Color(0x0D3A2233);

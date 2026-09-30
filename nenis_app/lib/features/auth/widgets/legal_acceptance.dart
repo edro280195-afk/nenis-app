@@ -30,9 +30,9 @@ class LegalAcceptanceCheckbox extends StatelessWidget {
         borderRadius: const BorderRadius.all(Radius.circular(18)),
         onTap: enabled ? () => onChanged(!value) : null,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(2, 9, 12, 9),
+          padding: const EdgeInsets.fromLTRB(2, 6, 12, 6),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Checkbox(
                 value: value,
@@ -46,7 +46,7 @@ class LegalAcceptanceCheckbox extends StatelessWidget {
               ),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.only(top: 3),
+                  padding: const EdgeInsets.symmetric(vertical: 2),
                   child: LegalLinksText(
                     prefix: 'Acepto los ',
                     middle: ' y el ',
@@ -96,15 +96,15 @@ class LegalLinksText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final base = AppTextStyles.subtitle.copyWith(
-      color: AppColors.ink3,
+      color: AppColors.textAa,
       fontSize: fontSize,
       height: 1.35,
     );
     final link = base.copyWith(
-      color: AppColors.neniDeep,
+      color: AppColors.linkAa,
       fontWeight: FontWeight.w800,
       decoration: TextDecoration.underline,
-      decorationColor: AppColors.neniDeep.withValues(alpha: 0.45),
+      decorationColor: AppColors.linkAa.withValues(alpha: 0.45),
     );
 
     return Wrap(

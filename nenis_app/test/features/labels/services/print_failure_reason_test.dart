@@ -12,11 +12,14 @@ void main() {
   });
 
   group('unknownPrintFailureReason', () {
-    test('incluye el tipo y el texto de la excepción bajo el código unknown', () {
-      final reason = unknownPrintFailureReason(StateError('algo raro pasó'));
-      expect(reason, startsWith('unknown: StateError'));
-      expect(reason, contains('algo raro pasó'));
-    });
+    test(
+      'incluye el tipo y el texto de la excepción bajo el código unknown',
+      () {
+        final reason = unknownPrintFailureReason(StateError('algo raro pasó'));
+        expect(reason, startsWith('unknown: StateError'));
+        expect(reason, contains('algo raro pasó'));
+      },
+    );
 
     test('trunca detalles muy largos para no exceder el límite razonable', () {
       final longMessage = 'x' * 1000;

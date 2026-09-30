@@ -23,7 +23,8 @@ void main() {
 
     expect(find.text('Compra bonito.\nCompra local.'), findsOneWidget);
     expect(find.text('Entrar con mi teléfono'), findsOneWidget);
-    expect(find.text('Crear mi cuenta'), findsOneWidget);
+    expect(find.text('Soy clienta'), findsOneWidget);
+    expect(find.text("Vendo en Neni's"), findsOneWidget);
     expect(find.text("NENI'S"), findsOneWidget);
   });
 }
